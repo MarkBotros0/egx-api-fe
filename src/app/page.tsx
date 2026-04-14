@@ -162,9 +162,11 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Filters — horizontal scrollable on mobile */}
-            <div className="mb-4 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
+            {/* Filters — index on one row, sector on its own row */}
+            <div className="mb-3 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
               <IndexFilter selected={index} onChange={setIndex} />
+            </div>
+            <div className="mb-4 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
               <SectorFilter selected={sector} onChange={setSector} />
               <span className="whitespace-nowrap text-xs text-white/30">
                 {filtered.length} stocks

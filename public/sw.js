@@ -1,4 +1,4 @@
-const CACHE_NAME = "egx-v1";
+const CACHE_NAME = "egx-v2";
 const SHELL_ASSETS = ["/", "/icons/egx-logo-192.png", "/icons/egx-logo-512.png"];
 
 self.addEventListener("install", (event) => {
