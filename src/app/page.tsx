@@ -127,27 +127,38 @@ export default function Dashboard() {
       }
     };
 
-    fetchCompositeBatch(toFetch)
-      .then((res) => {
-        mergeBatch(res);
+    // Fire each chunk independently so state updates stream in as chunks
+    // complete — cards populate progressively instead of all at once once
+    // the slowest chunk is done.
+    const CHUNK = 6;
+    const chunks: string[][] = [];
+    for (let i = 0; i < toFetch.length; i += CHUNK) {
+      chunks.push(toFetch.slice(i, i + CHUNK));
+    }
 
-        // Symbols the backend reported as upstream timeouts likely finished
-        // their fetch in background threads moments after we returned — retry
-        // once after a short delay to pick up the now-cached values.
-        const retryables = res.errors
-          .map((e) => e.symbol)
-          .filter((s) => !retriedRef.current.has(s));
-        if (retryables.length) {
-          retryables.forEach((s) => retriedRef.current.add(s));
-          setTimeout(() => {
-            fetchCompositeBatch(retryables).then(mergeBatch).catch(() => {});
-          }, 4000);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        toFetch.forEach((s) => inFlightRef.current.delete(s));
-      });
+    chunks.forEach((chunk) => {
+      fetchCompositeBatch(chunk)
+        .then((res) => {
+          mergeBatch(res);
+
+          // Symbols the backend reported as upstream timeouts likely finished
+          // their fetch in background threads moments after we returned — retry
+          // once after a short delay to pick up the now-cached values.
+          const retryables = res.errors
+            .map((e) => e.symbol)
+            .filter((s) => !retriedRef.current.has(s));
+          if (retryables.length) {
+            retryables.forEach((s) => retriedRef.current.add(s));
+            setTimeout(() => {
+              fetchCompositeBatch(retryables).then(mergeBatch).catch(() => {});
+            }, 4000);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          chunk.forEach((s) => inFlightRef.current.delete(s));
+        });
+    });
   }, [
     visible.map((v) => v.symbol).join(","),
     watchlistSymbols.join(","),
