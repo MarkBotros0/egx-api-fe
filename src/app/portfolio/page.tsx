@@ -293,7 +293,14 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Holdings table — first so the user can act immediately */}
+            {/* Summary — top-of-page overview */}
+            {!analysis && portfolio?.portfolio.length ? (
+              <ChartSkeleton height="h-48" />
+            ) : analysis ? (
+              <PortfolioSummary metrics={analysis.portfolio_metrics} />
+            ) : null}
+
+            {/* Holdings table */}
             {!analysis && portfolio?.portfolio.length ? (
               <TableSkeleton rows={Math.min(portfolio.portfolio.length, 6)} />
             ) : analysis ? (
@@ -304,17 +311,10 @@ export default function PortfolioPage() {
               />
             ) : null}
 
-            {/* Advice signals — actionable alerts near the top */}
+            {/* Advice signals */}
             {analysis && analysis.signals.length > 0 && (
               <AdvicePanel signals={analysis.signals} />
             )}
-
-            {/* Summary */}
-            {!analysis && portfolio?.portfolio.length ? (
-              <ChartSkeleton height="h-48" />
-            ) : analysis ? (
-              <PortfolioSummary metrics={analysis.portfolio_metrics} />
-            ) : null}
 
             {/* Risk Dashboard */}
             {analysis?.portfolio_metrics.sharpe_ratio != null && (
