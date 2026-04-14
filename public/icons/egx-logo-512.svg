@@ -1,0 +1,20 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+<defs><clipPath id="lc"><rect width="512" height="512" rx="110"/></clipPath></defs>
+<rect width="512" height="512" rx="110" fill="#08080d"/>
+<g clip-path="url(#lc)">
+<line x1="110" y1="72" x2="110" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+<line x1="110" y1="382" x2="435" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+<line x1="105" y1="82" x2="110" y2="68" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+<line x1="115" y1="82" x2="110" y2="68" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+<line x1="425" y1="377" x2="440" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+<line x1="425" y1="387" x2="440" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+<rect x="130" y="322" width="30" height="60" rx="3" fill="#00ff88" opacity="0.35"/>
+<rect x="175" y="292" width="30" height="90" rx="3" fill="#00ff88" opacity="0.42"/>
+<rect x="220" y="252" width="30" height="130" rx="3" fill="#00ff88" opacity="0.50"/>
+<rect x="265" y="212" width="30" height="170" rx="3" fill="#00ff88" opacity="0.58"/>
+<rect x="310" y="162" width="30" height="220" rx="3" fill="#00ff88" opacity="0.68"/>
+<rect x="355" y="102" width="30" height="280" rx="3" fill="#00ff88" opacity="0.80"/>
+<text x="256" y="445" text-anchor="middle" font-family="'Helvetica Neue','Arial',sans-serif" font-size="44" font-weight="300" fill="#e4e4e7" letter-spacing="16">EGX</text>
+<text x="256" y="472" text-anchor="middle" font-family="'Helvetica Neue','Arial',sans-serif" font-size="14" font-weight="300" fill="#e4e4e7" opacity="0.4" letter-spacing="1">by Mark Botros</text>
+</g>
+</svg>
