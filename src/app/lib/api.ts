@@ -205,7 +205,7 @@ export interface CompositeBatchResponse {
   errors: Array<{ symbol: string; error: string }>;
 }
 
-const COMPOSITE_CHUNK_SIZE = 24;
+const COMPOSITE_CHUNK_SIZE = 6;
 
 export async function fetchCompositeBatch(
   symbols: string[],
