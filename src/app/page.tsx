@@ -26,6 +26,7 @@ export default function Dashboard() {
     Record<string, { score: number; signal: CompositeSignal }>
   >({});
   const inFlightRef = useRef<Set<string>>(new Set());
+  const retriedRef = useRef<Set<string>>(new Set());
   const { version: weightsVersion } = useScoreWeights();
   const { symbols: watchlistSymbols } = useWatchlist();
 
@@ -74,6 +75,7 @@ export default function Dashboard() {
     setCompositeData({});
     setPriceData({});
     inFlightRef.current = new Set();
+    retriedRef.current = new Set();
   }, [weightsVersion]);
 
   // Batch-fetch composite + price + sparkline for visible cards + watchlist
@@ -103,26 +105,43 @@ export default function Dashboard() {
 
     toFetch.forEach((s) => inFlightRef.current.add(s));
 
+    const mergeBatch = (res: Awaited<ReturnType<typeof fetchCompositeBatch>>) => {
+      const nextComposite: Record<string, { score: number; signal: CompositeSignal }> = {};
+      const nextPrice: typeof priceData = {};
+      for (const [sym, entry] of Object.entries(res.scores)) {
+        nextComposite[sym] = { score: entry.score, signal: entry.signal };
+        if (entry.price != null && entry.sparkline) {
+          nextPrice[sym] = {
+            price: entry.price,
+            change: entry.change ?? 0,
+            changePct: entry.change_pct ?? 0,
+            sparkline: entry.sparkline,
+          };
+        }
+      }
+      if (Object.keys(nextComposite).length) {
+        setCompositeData((prev) => ({ ...prev, ...nextComposite }));
+      }
+      if (Object.keys(nextPrice).length) {
+        setPriceData((prev) => ({ ...prev, ...nextPrice }));
+      }
+    };
+
     fetchCompositeBatch(toFetch)
       .then((res) => {
-        const nextComposite: Record<string, { score: number; signal: CompositeSignal }> = {};
-        const nextPrice: typeof priceData = {};
-        for (const [sym, entry] of Object.entries(res.scores)) {
-          nextComposite[sym] = { score: entry.score, signal: entry.signal };
-          if (entry.price != null && entry.sparkline) {
-            nextPrice[sym] = {
-              price: entry.price,
-              change: entry.change ?? 0,
-              changePct: entry.change_pct ?? 0,
-              sparkline: entry.sparkline,
-            };
-          }
-        }
-        if (Object.keys(nextComposite).length) {
-          setCompositeData((prev) => ({ ...prev, ...nextComposite }));
-        }
-        if (Object.keys(nextPrice).length) {
-          setPriceData((prev) => ({ ...prev, ...nextPrice }));
+        mergeBatch(res);
+
+        // Symbols the backend reported as upstream timeouts likely finished
+        // their fetch in background threads moments after we returned — retry
+        // once after a short delay to pick up the now-cached values.
+        const retryables = res.errors
+          .map((e) => e.symbol)
+          .filter((s) => !retriedRef.current.has(s));
+        if (retryables.length) {
+          retryables.forEach((s) => retriedRef.current.add(s));
+          setTimeout(() => {
+            fetchCompositeBatch(retryables).then(mergeBatch).catch(() => {});
+          }, 4000);
         }
       })
       .catch(() => {})
