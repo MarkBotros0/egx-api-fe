@@ -29,6 +29,7 @@ import type {
 export default function PortfolioPage() {
   const [tickers, setTickers] = useState<Ticker[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
   const [analysis, setAnalysis] = useState<PortfolioAnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -62,6 +63,7 @@ export default function PortfolioPage() {
 
   // Load portfolio from Turso via API
   const loadPortfolio = useCallback(async () => {
+    setPortfolioLoading(true);
     try {
       const p = await fetchPortfolio();
       setPortfolio(p);
@@ -69,6 +71,8 @@ export default function PortfolioPage() {
     } catch (e: any) {
       setError(e.message);
       return null;
+    } finally {
+      setPortfolioLoading(false);
     }
   }, []);
 
@@ -277,7 +281,12 @@ export default function PortfolioPage() {
           </div>
         )}
 
-        {!portfolio?.portfolio.length && !showForm ? (
+        {portfolioLoading && !portfolio ? (
+          <div className="space-y-6">
+            <ChartSkeleton height="h-48" />
+            <TableSkeleton rows={4} />
+          </div>
+        ) : !portfolio?.portfolio.length && !showForm ? (
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-16 text-center">
             <p className="mb-2 text-lg text-white/50">No holdings yet</p>
             <p className="mb-4 text-sm text-white/30">
