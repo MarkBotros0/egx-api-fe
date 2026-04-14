@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import StockCard from "./components/StockCard";
 import IndexFilter from "./components/IndexFilter";
 import SectorFilter from "./components/SectorFilter";
 import WatchlistPanel, { useWatchlist } from "./components/Watchlist";
 import { CardSkeleton } from "./components/LoadingSkeleton";
 import { useScoreWeights } from "./components/ScoreWeightsProvider";
-import { fetchCompositeBatch, fetchTickers, fetchOHLCV } from "./lib/api";
-import type { Ticker, OHLCVResponse, CompositeSignal } from "./lib/types";
+import { fetchCompositeBatch, fetchTickers } from "./lib/api";
+import type { Ticker, CompositeSignal } from "./lib/types";
 
 const CARDS_PER_PAGE = 24;
 
@@ -22,11 +22,10 @@ export default function Dashboard() {
   const [priceData, setPriceData] = useState<
     Record<string, { price: number; change: number; changePct: number; sparkline: number[] }>
   >({});
-  const [loadingPrices, setLoadingPrices] = useState<Set<string>>(new Set());
   const [compositeData, setCompositeData] = useState<
     Record<string, { score: number; signal: CompositeSignal }>
   >({});
-  const [loadingComposites, setLoadingComposites] = useState<Set<string>>(new Set());
+  const inFlightRef = useRef<Set<string>>(new Set());
   const { version: weightsVersion } = useScoreWeights();
   const { symbols: watchlistSymbols } = useWatchlist();
 
@@ -70,40 +69,14 @@ export default function Dashboard() {
   const visible = filtered.slice(0, page * CARDS_PER_PAGE);
   const hasMore = visible.length < filtered.length;
 
-  // Reset composite cache when user saves new weights
+  // Reset caches when user saves new weights
   useEffect(() => {
     setCompositeData({});
-    setLoadingComposites(new Set());
+    setPriceData({});
+    inFlightRef.current = new Set();
   }, [weightsVersion]);
 
-  // Batch-fetch composite scores for newly-visible cards
-  useEffect(() => {
-    const toFetch = visible
-      .filter((t) => !compositeData[t.symbol] && !loadingComposites.has(t.symbol))
-      .map((t) => t.symbol);
-    if (!toFetch.length) return;
-
-    setLoadingComposites((prev) => {
-      const n = new Set(prev);
-      toFetch.forEach((s) => n.add(s));
-      return n;
-    });
-
-    fetchCompositeBatch(toFetch)
-      .then((res) => {
-        setCompositeData((prev) => ({ ...prev, ...res.scores }));
-      })
-      .catch(() => {})
-      .finally(() => {
-        setLoadingComposites((prev) => {
-          const n = new Set(prev);
-          toFetch.forEach((s) => n.delete(s));
-          return n;
-        });
-      });
-  }, [visible.map((v) => v.symbol).join(","), weightsVersion]);
-
-  // Fetch price data for visible cards + watchlist symbols (lazy loading)
+  // Batch-fetch composite + price + sparkline for visible cards + watchlist
   useEffect(() => {
     const tickerBySym = new Map(tickers.map((t) => [t.symbol.toUpperCase(), t]));
     const watchlistTickers = watchlistSymbols
@@ -117,38 +90,50 @@ export default function Dashboard() {
       return true;
     });
 
-    const toFetch = candidates.filter(
-      (t) => !priceData[t.symbol] && !loadingPrices.has(t.symbol)
-    );
+    const toFetch = candidates
+      .filter(
+        (t) =>
+          !compositeData[t.symbol] &&
+          !priceData[t.symbol] &&
+          !inFlightRef.current.has(t.symbol)
+      )
+      .map((t) => t.symbol);
 
     if (!toFetch.length) return;
 
-    const newLoading = new Set(loadingPrices);
-    toFetch.forEach((t) => newLoading.add(t.symbol));
-    setLoadingPrices(newLoading);
+    toFetch.forEach((s) => inFlightRef.current.add(s));
 
-    // Fetch in small batches to avoid overwhelming the API
-    toFetch.forEach((t) => {
-      fetchOHLCV(t.symbol, "Daily", 30)
-        .then((data: OHLCVResponse) => {
-          if (data.data?.length > 0) {
-            const closes = data.data.map((d) => d.close);
-            const last = closes[closes.length - 1];
-            const prev = closes.length > 1 ? closes[closes.length - 2] : last;
-            setPriceData((prev_data) => ({
-              ...prev_data,
-              [t.symbol]: {
-                price: last,
-                change: last - prev,
-                changePct: prev !== 0 ? ((last - prev) / prev) * 100 : 0,
-                sparkline: closes,
-              },
-            }));
+    fetchCompositeBatch(toFetch)
+      .then((res) => {
+        const nextComposite: Record<string, { score: number; signal: CompositeSignal }> = {};
+        const nextPrice: typeof priceData = {};
+        for (const [sym, entry] of Object.entries(res.scores)) {
+          nextComposite[sym] = { score: entry.score, signal: entry.signal };
+          if (entry.price != null && entry.sparkline) {
+            nextPrice[sym] = {
+              price: entry.price,
+              change: entry.change ?? 0,
+              changePct: entry.change_pct ?? 0,
+              sparkline: entry.sparkline,
+            };
           }
-        })
-        .catch(() => {});
-    });
-  }, [visible.map((v) => v.symbol).join(","), watchlistSymbols.join(",")]);
+        }
+        if (Object.keys(nextComposite).length) {
+          setCompositeData((prev) => ({ ...prev, ...nextComposite }));
+        }
+        if (Object.keys(nextPrice).length) {
+          setPriceData((prev) => ({ ...prev, ...nextPrice }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        toFetch.forEach((s) => inFlightRef.current.delete(s));
+      });
+  }, [
+    visible.map((v) => v.symbol).join(","),
+    watchlistSymbols.join(","),
+    weightsVersion,
+  ]);
 
   return (
     <div>

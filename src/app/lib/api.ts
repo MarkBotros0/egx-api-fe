@@ -191,8 +191,17 @@ export async function updateScoreWeights(
 
 // ---- Composite Score Batch (dashboard cards) ----
 
+export interface CompositeBatchEntry {
+  score: number;
+  signal: CompositeSignal;
+  price?: number;
+  change?: number;
+  change_pct?: number;
+  sparkline?: number[];
+}
+
 export interface CompositeBatchResponse {
-  scores: Record<string, { score: number; signal: CompositeSignal }>;
+  scores: Record<string, CompositeBatchEntry>;
   errors: Array<{ symbol: string; error: string }>;
 }
 
