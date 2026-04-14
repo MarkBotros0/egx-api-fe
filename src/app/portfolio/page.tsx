@@ -17,7 +17,6 @@ import {
   updateHolding,
   deleteHolding,
   fetchPortfolioAnalysis,
-  updateCash,
   fetchTickers,
 } from "../lib/api";
 import type {

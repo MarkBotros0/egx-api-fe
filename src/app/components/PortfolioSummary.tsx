@@ -59,14 +59,6 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
         </div>
 
         <div>
-          <p className="text-xs text-white/40">Cash Available</p>
-          <p className="font-mono text-xl font-bold text-white">
-            {metrics.cash_available.toLocaleString("en", { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-white/30">EGP</p>
-        </div>
-
-        <div>
           <LearnTooltip
             term="Diversification Score"
             explanation="A 0-100 score measuring how well-spread your investments are across different stocks and sectors. Higher = better diversified = lower risk. Score drops if any single stock is >30% or any sector is >50% of your portfolio."
