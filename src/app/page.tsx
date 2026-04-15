@@ -5,9 +5,10 @@ import StockCard from "./components/StockCard";
 import IndexFilter from "./components/IndexFilter";
 import SectorFilter from "./components/SectorFilter";
 import WatchlistPanel, { useWatchlist } from "./components/Watchlist";
+import { useTickers } from "./components/TickersProvider";
 import { CardSkeleton } from "./components/LoadingSkeleton";
 import { useScoreWeights } from "./components/ScoreWeightsProvider";
-import { fetchCompositeBatch, fetchTickers } from "./lib/api";
+import { fetchCompositeBatch } from "./lib/api";
 import {
   CARDS_PER_PAGE,
   COMPOSITE_RETRY_DELAY_MS,
@@ -16,12 +17,12 @@ import {
 import type { Ticker, CompositeSignal } from "./lib/types";
 
 export default function Dashboard() {
-  const [tickers, setTickers] = useState<Ticker[]>([]);
+  const { tickers, loading } = useTickers();
   const [index, setIndex] = useState("EGX30");
   const [sector, setSector] = useState("All Sectors");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [priceData, setPriceData] = useState<
     Record<string, { price: number; change: number; changePct: number; sparkline: number[] }>
   >({});
@@ -32,17 +33,6 @@ export default function Dashboard() {
   const retriedRef = useRef<Set<string>>(new Set());
   const { version: weightsVersion } = useScoreWeights();
   const { symbols: watchlistSymbols } = useWatchlist();
-
-  // Fetch tickers list
-  useEffect(() => {
-    setLoading(true);
-    fetchTickers()
-      .then((data) => {
-        setTickers(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
 
   // Filter & search
   const filtered = useMemo(() => {
@@ -73,13 +63,13 @@ export default function Dashboard() {
   const visible = filtered.slice(0, page * CARDS_PER_PAGE);
   const hasMore = visible.length < filtered.length;
 
-  // Reset caches when user saves new weights
+  // Reset caches when user saves new weights or hits refresh
   useEffect(() => {
     setCompositeData({});
     setPriceData({});
     inFlightRef.current = new Set();
     retriedRef.current = new Set();
-  }, [weightsVersion]);
+  }, [weightsVersion, refreshKey]);
 
   // Batch-fetch composite + price + sparkline for visible cards + watchlist
   useEffect(() => {
@@ -165,6 +155,7 @@ export default function Dashboard() {
     visible.map((v) => v.symbol).join(","),
     watchlistSymbols.join(","),
     weightsVersion,
+    refreshKey,
   ]);
 
   return (
@@ -173,14 +164,36 @@ export default function Dashboard() {
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Main content */}
           <div className="flex-1">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-white">
-                EGX Market Overview
-              </h1>
-              <p className="mt-1 text-sm text-white/40">
-                Browse Egyptian Exchange listed stocks. Click any card to see
-                detailed analysis.
-              </p>
+            <div className="mb-6 flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  EGX Market Overview
+                </h1>
+                <p className="mt-1 text-sm text-white/40">
+                  Browse Egyptian Exchange listed stocks. Click any card to see
+                  detailed analysis.
+                </p>
+              </div>
+              <button
+                onClick={() => setRefreshKey((k) => k + 1)}
+                aria-label="Refresh prices"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/60 transition-colors hover:border-accent/30 hover:text-accent"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="23 4 23 10 17 10" />
+                  <polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+              </button>
             </div>
 
             {/* Search — sticky on mobile */}

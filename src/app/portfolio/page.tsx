@@ -10,6 +10,7 @@ import CorrelationHeatmap from "../components/CorrelationHeatmap";
 import MonteCarloChart from "../components/MonteCarloChart";
 import MacroCard from "../components/MacroCard";
 import { useScoreWeights } from "../components/ScoreWeightsProvider";
+import { useTickers } from "../components/TickersProvider";
 import { ChartSkeleton, TableSkeleton } from "../components/LoadingSkeleton";
 import {
   fetchPortfolio,
@@ -17,17 +18,15 @@ import {
   updateHolding,
   deleteHolding,
   fetchPortfolioAnalysis,
-  fetchTickers,
 } from "../lib/api";
 import type {
-  Ticker,
   Portfolio,
   PortfolioAnalysisResponse,
   PortfolioHolding,
 } from "../lib/types";
 
 export default function PortfolioPage() {
-  const [tickers, setTickers] = useState<Ticker[]>([]);
+  const { tickers } = useTickers();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
   const [analysis, setAnalysis] = useState<PortfolioAnalysisResponse | null>(null);
@@ -53,13 +52,6 @@ export default function PortfolioPage() {
       window.scrollTo(0, scrollY);
     };
   }, [showForm]);
-
-  // Load tickers for the search dropdown
-  useEffect(() => {
-    fetchTickers()
-      .then(setTickers)
-      .catch(() => {});
-  }, []);
 
   // Load portfolio from Turso via API
   const loadPortfolio = useCallback(async () => {
@@ -160,23 +152,51 @@ export default function PortfolioPage() {
   return (
     <div>
       <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-white md:text-2xl">My Portfolio</h1>
             <p className="mt-1 text-xs text-white/40 md:text-sm">
               Track your holdings and get educational insights.
             </p>
           </div>
-          {/* Desktop add button */}
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setShowForm(!showForm);
-            }}
-            className="hidden rounded-lg bg-accent px-4 py-2 text-sm font-medium text-charcoal-dark transition-opacity hover:opacity-90 md:block"
-          >
-            {showForm ? "Cancel" : "+ Add Stock"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => {
+                if (portfolio && portfolio.portfolio.length > 0) {
+                  refreshAfterMutation();
+                }
+              }}
+              disabled={loading || portfolioLoading}
+              aria-label="Refresh analysis"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/10 text-white/60 transition-colors hover:border-accent/30 hover:text-accent disabled:opacity-40"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={loading ? "animate-spin" : ""}
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            </button>
+            {/* Desktop add button */}
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setShowForm(!showForm);
+              }}
+              className="hidden rounded-lg bg-accent px-4 py-2 text-sm font-medium text-charcoal-dark transition-opacity hover:opacity-90 md:block"
+            >
+              {showForm ? "Cancel" : "+ Add Stock"}
+            </button>
+          </div>
         </div>
 
         {/* Mobile FAB */}

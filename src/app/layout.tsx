@@ -5,6 +5,7 @@ import BottomTabBar from "./components/BottomTabBar";
 import ServiceWorkerRegistrar from "./components/ServiceWorkerRegistrar";
 import { AuthProvider } from "./components/AuthProvider";
 import { ScoreWeightsProvider } from "./components/ScoreWeightsProvider";
+import { TickersProvider } from "./components/TickersProvider";
 import { WatchlistProvider } from "./components/Watchlist";
 import "./globals.css";
 
@@ -57,14 +58,16 @@ export default function RootLayout({
         <ServiceWorkerRegistrar />
         <AuthProvider>
           <ScoreWeightsProvider>
-            <WatchlistProvider>
-              <Navbar />
-              <main className="flex-1">{children}</main>
-              <footer className="pb-[60px] md:pb-4 pt-4 text-center text-xs text-white/40">
-                By Mark Botros
-              </footer>
-              <BottomTabBar />
-            </WatchlistProvider>
+            <TickersProvider>
+              <WatchlistProvider>
+                <Navbar />
+                <main className="flex-1">{children}</main>
+                <footer className="pb-[60px] md:pb-4 pt-4 text-center text-xs text-white/40">
+                  By Mark Botros
+                </footer>
+                <BottomTabBar />
+              </WatchlistProvider>
+            </TickersProvider>
           </ScoreWeightsProvider>
         </AuthProvider>
       </body>

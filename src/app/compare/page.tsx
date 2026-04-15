@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import CompareChart from "../components/CompareChart";
 import { ChartSkeleton } from "../components/LoadingSkeleton";
 import LearnTooltip from "../components/LearnTooltip";
-import { fetchTickers, fetchComparison } from "../lib/api";
+import { useTickers } from "../components/TickersProvider";
+import { fetchComparison } from "../lib/api";
 import {
   COMPARE_DEFAULT_LOOKBACK_MONTHS,
   COMPARE_SUGGESTIONS_LIMIT,
   MAX_COMPARE_SYMBOLS,
   MIN_COMPARE_SYMBOLS,
 } from "../lib/constants";
-import type { Ticker, CompareResponse } from "../lib/types";
+import type { CompareResponse } from "../lib/types";
 
 export default function ComparePage() {
-  const [tickers, setTickers] = useState<Ticker[]>([]);
+  const { tickers } = useTickers();
   const [selected, setSelected] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -27,12 +28,6 @@ export default function ComparePage() {
   const [data, setData] = useState<CompareResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchTickers()
-      .then(setTickers)
-      .catch(() => {});
-  }, []);
 
   const suggestions = useMemo(() => {
     if (!input) return [];
