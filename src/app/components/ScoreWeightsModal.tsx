@@ -39,15 +39,47 @@ const CATEGORY_META: Record<
     label: "Divergence",
     description: "RSI and MACD divergences — reversal signals.",
   },
+  quality: {
+    label: "Quality",
+    description:
+      "Trend consistency, multi-timeframe alignment, and drawdown depth.",
+  },
+  risk_adjusted: {
+    label: "Risk-Adjusted",
+    description:
+      "Annualized return vs the Egyptian T-bill, volatility, and ATR context.",
+  },
+  relative_strength: {
+    label: "Rel. Strength",
+    description:
+      "Performance vs EGX30 over 30 days (leaders vs laggards).",
+  },
 };
 
-const CATS: (keyof ScoreWeights)[] = [
+// Core = the four classic categories a beginner recognises.
+// Advanced = divergence + the three new categories, hidden behind a toggle so
+// the mobile view doesn't overwhelm new users.
+const CORE_CATS: (keyof ScoreWeights)[] = [
   "trend",
   "momentum",
   "volume",
   "volatility",
-  "divergence",
 ];
+const ADVANCED_CATS: (keyof ScoreWeights)[] = [
+  "divergence",
+  "quality",
+  "risk_adjusted",
+  "relative_strength",
+];
+const CATS: (keyof ScoreWeights)[] = [...CORE_CATS, ...ADVANCED_CATS];
+
+const PRESET_LABELS: Record<string, string> = {
+  beginner_safe: "Beginner Safe",
+  balanced: "Balanced",
+  trend_follower: "Trend Follower",
+  reversal_hunter: "Reversal Hunter",
+  income_defensive: "Income / Defensive",
+};
 
 export default function ScoreWeightsModal({ open, onClose, onSaved }: Props) {
   const {
@@ -61,6 +93,7 @@ export default function ScoreWeightsModal({ open, onClose, onSaved }: Props) {
   } = useScoreWeights();
 
   const [localError, setLocalError] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const normalized = useMemo(() => normalizeWeights(draft), [draft]);
   const rawTotal = useMemo(
@@ -122,59 +155,120 @@ export default function ScoreWeightsModal({ open, onClose, onSaved }: Props) {
           <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">
             Presets
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {Object.keys(presets).map((name) => (
               <button
                 key={name}
                 onClick={() => applyPreset(name)}
-                className="rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/80 capitalize"
+                className="rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/80"
               >
-                {name.replace(/_/g, " ")}
+                {PRESET_LABELS[name] || name.replace(/_/g, " ")}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Sliders */}
-        <div className="px-5 pt-5 pb-3 space-y-5">
-          {CATS.map((cat) => {
-            const raw = draft[cat] ?? 0;
-            const norm = normalized[cat] ?? 0;
-            return (
-              <div key={cat}>
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <div>
-                    <div className="font-mono text-sm font-medium text-white capitalize">
-                      {CATEGORY_META[cat].label}
+        {/* Core sliders */}
+        <div className="px-5 pt-5 pb-3">
+          <div className="text-[11px] uppercase tracking-wider text-white/40 mb-3">
+            Core categories
+          </div>
+          <div className="space-y-5">
+            {CORE_CATS.map((cat) => {
+              const raw = draft[cat] ?? 0;
+              const norm = normalized[cat] ?? 0;
+              return (
+                <div key={cat}>
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <div>
+                      <div className="font-mono text-sm font-medium text-white">
+                        {CATEGORY_META[cat].label}
+                      </div>
+                      <div className="text-[11px] text-white/40 leading-snug max-w-[260px]">
+                        {CATEGORY_META[cat].description}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-white/40 leading-snug max-w-[260px]">
-                      {CATEGORY_META[cat].description}
+                    <div className="text-right">
+                      <div className="font-mono text-sm font-semibold text-accent">
+                        {norm.toFixed(0)}%
+                      </div>
+                      <div className="text-[10px] text-white/40">
+                        raw {raw.toFixed(0)}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-mono text-sm font-semibold text-accent">
-                      {norm.toFixed(0)}%
-                    </div>
-                    <div className="text-[10px] text-white/40">
-                      raw {raw.toFixed(0)}
-                    </div>
-                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={50}
+                    step={5}
+                    value={raw}
+                    onChange={(e) =>
+                      updateDraftField(cat, Number(e.target.value))
+                    }
+                    className="w-full h-2 bg-white/5 rounded-lg appearance-none cursor-pointer accent-accent"
+                    aria-label={`${CATEGORY_META[cat].label} weight`}
+                  />
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={50}
-                  step={5}
-                  value={raw}
-                  onChange={(e) =>
-                    updateDraftField(cat, Number(e.target.value))
-                  }
-                  className="w-full h-2 bg-white/5 rounded-lg appearance-none cursor-pointer accent-accent"
-                  aria-label={`${CATEGORY_META[cat].label} weight`}
-                />
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Advanced sliders — hidden by default on mobile */}
+        <div className="px-5 pb-3">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] px-3 py-2 text-xs font-medium text-white/70"
+            aria-expanded={advancedOpen}
+          >
+            <span>{advancedOpen ? "Hide" : "Show"} advanced categories</span>
+            <span aria-hidden>{advancedOpen ? "▲" : "▼"}</span>
+          </button>
+
+          {advancedOpen && (
+            <div className="space-y-5 pt-4">
+              {ADVANCED_CATS.map((cat) => {
+                const raw = draft[cat] ?? 0;
+                const norm = normalized[cat] ?? 0;
+                return (
+                  <div key={cat}>
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <div>
+                        <div className="font-mono text-sm font-medium text-white">
+                          {CATEGORY_META[cat].label}
+                        </div>
+                        <div className="text-[11px] text-white/40 leading-snug max-w-[260px]">
+                          {CATEGORY_META[cat].description}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-sm font-semibold text-accent">
+                          {norm.toFixed(0)}%
+                        </div>
+                        <div className="text-[10px] text-white/40">
+                          raw {raw.toFixed(0)}
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={50}
+                      step={5}
+                      value={raw}
+                      onChange={(e) =>
+                        updateDraftField(cat, Number(e.target.value))
+                      }
+                      className="w-full h-2 bg-white/5 rounded-lg appearance-none cursor-pointer accent-accent"
+                      aria-label={`${CATEGORY_META[cat].label} weight`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Totals / note */}

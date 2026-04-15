@@ -16,9 +16,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   volume: "Volume",
   volatility: "Volatility",
   divergence: "Divergence",
+  quality: "Quality",
+  risk_adjusted: "Risk-Adjusted",
+  relative_strength: "Rel. Strength",
 };
 
-const CATEGORY_ORDER = ["trend", "momentum", "volume", "volatility", "divergence"];
+const CATEGORY_ORDER = [
+  "trend", "momentum", "volume", "volatility", "divergence",
+  "quality", "risk_adjusted", "relative_strength",
+];
 
 export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -32,7 +38,7 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
             Score Breakdown
           </div>
           <div className="text-[11px] text-white/40">
-            5 categories blended with your weights
+            8 categories blended with your weights
           </div>
         </div>
         <button
@@ -109,6 +115,21 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
           );
         })}
       </div>
+
+      {composite.macro_adjustment != null && composite.macro_adjustment !== 0 && (
+        <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-white/70 flex items-center justify-between gap-3">
+          <span>
+            Macro adjustment:{" "}
+            <span className="font-mono text-white/80">
+              {composite.macro_adjustment > 0 ? "+" : ""}
+              {composite.macro_adjustment.toFixed(1)}
+            </span>
+          </span>
+          {composite.macro_context && (
+            <span className="text-white/40 truncate">{composite.macro_context}</span>
+          )}
+        </div>
+      )}
 
       <p className="mt-4 text-[10px] leading-relaxed text-white/30">
         Composite score is an educational tool combining technical indicators.

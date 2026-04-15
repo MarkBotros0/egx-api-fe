@@ -50,10 +50,18 @@ export function ScoreWeightsProvider({ children }: { children: React.ReactNode }
     fetchScoreWeights()
       .then((resp: ScoreWeightsResponse) => {
         if (cancelled) return;
-        const w = resp.weights ?? DEFAULT_WEIGHTS;
+        // Merge with DEFAULT_WEIGHTS so that a backend still returning the
+        // old 5-key payload doesn't leave the new 3 categories undefined.
+        const w: ScoreWeights = { ...DEFAULT_WEIGHTS, ...(resp.weights ?? {}) };
         setWeights(w);
         setDraftState(w);
-        if (resp.presets) setPresets(resp.presets);
+        if (resp.presets) {
+          const merged: Record<string, ScoreWeights> = {};
+          for (const [name, preset] of Object.entries(resp.presets)) {
+            merged[name] = { ...DEFAULT_WEIGHTS, ...preset };
+          }
+          setPresets(merged);
+        }
       })
       .catch((e) => {
         if (cancelled) return;
@@ -149,16 +157,15 @@ export function useScoreWeights(): ScoreWeightsCtx {
 
 /** Normalize weights to sum to 100 for display purposes (mirrors backend math). */
 export function normalizeWeights(w: ScoreWeights): ScoreWeights {
-  const total = Math.max(
-    0,
-    (w.trend || 0) + (w.momentum || 0) + (w.volume || 0) + (w.volatility || 0) + (w.divergence || 0)
-  );
+  const keys: (keyof ScoreWeights)[] = [
+    "trend", "momentum", "volume", "volatility", "divergence",
+    "quality", "risk_adjusted", "relative_strength",
+  ];
+  const total = keys.reduce((s, k) => s + (w[k] || 0), 0);
   if (total <= 0) return { ...DEFAULT_WEIGHTS };
-  return {
-    trend: +((w.trend / total) * 100).toFixed(2),
-    momentum: +((w.momentum / total) * 100).toFixed(2),
-    volume: +((w.volume / total) * 100).toFixed(2),
-    volatility: +((w.volatility / total) * 100).toFixed(2),
-    divergence: +((w.divergence / total) * 100).toFixed(2),
-  };
+  const out = {} as ScoreWeights;
+  for (const k of keys) {
+    out[k] = +(((w[k] || 0) / total) * 100).toFixed(2);
+  }
+  return out;
 }

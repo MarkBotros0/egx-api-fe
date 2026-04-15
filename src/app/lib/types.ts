@@ -150,8 +150,16 @@ export interface CompositeScore {
     volume: CategoryScore;
     volatility: CategoryScore;
     divergence: CategoryScore;
+    // New categories — optional for backwards compat with older backends
+    quality?: CategoryScore | null;
+    risk_adjusted?: CategoryScore | null;
+    relative_strength?: CategoryScore | null;
   };
   weights: Record<string, number>;
+  // Macro modulation delta (signed) and human-readable note, when EGX30 regime
+  // affected the final score. Null when macro data is unavailable or neutral.
+  macro_adjustment?: number | null;
+  macro_context?: string | null;
 }
 
 export interface ScoreWeights {
@@ -160,6 +168,9 @@ export interface ScoreWeights {
   volume: number;
   volatility: number;
   divergence: number;
+  quality: number;
+  risk_adjusted: number;
+  relative_strength: number;
 }
 
 export interface AnalysisResponse {

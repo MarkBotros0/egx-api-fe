@@ -84,13 +84,15 @@ export const CURRENT_DD_CAUTION = -0.05;
 // Used by ScoreWeightsProvider before the first /api/weights fetch
 // completes; the endpoint may override these at runtime.
 export const FALLBACK_WEIGHT_PRESETS: Record<string, ScoreWeights> = {
-  balanced:        { trend: 25, momentum: 25, volume: 20, volatility: 15, divergence: 15 },
-  trend_follower:  { trend: 40, momentum: 25, volume: 15, volatility: 15, divergence: 5  },
-  reversal_hunter: { trend: 15, momentum: 25, volume: 15, volatility: 15, divergence: 30 },
+  beginner_safe:    { trend: 18, momentum: 15, volume: 12, volatility: 10, divergence: 8,  quality: 12, risk_adjusted: 13, relative_strength: 12 },
+  balanced:         { trend: 14, momentum: 13, volume: 12, volatility: 12, divergence: 12, quality: 12, risk_adjusted: 12, relative_strength: 13 },
+  trend_follower:   { trend: 30, momentum: 15, volume: 10, volatility: 8,  divergence: 2,  quality: 15, risk_adjusted: 5,  relative_strength: 15 },
+  reversal_hunter:  { trend: 10, momentum: 20, volume: 15, volatility: 15, divergence: 25, quality: 5,  risk_adjusted: 5,  relative_strength: 5  },
+  income_defensive: { trend: 15, momentum: 8,  volume: 10, volatility: 15, divergence: 2,  quality: 20, risk_adjusted: 25, relative_strength: 5  },
 };
 
-/** Default weight set when no user preference exists. */
-export const DEFAULT_WEIGHTS: ScoreWeights = FALLBACK_WEIGHT_PRESETS.balanced;
+/** Default weight set when no user preference exists — matches backend "Beginner Safe". */
+export const DEFAULT_WEIGHTS: ScoreWeights = FALLBACK_WEIGHT_PRESETS.beginner_safe;
 
 // === Service worker ===
 
