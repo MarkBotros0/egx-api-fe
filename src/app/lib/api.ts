@@ -1,4 +1,8 @@
 import { COMPOSITE_BATCH_MAX_SYMBOLS } from "./constants";
+import {
+  getStoredToken,
+  notifyUnauthorized,
+} from "../components/AuthProvider";
 import type {
   Ticker,
   OHLCVResponse,
@@ -23,10 +27,16 @@ export interface ScoreWeightsResponse {
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
-  const data = await res.json();
+  const token = getStoredToken();
+  const headers = new Headers(options?.headers || {});
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    notifyUnauthorized();
+  }
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `Request failed: ${res.status}`);
+    throw new Error(data.error || data.detail || `Request failed: ${res.status}`);
   }
   return data as T;
 }
@@ -141,16 +151,6 @@ export async function fetchPortfolioAnalysis(): Promise<PortfolioAnalysisRespons
 
 export async function fetchMacro(): Promise<MacroData> {
   return fetchJSON<MacroData>(`${BASE}/macro`);
-}
-
-// ---- Settings ----
-
-export async function updateCash(amount: number): Promise<{ key: string; value: string }> {
-  return fetchJSON<{ key: string; value: string }>(`${BASE}/settings`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: "cash_available", value: String(amount) }),
-  });
 }
 
 // ---- Watchlist ----

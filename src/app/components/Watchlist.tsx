@@ -17,6 +17,7 @@ import {
   removeFromWatchlist as apiRemove,
 } from "../lib/api";
 import type { Ticker } from "../lib/types";
+import { useAuth } from "./AuthProvider";
 
 const LEGACY_STORAGE_KEY = "egx-watchlist";
 
@@ -34,11 +35,19 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const migratedRef = useRef(false);
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setSymbols([]);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function load() {
+      setLoading(true);
       // One-time migration: push any localStorage entries to the DB, then clear.
       let legacy: string[] = [];
       if (!migratedRef.current) {
@@ -74,7 +83,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   const add = useCallback((sym: string) => {
     const upper = sym.toUpperCase();

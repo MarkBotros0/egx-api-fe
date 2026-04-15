@@ -235,7 +235,6 @@ export interface PortfolioHolding {
 
 export interface Portfolio {
   portfolio: PortfolioHolding[];
-  cash_available: number;
   currency: string;
 }
 
@@ -344,7 +343,6 @@ export interface PortfolioMetrics {
   total_value: number;
   total_invested: number;
   total_current_value: number;
-  cash_available: number;
   total_pnl: number;
   total_pnl_pct: number;
   sector_allocation: Record<string, number>;
