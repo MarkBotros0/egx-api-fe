@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  SCORE_BUY_MAX,
+  SCORE_HOLD_MAX,
+  SCORE_SELL_MAX,
+  SCORE_STRONG_SELL_MAX,
+} from "../lib/constants";
 import type { CompositeSignal } from "../lib/types";
 
 interface Props {
@@ -29,11 +35,11 @@ function lerpColor(a: string, b: string, t: number): string {
 
 export function scoreColor(score: number): string {
   // 0 → deep red, 40 → red/orange, 50 → amber, 60 → green, 100 → bright green
-  if (score <= 20) return "#ff3355";
-  if (score <= 40) return lerpColor("#ff3355", "#ff6644", (score - 20) / 20);
-  if (score <= 60) return lerpColor("#ff6644", "#ffaa00", (score - 40) / 20);
-  if (score <= 80) return lerpColor("#ffaa00", "#00cc66", (score - 60) / 20);
-  return lerpColor("#00cc66", "#00ff88", (score - 80) / 20);
+  if (score <= SCORE_STRONG_SELL_MAX) return "#ff3355";
+  if (score <= SCORE_SELL_MAX) return lerpColor("#ff3355", "#ff6644", (score - SCORE_STRONG_SELL_MAX) / (SCORE_SELL_MAX - SCORE_STRONG_SELL_MAX));
+  if (score <= SCORE_HOLD_MAX) return lerpColor("#ff6644", "#ffaa00", (score - SCORE_SELL_MAX) / (SCORE_HOLD_MAX - SCORE_SELL_MAX));
+  if (score <= SCORE_BUY_MAX) return lerpColor("#ffaa00", "#00cc66", (score - SCORE_HOLD_MAX) / (SCORE_BUY_MAX - SCORE_HOLD_MAX));
+  return lerpColor("#00cc66", "#00ff88", (score - SCORE_BUY_MAX) / (100 - SCORE_BUY_MAX));
 }
 
 const SIZES = {
@@ -60,7 +66,7 @@ export default function CompositeGauge({
   const pct = hasScore ? Math.max(0, Math.min(100, score as number)) / 100 : 0;
   const dashOffset = circumference * (1 - pct);
 
-  const pulsing = hasScore && (score as number) <= 20;
+  const pulsing = hasScore && (score as number) <= SCORE_STRONG_SELL_MAX;
   const label = showLabel ?? size !== "sm";
 
   return (

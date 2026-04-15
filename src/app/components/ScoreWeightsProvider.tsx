@@ -14,17 +14,10 @@ import {
   updateScoreWeights,
   type ScoreWeightsResponse,
 } from "../lib/api";
-
-// Presets ship on the client as a fallback so the modal is usable before the
-// first weights fetch completes. They're also returned from the endpoint
-// and will override these if available.
-export const FALLBACK_PRESETS: Record<string, ScoreWeights> = {
-  balanced: { trend: 25, momentum: 25, volume: 20, volatility: 15, divergence: 15 },
-  trend_follower: { trend: 40, momentum: 25, volume: 15, volatility: 15, divergence: 5 },
-  reversal_hunter: { trend: 15, momentum: 25, volume: 15, volatility: 15, divergence: 30 },
-};
-
-export const DEFAULT_WEIGHTS: ScoreWeights = FALLBACK_PRESETS.balanced;
+import {
+  DEFAULT_WEIGHTS,
+  FALLBACK_WEIGHT_PRESETS,
+} from "../lib/constants";
 
 interface ScoreWeightsCtx {
   weights: ScoreWeights;
@@ -46,7 +39,7 @@ const Ctx = createContext<ScoreWeightsCtx | null>(null);
 export function ScoreWeightsProvider({ children }: { children: React.ReactNode }) {
   const [weights, setWeights] = useState<ScoreWeights>(DEFAULT_WEIGHTS);
   const [draft, setDraftState] = useState<ScoreWeights>(DEFAULT_WEIGHTS);
-  const [presets, setPresets] = useState<Record<string, ScoreWeights>>(FALLBACK_PRESETS);
+  const [presets, setPresets] = useState<Record<string, ScoreWeights>>(FALLBACK_WEIGHT_PRESETS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +132,7 @@ export function useScoreWeights(): ScoreWeightsCtx {
     return {
       weights: DEFAULT_WEIGHTS,
       draft: DEFAULT_WEIGHTS,
-      presets: FALLBACK_PRESETS,
+      presets: FALLBACK_WEIGHT_PRESETS,
       loading: false,
       saving: false,
       error: null,

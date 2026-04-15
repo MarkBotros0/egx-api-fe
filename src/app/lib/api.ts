@@ -1,3 +1,4 @@
+import { COMPOSITE_BATCH_MAX_SYMBOLS } from "./constants";
 import type {
   Ticker,
   OHLCVResponse,
@@ -205,8 +206,6 @@ export interface CompositeBatchResponse {
   errors: Array<{ symbol: string; error: string }>;
 }
 
-const COMPOSITE_CHUNK_SIZE = 6;
-
 export async function fetchCompositeBatch(
   symbols: string[],
   interval = "Daily"
@@ -214,8 +213,8 @@ export async function fetchCompositeBatch(
   if (!symbols.length) return { scores: {}, errors: [] };
 
   const chunks: string[][] = [];
-  for (let i = 0; i < symbols.length; i += COMPOSITE_CHUNK_SIZE) {
-    chunks.push(symbols.slice(i, i + COMPOSITE_CHUNK_SIZE));
+  for (let i = 0; i < symbols.length; i += COMPOSITE_BATCH_MAX_SYMBOLS) {
+    chunks.push(symbols.slice(i, i + COMPOSITE_BATCH_MAX_SYMBOLS));
   }
 
   const results = await Promise.all(

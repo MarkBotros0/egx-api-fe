@@ -13,6 +13,7 @@ import { useScoreWeights } from "../../components/ScoreWeightsProvider";
 import { ChartSkeleton } from "../../components/LoadingSkeleton";
 import LearnTooltip from "../../components/LearnTooltip";
 import { fetchAnalysis } from "../../lib/api";
+import { SR_LEVELS_DISPLAYED } from "../../lib/constants";
 import type { AnalysisResponse } from "../../lib/types";
 
 const INTERVALS = ["Daily", "Weekly", "Monthly"];
@@ -321,8 +322,8 @@ export default function StockDetailPage() {
                 <PriceChart
                   data={priceChartData}
                   overlays={overlays}
-                  supports={data.support_resistance?.supports?.slice(0, 3)}
-                  resistances={data.support_resistance?.resistances?.slice(0, 3)}
+                  supports={data.support_resistance?.supports?.slice(0, SR_LEVELS_DISPLAYED)}
+                  resistances={data.support_resistance?.resistances?.slice(0, SR_LEVELS_DISPLAYED)}
                   fibonacci={data.fibonacci}
                   height={400}
                 />

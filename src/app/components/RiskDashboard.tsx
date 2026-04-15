@@ -1,6 +1,14 @@
 "use client";
 
 import LearnTooltip from "./LearnTooltip";
+import {
+  CURRENT_DD_CAUTION,
+  CURRENT_DD_NEUTRAL,
+  DD_CAUTION,
+  DD_GOOD,
+  SHARPE_GOOD,
+  SHARPE_OKAY,
+} from "@/app/lib/constants";
 import type { PortfolioMetrics } from "@/app/lib/types";
 
 interface RiskDashboardProps {
@@ -36,22 +44,22 @@ function RiskMetric({
 export default function RiskDashboard({ metrics }: RiskDashboardProps) {
   const sharpeColor =
     metrics.sharpe_ratio == null ? "text-white/30" :
-    metrics.sharpe_ratio > 1 ? "text-gain" :
-    metrics.sharpe_ratio > 0.5 ? "text-green-400" :
+    metrics.sharpe_ratio > SHARPE_GOOD ? "text-gain" :
+    metrics.sharpe_ratio > SHARPE_OKAY ? "text-green-400" :
     metrics.sharpe_ratio > 0 ? "text-yellow-400" :
     "text-loss";
 
   const sortinoColor =
     metrics.sortino_ratio == null ? "text-white/30" :
-    metrics.sortino_ratio > 1 ? "text-gain" :
+    metrics.sortino_ratio > SHARPE_GOOD ? "text-gain" :
     metrics.sortino_ratio > 0 ? "text-yellow-400" :
     "text-loss";
 
   const ddValue = metrics.max_drawdown?.value;
   const ddColor =
     ddValue == null ? "text-white/30" :
-    ddValue > -0.1 ? "text-gain" :
-    ddValue > -0.2 ? "text-yellow-400" :
+    ddValue > DD_GOOD ? "text-gain" :
+    ddValue > DD_CAUTION ? "text-yellow-400" :
     "text-loss";
 
   const currentDd = metrics.max_drawdown?.current_drawdown;
@@ -107,13 +115,13 @@ export default function RiskDashboard({ metrics }: RiskDashboardProps) {
           </LearnTooltip>
           <p className={`font-mono text-lg font-bold ${
             currentDd == null ? "text-white/30" :
-            currentDd > -0.01 ? "text-gain" :
-            currentDd > -0.05 ? "text-yellow-400" :
+            currentDd > CURRENT_DD_NEUTRAL ? "text-gain" :
+            currentDd > CURRENT_DD_CAUTION ? "text-yellow-400" :
             "text-loss"
           }`}>
             {currentDd != null ? `${(currentDd * 100).toFixed(1)}%` : "--"}
           </p>
-          {currentDd != null && currentDd < -0.01 && (
+          {currentDd != null && currentDd < CURRENT_DD_NEUTRAL && (
             <p className="text-[10px] text-yellow-400/60">Below peak</p>
           )}
         </div>

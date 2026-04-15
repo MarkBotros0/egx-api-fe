@@ -8,9 +8,12 @@ import WatchlistPanel, { useWatchlist } from "./components/Watchlist";
 import { CardSkeleton } from "./components/LoadingSkeleton";
 import { useScoreWeights } from "./components/ScoreWeightsProvider";
 import { fetchCompositeBatch, fetchTickers } from "./lib/api";
+import {
+  CARDS_PER_PAGE,
+  COMPOSITE_RETRY_DELAY_MS,
+  DASHBOARD_FETCH_CHUNK_SIZE,
+} from "./lib/constants";
 import type { Ticker, CompositeSignal } from "./lib/types";
-
-const CARDS_PER_PAGE = 24;
 
 export default function Dashboard() {
   const [tickers, setTickers] = useState<Ticker[]>([]);
@@ -130,10 +133,9 @@ export default function Dashboard() {
     // Fire each chunk independently so state updates stream in as chunks
     // complete — cards populate progressively instead of all at once once
     // the slowest chunk is done.
-    const CHUNK = 2;
     const chunks: string[][] = [];
-    for (let i = 0; i < toFetch.length; i += CHUNK) {
-      chunks.push(toFetch.slice(i, i + CHUNK));
+    for (let i = 0; i < toFetch.length; i += DASHBOARD_FETCH_CHUNK_SIZE) {
+      chunks.push(toFetch.slice(i, i + DASHBOARD_FETCH_CHUNK_SIZE));
     }
 
     chunks.forEach((chunk) => {
@@ -151,7 +153,7 @@ export default function Dashboard() {
             retryables.forEach((s) => retriedRef.current.add(s));
             setTimeout(() => {
               fetchCompositeBatch(retryables).then(mergeBatch).catch(() => {});
-            }, 4000);
+            }, COMPOSITE_RETRY_DELAY_MS);
           }
         })
         .catch(() => {})

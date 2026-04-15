@@ -1,3 +1,6 @@
+// Bump this version to invalidate the cached app shell on next load.
+// Keep in sync with SW_CACHE_NAME in src/app/lib/constants.ts
+// (sw.js is served raw and cannot import the TypeScript module).
 const CACHE_NAME = "egx-v2";
 const SHELL_ASSETS = ["/", "/icons/egx-logo-192.png", "/icons/egx-logo-512.png"];
 

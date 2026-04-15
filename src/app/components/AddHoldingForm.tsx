@@ -2,6 +2,10 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { validateTicker } from "@/app/lib/api";
+import {
+  TICKER_SEARCH_LIMIT,
+  TICKER_VALIDATION_DEBOUNCE_MS,
+} from "@/app/lib/constants";
 import type { Ticker } from "@/app/lib/types";
 
 interface AddHoldingFormProps {
@@ -68,7 +72,7 @@ export default function AddHoldingForm({
   const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = useMemo(() => {
-    if (!search) return tickers.slice(0, 10);
+    if (!search) return tickers.slice(0, TICKER_SEARCH_LIMIT);
     const q = search.toLowerCase();
     return tickers
       .filter(
@@ -76,10 +80,10 @@ export default function AddHoldingForm({
           t.symbol.toLowerCase().includes(q) ||
           t.name.toLowerCase().includes(q)
       )
-      .slice(0, 10);
+      .slice(0, TICKER_SEARCH_LIMIT);
   }, [search, tickers]);
 
-  // When user types a symbol not in the dropdown, validate it after 600ms pause
+  // When user types a symbol not in the dropdown, validate it after a short debounce
   useEffect(() => {
     if (selectedTicker) return; // already resolved via dropdown
     const sym = search.trim().toUpperCase();
@@ -118,7 +122,7 @@ export default function AddHoldingForm({
         setValidation("error");
         setValidatedTicker({ symbol: sym, name: sym, sector: "Unknown" });
       }
-    }, 600);
+    }, TICKER_VALIDATION_DEBOUNCE_MS);
 
     return () => {
       if (validateTimer.current) clearTimeout(validateTimer.current);

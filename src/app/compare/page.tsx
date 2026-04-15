@@ -5,6 +5,12 @@ import CompareChart from "../components/CompareChart";
 import { ChartSkeleton } from "../components/LoadingSkeleton";
 import LearnTooltip from "../components/LearnTooltip";
 import { fetchTickers, fetchComparison } from "../lib/api";
+import {
+  COMPARE_DEFAULT_LOOKBACK_MONTHS,
+  COMPARE_SUGGESTIONS_LIMIT,
+  MAX_COMPARE_SYMBOLS,
+  MIN_COMPARE_SYMBOLS,
+} from "../lib/constants";
 import type { Ticker, CompareResponse } from "../lib/types";
 
 export default function ComparePage() {
@@ -14,7 +20,7 @@ export default function ComparePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [start, setStart] = useState(() => {
     const d = new Date();
-    d.setMonth(d.getMonth() - 6);
+    d.setMonth(d.getMonth() - COMPARE_DEFAULT_LOOKBACK_MONTHS);
     return d.toISOString().slice(0, 10);
   });
   const [end, setEnd] = useState(new Date().toISOString().slice(0, 10));
@@ -38,11 +44,11 @@ export default function ComparePage() {
           (t.symbol.toLowerCase().includes(q) ||
             t.name.toLowerCase().includes(q))
       )
-      .slice(0, 8);
+      .slice(0, COMPARE_SUGGESTIONS_LIMIT);
   }, [input, tickers, selected]);
 
   const addSymbol = (sym: string) => {
-    if (selected.length >= 5) return;
+    if (selected.length >= MAX_COMPARE_SYMBOLS) return;
     if (!selected.includes(sym)) {
       setSelected([...selected, sym]);
     }
@@ -55,7 +61,7 @@ export default function ComparePage() {
   };
 
   const compare = () => {
-    if (selected.length < 2) return;
+    if (selected.length < MIN_COMPARE_SYMBOLS) return;
     setLoading(true);
     setError(null);
 
@@ -110,7 +116,7 @@ export default function ComparePage() {
             ))}
 
             {/* Add input */}
-            {selected.length < 5 && (
+            {selected.length < MAX_COMPARE_SYMBOLS && (
               <div className="relative">
                 <input
                   type="text"
@@ -172,7 +178,7 @@ export default function ComparePage() {
             </div>
             <button
               onClick={compare}
-              disabled={selected.length < 2 || loading}
+              disabled={selected.length < MIN_COMPARE_SYMBOLS || loading}
               className="min-h-[44px] rounded-lg bg-accent px-4 py-2 text-sm font-medium text-charcoal-dark transition-opacity hover:opacity-90 disabled:opacity-30 sm:min-h-0 sm:py-1.5 sm:text-xs"
             >
               {loading ? "Loading..." : "Compare"}
