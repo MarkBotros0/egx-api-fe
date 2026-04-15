@@ -130,7 +130,7 @@ export default function Dashboard() {
     // Fire each chunk independently so state updates stream in as chunks
     // complete — cards populate progressively instead of all at once once
     // the slowest chunk is done.
-    const CHUNK = 6;
+    const CHUNK = 2;
     const chunks: string[][] = [];
     for (let i = 0; i < toFetch.length; i += CHUNK) {
       chunks.push(toFetch.slice(i, i + CHUNK));
