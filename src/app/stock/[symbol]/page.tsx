@@ -8,6 +8,8 @@ import IndicatorPanel from "../../components/IndicatorPanel";
 import StatsPanel from "../../components/StatsPanel";
 import CompositeGauge from "../../components/CompositeGauge";
 import ScoreBreakdown from "../../components/ScoreBreakdown";
+import KeyLevelsCard from "../../components/KeyLevelsCard";
+import EntryExitCard from "../../components/EntryExitCard";
 import { useWatchlist } from "../../components/Watchlist";
 import { useScoreWeights } from "../../components/ScoreWeightsProvider";
 import { ChartSkeleton } from "../../components/LoadingSkeleton";
@@ -315,6 +317,14 @@ export default function StockDetailPage() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Key levels + entry/exit zones — stacked on mobile, side-by-side on desktop */}
+              {(data.key_levels || data.entry_exit) && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <KeyLevelsCard keyLevels={data.key_levels} />
+                  <EntryExitCard entryExit={data.entry_exit} />
                 </div>
               )}
 

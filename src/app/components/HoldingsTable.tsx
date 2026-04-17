@@ -1,9 +1,87 @@
 "use client";
 
 import React, { useState } from "react";
-import type { HoldingAnalysis } from "@/app/lib/types";
+import Link from "next/link";
+import type { HoldingAnalysis, EntryExit } from "@/app/lib/types";
 import LearnTooltip from "./LearnTooltip";
 import CompositeGauge from "./CompositeGauge";
+
+function zonePill(entryExit: EntryExit | null | undefined) {
+  if (!entryExit) return null;
+  const { entry_zone, exit_zone } = entryExit;
+  if (entry_zone.active) {
+    return { label: "Entry", conf: entry_zone.confidence, tone: "gain" as const };
+  }
+  if (exit_zone.active) {
+    return { label: "Exit", conf: exit_zone.confidence, tone: "loss" as const };
+  }
+  return null;
+}
+
+function ZoneBadge({ pill }: { pill: ReturnType<typeof zonePill> }) {
+  if (!pill) return null;
+  const tone =
+    pill.tone === "gain"
+      ? "border-gain/30 bg-gain/10 text-gain"
+      : "border-loss/30 bg-loss/10 text-loss";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${tone}`}
+    >
+      {pill.label} zone
+      {pill.conf && <span className="text-white/40">· {pill.conf}</span>}
+    </span>
+  );
+}
+
+function ZoneDetail({ entryExit }: { entryExit: EntryExit | null | undefined }) {
+  if (!entryExit) return null;
+  const { entry_zone, exit_zone } = entryExit;
+  if (!entry_zone.active && !exit_zone.active) return null;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+      {entry_zone.active && entry_zone.price_range && (
+        <div className="rounded-lg border border-gain/20 bg-gain/[0.04] px-3 py-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-white/50">
+              Entry zone ({entry_zone.confidence})
+            </span>
+            <span className="font-mono text-xs font-semibold text-gain">
+              {entry_zone.price_range.low.toFixed(2)} – {entry_zone.price_range.high.toFixed(2)}
+            </span>
+          </div>
+          {entry_zone.suggested_stop_loss != null && (
+            <div className="mt-1 flex items-center justify-between text-[11px]">
+              <span className="text-white/50">Suggested stop-loss</span>
+              <span className="font-mono text-white/80">
+                {entry_zone.suggested_stop_loss.toFixed(2)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {exit_zone.active && exit_zone.price_range && (
+        <div className="rounded-lg border border-loss/20 bg-loss/[0.04] px-3 py-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-white/50">
+              Exit zone ({exit_zone.confidence})
+            </span>
+            <span className="font-mono text-xs font-semibold text-loss">
+              {exit_zone.price_range.low.toFixed(2)} – {exit_zone.price_range.high.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
+      <Link
+        href="/learn#entry_exit_zones"
+        className="inline-block text-[10px] text-accent/70 hover:text-accent"
+      >
+        What does this mean? →
+      </Link>
+    </div>
+  );
+}
 
 interface HoldingsTableProps {
   holdings: HoldingAnalysis[];
@@ -79,6 +157,11 @@ export default function HoldingsTable({
                   {h.buy_date && (
                     <div className="mt-0.5 text-[10px] text-white/30">
                       Lot from {h.buy_date}
+                    </div>
+                  )}
+                  {zonePill(h.entry_exit) && (
+                    <div className="mt-1.5">
+                      <ZoneBadge pill={zonePill(h.entry_exit)} />
                     </div>
                   )}
                 </div>
@@ -158,7 +241,26 @@ export default function HoldingsTable({
                         </p>
                       </div>
                     )}
+                    {h.key_levels?.nearest_support && (
+                      <div>
+                        <p className="text-white/40">Nearest Support</p>
+                        <p className="font-mono text-gain">
+                          {h.key_levels.nearest_support.price.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                    {h.key_levels?.nearest_resistance && (
+                      <div>
+                        <p className="text-white/40">Nearest Resistance</p>
+                        <p className="font-mono text-loss">
+                          {h.key_levels.nearest_resistance.price.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Entry/exit zone detail — mobile */}
+                  <ZoneDetail entryExit={h.entry_exit} />
 
                   {/* Actions */}
                   <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
@@ -251,6 +353,11 @@ export default function HoldingsTable({
                           {h.name}
                           {h.buy_date ? ` · ${h.buy_date}` : ""}
                         </p>
+                        {zonePill(h.entry_exit) && (
+                          <div className="mt-1">
+                            <ZoneBadge pill={zonePill(h.entry_exit)} />
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {h.composite_score != null ? (
@@ -373,11 +480,36 @@ export default function HoldingsTable({
                                 </p>
                               </div>
                             )}
+                            {h.key_levels?.nearest_support && (
+                              <div>
+                                <p className="text-white/40">Nearest Support</p>
+                                <p className="font-mono text-gain">
+                                  {h.key_levels.nearest_support.price.toFixed(2)}
+                                  <span className="ml-1 text-[10px] text-white/40">
+                                    ({h.key_levels.nearest_support.distance_pct.toFixed(1)}%)
+                                  </span>
+                                </p>
+                              </div>
+                            )}
+                            {h.key_levels?.nearest_resistance && (
+                              <div>
+                                <p className="text-white/40">Nearest Resistance</p>
+                                <p className="font-mono text-loss">
+                                  {h.key_levels.nearest_resistance.price.toFixed(2)}
+                                  <span className="ml-1 text-[10px] text-white/40">
+                                    ({h.key_levels.nearest_resistance.distance_pct.toFixed(1)}%)
+                                  </span>
+                                </p>
+                              </div>
+                            )}
                             <div>
                               <p className="text-white/40">Buy Date</p>
                               <p className="font-mono text-white/70">{h.buy_date}</p>
                             </div>
                           </div>
+
+                          {/* Entry/exit zone detail — desktop */}
+                          <ZoneDetail entryExit={h.entry_exit} />
                         </td>
                       </tr>
                     )}

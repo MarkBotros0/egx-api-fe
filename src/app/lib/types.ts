@@ -126,6 +126,47 @@ export interface MultiTimeframe {
   alignment_score: number;
 }
 
+// ============================================================
+// Key levels + entry/exit zones
+// ============================================================
+
+export interface NearestLevel {
+  price: number;
+  /** Signed: negative when level is below current price, positive when above. */
+  distance_pct: number;
+  strength: number;
+}
+
+export interface KeyLevels {
+  current_price: number;
+  nearest_support: NearestLevel | null;
+  nearest_resistance: NearestLevel | null;
+  room_to_support_pct: number | null;
+  room_to_resistance_pct: number | null;
+}
+
+export type ZoneConfidence = "low" | "medium" | "high";
+
+export interface EntryZone {
+  active: boolean;
+  confidence: ZoneConfidence | null;
+  price_range: { low: number; high: number } | null;
+  suggested_stop_loss: number | null;
+  reasons: string[];
+}
+
+export interface ExitZone {
+  active: boolean;
+  confidence: ZoneConfidence | null;
+  price_range: { low: number; high: number } | null;
+  reasons: string[];
+}
+
+export interface EntryExit {
+  entry_zone: EntryZone;
+  exit_zone: ExitZone;
+}
+
 export type CompositeSignal =
   | "Strong Sell"
   | "Sell"
@@ -189,6 +230,8 @@ export interface AnalysisResponse {
   volume_price: VolumePriceInfo;
   multi_timeframe: MultiTimeframe | null;
   bb_squeeze: boolean;
+  key_levels?: KeyLevels | null;
+  entry_exit?: EntryExit | null;
 }
 
 // ============================================================
@@ -283,6 +326,8 @@ export interface HoldingAnalysis {
   composite_score: number | null;
   composite_signal: CompositeSignal | null;
   composite_breakdown?: CompositeScore["categories"] | null;
+  key_levels?: KeyLevels | null;
+  entry_exit?: EntryExit | null;
   error?: string;
 }
 

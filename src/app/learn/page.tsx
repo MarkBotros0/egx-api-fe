@@ -156,7 +156,14 @@ export default function LearnPage() {
             title="Support & Resistance"
             definition="Support is a price level where a stock has repeatedly bounced (buyers step in). Resistance is where it has repeatedly been rejected (sellers take profits). These are shown as horizontal lines on the price chart."
             whyItMatters="Support and resistance levels help you time entries and exits. Buying near support gives you a natural stop-loss point (just below it). Selling near resistance locks in gains before a potential pullback. When a stock breaks through resistance, it often rallies significantly."
-            howToUse="On the stock detail page, support levels appear as green dashed lines and resistance as red. The 'strength' number shows how many times the level was tested. A support level tested 5 times is stronger than one tested twice. Set your stop-loss just below a strong support level."
+            howToUse="The Key Levels card on the stock detail page shows the nearest support and resistance prices with their distance from current price. The 'strength' number shows how many times the level was tested — tested 5 times is stronger than tested twice. Set your stop-loss just below a strong support level."
+          />
+          <Concept
+            id="entry_exit_zones"
+            title="Entry & Exit Zones"
+            definition="An entry zone is a price band near support where momentum is NOT overbought — a beginner-friendly buy setup. An exit zone is a band near resistance where momentum IS overbought — a cue to trim, take partial profits, or tighten your stop-loss. Each zone has a confidence tier (low / medium / high) based on how strong the level is and how extreme the momentum reading is."
+            whyItMatters="Support/resistance levels alone can mislead — a stock can sit at support and keep dropping. Combining the level with a momentum filter (RSI not overbought for entries, RSI overbought for exits) filters out weaker setups. The result is fewer but higher-quality decisions, which is exactly what a beginner needs. Low confidence = a hint to watch; high confidence = a setup worth acting on."
+            howToUse="Look at the Entry / Exit Zones card on the stock detail page, and the zone pills on the portfolio holdings table. When an entry zone is active, it shows the buy price band and a suggested stop-loss (1.5× ATR below support). When an exit zone is active, it shows the trim band. Pair this with the 6-step decision framework below — always check the macro and composite score first, never enter a zone blindly, and set your stop-loss before you buy."
           />
           <Concept
             title="Fibonacci Retracement"
