@@ -269,10 +269,10 @@ export default function Dashboard() {
                 }`}
               >
                 <LearnTooltip
-                  term={`Score: ${showComposite ? "On" : "Off"}`}
-                  explanation="Turns on the composite signal badge on each card. The score re-calculates when you change interval — Daily, Weekly, or Monthly use different timeframes, so the score shifts. Match the interval to what you'll see on the detail page to keep numbers in sync."
+                  term={`Signal: ${showComposite ? "On" : "Off"}`}
+                  explanation="Turns on the Buy / Hold / Sell badge on each card. The signal is computed from the composite score on the interval you pick — Daily, Weekly, or Monthly. Open any card to see the full 8-category breakdown on the detail page."
                 >
-                  <span>Score: {showComposite ? "On" : "Off"}</span>
+                  <span>Signal: {showComposite ? "On" : "Off"}</span>
                 </LearnTooltip>
               </button>
               {showComposite && (
@@ -323,7 +323,6 @@ export default function Dashboard() {
                         change={pd?.change}
                         changePct={pd?.changePct}
                         sparklineData={pd?.sparkline}
-                        compositeScore={cd?.score ?? null}
                         compositeSignal={cd?.signal ?? null}
                         interval={showComposite ? compositeInterval : undefined}
                       />

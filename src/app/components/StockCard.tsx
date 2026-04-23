@@ -6,7 +6,7 @@ import {
   Line,
   ResponsiveContainer,
 } from "recharts";
-import CompositeGauge from "./CompositeGauge";
+import SignalBadge from "./SignalBadge";
 import type { CompositeSignal } from "../lib/types";
 
 interface StockCardProps {
@@ -17,7 +17,6 @@ interface StockCardProps {
   changePct?: number;
   sparklineData?: number[];
   sector?: string;
-  compositeScore?: number | null;
   compositeSignal?: CompositeSignal | null;
   interval?: string;
 }
@@ -30,7 +29,6 @@ export default function StockCard({
   changePct,
   sparklineData,
   sector,
-  compositeScore,
   compositeSignal,
   interval,
 }: StockCardProps) {
@@ -38,7 +36,6 @@ export default function StockCard({
   const color = isPositive ? "#00ff88" : "#ff3355";
 
   const chartData = sparklineData?.map((v, i) => ({ i, v })) ?? [];
-  const hasComposite = compositeScore !== undefined && compositeScore !== null;
   const href = interval
     ? `/stock/${symbol}?interval=${encodeURIComponent(interval)}`
     : `/stock/${symbol}`;
@@ -46,8 +43,8 @@ export default function StockCard({
   return (
     <Link href={href}>
       <div className="group rounded-xl border border-white/5 bg-white/[0.03] p-4 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:-translate-y-0.5">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
             <h3 className="font-mono text-sm font-semibold text-white">
               {symbol}
             </h3>
@@ -55,14 +52,10 @@ export default function StockCard({
               {name}
             </p>
           </div>
-          {hasComposite ? (
-            <CompositeGauge
-              score={compositeScore}
-              signal={compositeSignal}
-              size="sm"
-            />
+          {compositeSignal ? (
+            <SignalBadge signal={compositeSignal} size="sm" />
           ) : sector ? (
-            <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent/70">
+            <span className="whitespace-nowrap rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent/70">
               {sector}
             </span>
           ) : null}
