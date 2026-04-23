@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import PriceChart from "../../components/PriceChart";
 import VolumeChart from "../../components/VolumeChart";
 import IndicatorPanel from "../../components/IndicatorPanel";
@@ -23,13 +23,20 @@ const BAR_COUNTS = [60, 100, 200, 500];
 
 export default function StockDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const symbol = (params.symbol as string).toUpperCase();
   const { add, remove, has } = useWatchlist();
+
+  // Dashboard cards pass ?interval=Weekly|Monthly so scores match the card
+  const initialInterval = (() => {
+    const q = searchParams.get("interval");
+    return q && INTERVALS.includes(q) ? q : "Daily";
+  })();
 
   const [data, setData] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [interval, setInterval] = useState("Daily");
+  const [interval, setInterval] = useState(initialInterval);
   const [bars, setBars] = useState(200);
   const [overlays, setOverlays] = useState({
     sma20: true,
@@ -241,6 +248,20 @@ export default function StockDetailPage() {
         ) : data ? (
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1 space-y-4">
+              {/* Key Statistics first on mobile; desktop keeps them in the right sidebar below */}
+              <div className="lg:hidden">
+                <StatsPanel
+                  stats={data.stats}
+                  latestRsi={latestRsi}
+                  latestVolatility={latestVol}
+                  cumulativeReturn={latestCumReturn}
+                  beta={data.beta}
+                  atr={latestAtr}
+                  atrPct={latestAtrPct}
+                  crossovers={data.crossovers}
+                />
+              </div>
+
               {/* Composite Score Card */}
               {data.composite_score && (
                 <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-4 md:p-5">
@@ -360,7 +381,7 @@ export default function StockDetailPage() {
               </div>
             </div>
 
-            <div className="w-full lg:w-72">
+            <div className="hidden lg:block lg:w-72">
               <StatsPanel
                 stats={data.stats}
                 latestRsi={latestRsi}

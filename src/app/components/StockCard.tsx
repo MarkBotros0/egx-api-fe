@@ -19,6 +19,7 @@ interface StockCardProps {
   sector?: string;
   compositeScore?: number | null;
   compositeSignal?: CompositeSignal | null;
+  interval?: string;
 }
 
 export default function StockCard({
@@ -31,15 +32,19 @@ export default function StockCard({
   sector,
   compositeScore,
   compositeSignal,
+  interval,
 }: StockCardProps) {
   const isPositive = (changePct ?? 0) >= 0;
   const color = isPositive ? "#00ff88" : "#ff3355";
 
   const chartData = sparklineData?.map((v, i) => ({ i, v })) ?? [];
   const hasComposite = compositeScore !== undefined && compositeScore !== null;
+  const href = interval
+    ? `/stock/${symbol}?interval=${encodeURIComponent(interval)}`
+    : `/stock/${symbol}`;
 
   return (
-    <Link href={`/stock/${symbol}`}>
+    <Link href={href}>
       <div className="group rounded-xl border border-white/5 bg-white/[0.03] p-4 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:-translate-y-0.5">
         <div className="flex items-start justify-between">
           <div>

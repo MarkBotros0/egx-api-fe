@@ -7,6 +7,7 @@ import SectorFilter from "./components/SectorFilter";
 import WatchlistPanel, { useWatchlist } from "./components/Watchlist";
 import { useTickers } from "./components/TickersProvider";
 import { CardSkeleton } from "./components/LoadingSkeleton";
+import LearnTooltip from "./components/LearnTooltip";
 import { useScoreWeights } from "./components/ScoreWeightsProvider";
 import { fetchCompositeBatch } from "./lib/api";
 import {
@@ -16,6 +17,12 @@ import {
 } from "./lib/constants";
 import type { Ticker, CompositeSignal } from "./lib/types";
 
+const COMPOSITE_INTERVALS = ["Daily", "Weekly", "Monthly"] as const;
+type CompositeInterval = (typeof COMPOSITE_INTERVALS)[number];
+
+const LS_COMPOSITE_ENABLED = "egx-dashboard-composite-enabled";
+const LS_COMPOSITE_INTERVAL = "egx-dashboard-composite-interval";
+
 export default function Dashboard() {
   const { tickers, loading } = useTickers();
   const [index, setIndex] = useState("EGX30");
@@ -23,6 +30,19 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showComposite, setShowComposite] = useState(true);
+  const [compositeInterval, setCompositeInterval] =
+    useState<CompositeInterval>("Daily");
+
+  // Hydrate toggle + interval from localStorage on mount (client-only).
+  useEffect(() => {
+    const enabled = window.localStorage.getItem(LS_COMPOSITE_ENABLED);
+    if (enabled === "false") setShowComposite(false);
+    const iv = window.localStorage.getItem(LS_COMPOSITE_INTERVAL);
+    if (iv && (COMPOSITE_INTERVALS as readonly string[]).includes(iv)) {
+      setCompositeInterval(iv as CompositeInterval);
+    }
+  }, []);
   const [priceData, setPriceData] = useState<
     Record<string, { price: number; change: number; changePct: number; sparkline: number[] }>
   >({});
@@ -63,16 +83,31 @@ export default function Dashboard() {
   const visible = filtered.slice(0, page * CARDS_PER_PAGE);
   const hasMore = visible.length < filtered.length;
 
-  // Reset caches when user saves new weights or hits refresh
+  const toggleComposite = () => {
+    setShowComposite((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(LS_COMPOSITE_ENABLED, next ? "true" : "false");
+      return next;
+    });
+  };
+
+  const pickInterval = (iv: CompositeInterval) => {
+    setCompositeInterval(iv);
+    window.localStorage.setItem(LS_COMPOSITE_INTERVAL, iv);
+  };
+
+  // Reset caches when user saves new weights, hits refresh, toggles score, or changes interval
   useEffect(() => {
     setCompositeData({});
     setPriceData({});
     inFlightRef.current = new Set();
     retriedRef.current = new Set();
-  }, [weightsVersion, refreshKey]);
+  }, [weightsVersion, refreshKey, showComposite, compositeInterval]);
 
   // Batch-fetch composite + price + sparkline for visible cards + watchlist
   useEffect(() => {
+    if (!showComposite) return;
+
     const tickerBySym = new Map(tickers.map((t) => [t.symbol.toUpperCase(), t]));
     const watchlistTickers = watchlistSymbols
       .map((s) => tickerBySym.get(s.toUpperCase()))
@@ -129,7 +164,7 @@ export default function Dashboard() {
     }
 
     chunks.forEach((chunk) => {
-      fetchCompositeBatch(chunk)
+      fetchCompositeBatch(chunk, compositeInterval)
         .then((res) => {
           mergeBatch(res);
 
@@ -142,7 +177,9 @@ export default function Dashboard() {
           if (retryables.length) {
             retryables.forEach((s) => retriedRef.current.add(s));
             setTimeout(() => {
-              fetchCompositeBatch(retryables).then(mergeBatch).catch(() => {});
+              fetchCompositeBatch(retryables, compositeInterval)
+                .then(mergeBatch)
+                .catch(() => {});
             }, COMPOSITE_RETRY_DELAY_MS);
           }
         })
@@ -156,6 +193,8 @@ export default function Dashboard() {
     watchlistSymbols.join(","),
     weightsVersion,
     refreshKey,
+    showComposite,
+    compositeInterval,
   ]);
 
   return (
@@ -211,11 +250,48 @@ export default function Dashboard() {
             <div className="mb-3 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
               <IndexFilter selected={index} onChange={setIndex} />
             </div>
-            <div className="mb-4 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
+            <div className="mb-3 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
               <SectorFilter selected={sector} onChange={setSector} />
               <span className="whitespace-nowrap text-xs text-white/30">
                 {filtered.length} stocks
               </span>
+            </div>
+
+            {/* Composite score toggle + interval — lets users sync card scores with the stock detail page */}
+            <div className="mb-4 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
+              <button
+                onClick={toggleComposite}
+                aria-pressed={showComposite}
+                className={`min-h-[36px] whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  showComposite
+                    ? "bg-accent/20 text-accent"
+                    : "border border-white/10 text-white/40 hover:text-white/60"
+                }`}
+              >
+                <LearnTooltip
+                  term={`Score: ${showComposite ? "On" : "Off"}`}
+                  explanation="Turns on the composite signal badge on each card. The score re-calculates when you change interval — Daily, Weekly, or Monthly use different timeframes, so the score shifts. Match the interval to what you'll see on the detail page to keep numbers in sync."
+                >
+                  <span>Score: {showComposite ? "On" : "Off"}</span>
+                </LearnTooltip>
+              </button>
+              {showComposite && (
+                <div className="flex gap-1.5">
+                  {COMPOSITE_INTERVALS.map((iv) => (
+                    <button
+                      key={iv}
+                      onClick={() => pickInterval(iv)}
+                      className={`min-h-[36px] whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                        compositeInterval === iv
+                          ? "bg-accent/20 text-accent"
+                          : "text-white/40 hover:text-white/60"
+                      }`}
+                    >
+                      {iv}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stock cards grid */}
@@ -249,6 +325,7 @@ export default function Dashboard() {
                         sparklineData={pd?.sparkline}
                         compositeScore={cd?.score ?? null}
                         compositeSignal={cd?.signal ?? null}
+                        interval={showComposite ? compositeInterval : undefined}
                       />
                     );
                   })}
