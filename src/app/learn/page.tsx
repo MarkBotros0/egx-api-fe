@@ -352,6 +352,13 @@ export default function LearnPage() {
             howToUse="When adding a stock to your portfolio in this app, set a stop-loss. A common rule: set it at 7-10% below your buy price. Review it regularly."
           />
           <Concept
+            id="max_buy_price"
+            title="Max Buy Price — Don't Chase"
+            definition="The highest price at which entering a stock still respects two beginner-safe rules: (1) don't pay more than 5% above nearest support, and (2) potential reward to nearest resistance must be at least 2× the distance to your stop-loss. Paying more than this is called 'chasing' — the trade's math stops working in your favor."
+            whyItMatters="Chasing is how beginners lose money in bull markets. A stock can be genuinely good AND genuinely too expensive today. The Max Buy Price answers the question 'how high can I go before the trade stops making sense?' with a single number, computed from the same support / resistance / ATR the rest of the app uses. It's a risk guardrail, not a price target."
+            howToUse="On the stock detail page, check the Max Buy Price card before placing an order. If current price ≤ max: OK to buy at today's price. Within 2% of max: enter carefully, consider a smaller position. Above max: wait for a pullback instead of chasing — patience beats FOMO. The card shows the suggested stop-loss, target (resistance), and risk:reward ratio at the max so you can see exactly what trade you'd be taking."
+          />
+          <Concept
             title="Position Sizing"
             definition="How much of your total portfolio you allocate to a single stock. If your portfolio is 100,000 EGP and you buy 10,000 EGP of COMI, your position size is 10%."
             whyItMatters="Never put all your money in one stock. If that stock drops 50%, you lose 50% of everything. But if it's only 10% of your portfolio, you only lose 5% overall."

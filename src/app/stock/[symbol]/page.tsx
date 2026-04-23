@@ -11,6 +11,7 @@ import ScoreBreakdown from "../../components/ScoreBreakdown";
 import KeyLevelsCard from "../../components/KeyLevelsCard";
 import EntryExitCard from "../../components/EntryExitCard";
 import ForecastCard from "../../components/ForecastCard";
+import MaxBuyPriceCard from "../../components/MaxBuyPriceCard";
 import PEFreshnessBanner from "../../components/PEFreshnessBanner";
 import { useWatchlist } from "../../components/Watchlist";
 import { useScoreWeights } from "../../components/ScoreWeightsProvider";
@@ -351,6 +352,14 @@ export default function StockDetailPage() {
                   <KeyLevelsCard keyLevels={data.key_levels} />
                   <EntryExitCard entryExit={data.entry_exit} />
                 </div>
+              )}
+
+              {/* Max buy price — beginner-safe entry cap */}
+              {data.max_buy_price && (
+                <MaxBuyPriceCard
+                  maxBuyPrice={data.max_buy_price}
+                  currentPrice={data.stats.current_price}
+                />
               )}
 
               <div className="min-h-[250px]">
