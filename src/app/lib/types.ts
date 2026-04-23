@@ -168,6 +168,35 @@ export interface EntryExit {
 }
 
 // ============================================================
+// Per-stock forecast — expected-move band + Monte Carlo cone
+// Both are descriptive (range of plausible outcomes), NOT predictions.
+// ============================================================
+
+export interface ExpectedMove {
+  daily_pct: number;
+  weekly_pct: number;
+  monthly_pct: number;
+  method: string;
+}
+
+export interface StockMonteCarlo {
+  days: number;
+  current_price: number;
+  percentiles: {
+    p5: number[];
+    p25: number[];
+    p50: number[];
+    p75: number[];
+    p95: number[];
+  };
+}
+
+export interface StockForecast {
+  expected_move: ExpectedMove | null;
+  monte_carlo: StockMonteCarlo | null;
+}
+
+// ============================================================
 // P/E ratio (nightly EGX scrape)
 // ============================================================
 
@@ -244,6 +273,7 @@ export interface AnalysisResponse {
   key_levels?: KeyLevels | null;
   entry_exit?: EntryExit | null;
   pe?: PEData | null;
+  forecast?: StockForecast | null;
 }
 
 // ============================================================

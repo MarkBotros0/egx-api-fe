@@ -10,6 +10,7 @@ import CompositeGauge from "../../components/CompositeGauge";
 import ScoreBreakdown from "../../components/ScoreBreakdown";
 import KeyLevelsCard from "../../components/KeyLevelsCard";
 import EntryExitCard from "../../components/EntryExitCard";
+import ForecastCard from "../../components/ForecastCard";
 import PEFreshnessBanner from "../../components/PEFreshnessBanner";
 import { useWatchlist } from "../../components/Watchlist";
 import { useScoreWeights } from "../../components/ScoreWeightsProvider";
@@ -382,6 +383,8 @@ export default function StockDetailPage() {
               <div className="hidden md:block">
                 <IndicatorPanel data={indicatorData} />
               </div>
+
+              <ForecastCard forecast={data.forecast} symbol={symbol} />
             </div>
 
             <div className="hidden lg:block lg:w-72">

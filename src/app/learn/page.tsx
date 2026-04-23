@@ -383,6 +383,13 @@ export default function LearnPage() {
             whyItMatters="This is THE #1 invisible loss in Egyptian retail portfolios. A stock that gained 10% in a year feels like a win, but if T-bills paid 25%, you're 15% behind where you could have been with zero risk. Over years, this compounds into life-changing differences."
             howToUse="The portfolio page flags cash underperformers with a warning signal. When you see one: (1) does the thesis still hold for the next 90 days? (2) is there a specific catalyst coming? If no on both, seriously consider selling and moving the capital to T-bills until a better opportunity presents itself."
           />
+          <Concept
+            id="expected_move"
+            title="Expected Move & Monte Carlo Cone"
+            definition="Two statistical views of 'what does normal look like' for a stock. The expected-move band shows the typical 1-σ move on a day, week, and month — roughly 2 of every 3 days, the price moves less than the daily figure. The Monte Carlo cone runs 1,000 simulated paths forward 60 trading days using the stock's historical drift and volatility, and plots the 5th/25th/50th/75th/95th percentile price ranges."
+            whyItMatters="These reframe the question 'when will the stock go up?' (impossible to answer) into 'what range of moves is plausible?' (answerable). A 2% daily drop on a stock whose typical day is ±1.8% is normal noise — no action needed. A 2% drop on a stock whose typical day is ±0.5% is an outlier worth investigating. The cone gives you an honest sense of the spread of outcomes rather than a false-precision forecast."
+            howToUse="On the stock detail page, check the Expected Move tiles before reacting to any single day's movement. Use the cone's bearish-5% line as a rough 60-day worst-case for position sizing. CRITICAL caveat: the cone assumes volatility stays similar to history. A news catalyst, earnings surprise, or regime shift (new finance minister, currency devaluation) can push price well outside the cone. Never treat the median line as a prediction — it's just the middle of a range, not where the stock is 'going'."
+          />
         </Section>
 
         {/* Portfolio Risk Metrics */}
