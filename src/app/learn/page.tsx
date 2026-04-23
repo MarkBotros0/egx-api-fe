@@ -91,6 +91,13 @@ export default function LearnPage() {
             whyItMatters="Market cap helps you understand if a company is large (blue-chip, more stable) or small (more volatile, more growth potential). EGX30 contains Egypt's largest companies by market cap."
             howToUse="Large-cap stocks (EGX30) are good for beginners — they're more liquid and less volatile. Start there before exploring smaller companies."
           />
+          <Concept
+            id="pe_ratio"
+            title="P/E Ratio — Price-to-Earnings"
+            definition="How many EGP investors are paying for every 1 EGP of annual profit. Pulled from egx.com.eg and refreshed nightly. A P/E of 15 means you pay 15 EGP today for each 1 EGP the company earns in a year."
+            whyItMatters="P/E is the single most-watched valuation number. Low P/E can mean the stock is cheap — or that the market expects earnings to fall. High P/E can mean a quality growth story — or an expensive stock about to disappoint. Context matters in Egypt: with T-bills paying ~25% risk-free, a P/E above 20 needs strong growth to be worth it versus just holding cash."
+            howToUse="Treat P/E as a sanity check, not a standalone signal. Below 10 in Egypt is noticeably cheap; 10–20 is fair value; 20–30 is fully valued; above 30 is expensive and only justified by strong, confirmed growth. Negative P/E means the company is loss-making — earnings-based valuation doesn't apply, lean on trend and relative strength instead."
+          />
         </Section>
 
         {/* Technical Analysis */}

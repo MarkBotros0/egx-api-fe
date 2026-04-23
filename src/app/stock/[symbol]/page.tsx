@@ -10,6 +10,7 @@ import CompositeGauge from "../../components/CompositeGauge";
 import ScoreBreakdown from "../../components/ScoreBreakdown";
 import KeyLevelsCard from "../../components/KeyLevelsCard";
 import EntryExitCard from "../../components/EntryExitCard";
+import PEFreshnessBanner from "../../components/PEFreshnessBanner";
 import { useWatchlist } from "../../components/Watchlist";
 import { useScoreWeights } from "../../components/ScoreWeightsProvider";
 import { ChartSkeleton } from "../../components/LoadingSkeleton";
@@ -248,6 +249,7 @@ export default function StockDetailPage() {
         ) : data ? (
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1 space-y-4">
+              <PEFreshnessBanner />
               {/* Key Statistics first on mobile; desktop keeps them in the right sidebar below */}
               <div className="lg:hidden">
                 <StatsPanel
@@ -259,6 +261,7 @@ export default function StockDetailPage() {
                   atr={latestAtr}
                   atrPct={latestAtrPct}
                   crossovers={data.crossovers}
+                  pe={data.pe}
                 />
               </div>
 
@@ -391,6 +394,7 @@ export default function StockDetailPage() {
                 atr={latestAtr}
                 atrPct={latestAtrPct}
                 crossovers={data.crossovers}
+                pe={data.pe}
               />
             </div>
           </div>

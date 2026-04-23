@@ -167,6 +167,17 @@ export interface EntryExit {
   exit_zone: ExitZone;
 }
 
+// ============================================================
+// P/E ratio (nightly EGX scrape)
+// ============================================================
+
+export interface PEData {
+  company_name: string | null;
+  pe_ratio: number | null;
+  dividend_yield: number | null;
+  fetched_at: string;
+}
+
 export type CompositeSignal =
   | "Strong Sell"
   | "Sell"
@@ -232,6 +243,7 @@ export interface AnalysisResponse {
   bb_squeeze: boolean;
   key_levels?: KeyLevels | null;
   entry_exit?: EntryExit | null;
+  pe?: PEData | null;
 }
 
 // ============================================================
@@ -328,6 +340,7 @@ export interface HoldingAnalysis {
   composite_breakdown?: CompositeScore["categories"] | null;
   key_levels?: KeyLevels | null;
   entry_exit?: EntryExit | null;
+  pe?: PEData | null;
   error?: string;
 }
 

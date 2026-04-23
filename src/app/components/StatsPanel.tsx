@@ -1,7 +1,7 @@
 "use client";
 
 import LearnTooltip from "./LearnTooltip";
-import type { AnalysisStats, CrossoverInfo } from "@/app/lib/types";
+import type { AnalysisStats, CrossoverInfo, PEData } from "@/app/lib/types";
 
 interface StatsPanelProps {
   stats: AnalysisStats;
@@ -12,6 +12,7 @@ interface StatsPanelProps {
   atr?: number | null;
   atrPct?: number | null;
   crossovers?: CrossoverInfo | null;
+  pe?: PEData | null;
 }
 
 function StatRow({
@@ -52,6 +53,7 @@ export default function StatsPanel({
   atr,
   atrPct,
   crossovers,
+  pe,
 }: StatsPanelProps) {
   const isPositive = stats.change_pct >= 0;
 
@@ -176,9 +178,47 @@ export default function StatsPanel({
             }}
           />
         )}
+        {pe && pe.pe_ratio != null && (
+          <StatRow
+            label="P/E Ratio"
+            value={formatPE(pe)}
+            tooltip={{
+              term: "P/E Ratio",
+              explanation:
+                "Price-to-Earnings: how many EGP investors pay for every 1 EGP of annual profit. Egypt context: T-bills pay ~25% risk-free, so a P/E above 20 needs strong growth to be worth it versus cash.",
+            }}
+            color={peColor(pe.pe_ratio)}
+          />
+        )}
+        {pe && pe.dividend_yield != null && pe.dividend_yield > 0 && (
+          <StatRow
+            label="Dividend Yield"
+            value={`${pe.dividend_yield.toFixed(2)}%`}
+            tooltip={{
+              term: "Dividend Yield",
+              explanation:
+                "Annual dividends as a percentage of current share price. Compare to the 25% T-bill rate — a 3% dividend yield is small next to risk-free cash in Egypt.",
+            }}
+          />
+        )}
       </div>
     </div>
   );
+}
+
+function formatPE(pe: PEData): string {
+  const parts: string[] = [pe.pe_ratio!.toFixed(1)];
+  if (pe.fetched_at) {
+    parts.push(`as of ${pe.fetched_at.slice(0, 10)}`);
+  }
+  return parts[0] + (parts[1] ? ` · ${parts[1]}` : "");
+}
+
+function peColor(pe: number): string | undefined {
+  if (pe < 0) return "text-loss";
+  if (pe < 15) return "text-gain";
+  if (pe > 30) return "text-loss";
+  return undefined;
 }
 
 function formatVolume(v: number): string {

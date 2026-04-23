@@ -6,6 +6,13 @@ import type { HoldingAnalysis, EntryExit } from "@/app/lib/types";
 import LearnTooltip from "./LearnTooltip";
 import CompositeGauge from "./CompositeGauge";
 
+function peColor(pe: number): string {
+  if (pe < 0) return "text-loss";
+  if (pe < 15) return "text-gain";
+  if (pe > 30) return "text-loss";
+  return "text-white/60";
+}
+
 function zonePill(entryExit: EntryExit | null | undefined) {
   if (!entryExit) return null;
   const { entry_zone, exit_zone } = entryExit;
@@ -225,6 +232,14 @@ export default function HoldingsTable({
                       <p className="text-white/40">Volume Trend</p>
                       <p className="font-mono text-white/70 capitalize">{h.volume_trend}</p>
                     </div>
+                    {h.pe?.pe_ratio != null && (
+                      <div>
+                        <p className="text-white/40">P/E</p>
+                        <p className={`font-mono ${peColor(h.pe.pe_ratio)}`}>
+                          {h.pe.pe_ratio.toFixed(1)}
+                        </p>
+                      </div>
+                    )}
                     {h.target_price != null && (
                       <div>
                         <p className="text-white/40">To Target</p>
@@ -313,6 +328,11 @@ export default function HoldingsTable({
                   </LearnTooltip>
                 </th>
                 <th className="px-4 py-3 font-medium">
+                  <LearnTooltip term="P/E" explanation="Price-to-Earnings ratio from EGX. Green <15 (cheap/fair), red >30 or negative (expensive/loss-making). Dash = no stored data.">
+                    <span>P/E</span>
+                  </LearnTooltip>
+                </th>
+                <th className="px-4 py-3 font-medium">
                   <LearnTooltip term="vs SMA" explanation="Whether the stock is trading above or below its 50-day Simple Moving Average. Above = bullish trend, Below = bearish.">
                     <span>vs SMA</span>
                   </LearnTooltip>
@@ -332,7 +352,7 @@ export default function HoldingsTable({
                       <td className="px-4 py-3 font-mono text-xs font-medium text-white">
                         {h.symbol}
                       </td>
-                      <td colSpan={10} className="px-4 py-3 text-xs text-loss">
+                      <td colSpan={11} className="px-4 py-3 text-xs text-loss">
                         {h.error}
                       </td>
                     </tr>
@@ -408,6 +428,15 @@ export default function HoldingsTable({
                           {h.rsi != null ? h.rsi.toFixed(0) : "--"}
                         </span>
                       </td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {h.pe?.pe_ratio != null ? (
+                          <span className={peColor(h.pe.pe_ratio)}>
+                            {h.pe.pe_ratio.toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-white/30">--</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-xs">
                         {h.above_sma != null ? (
                           <span className={h.above_sma ? "text-gain" : "text-loss"}>
@@ -438,7 +467,7 @@ export default function HoldingsTable({
                     </tr>
                     {isExpanded && (
                       <tr className="border-b border-white/5 bg-white/[0.02]">
-                        <td colSpan={11} className="px-6 py-4">
+                        <td colSpan={12} className="px-6 py-4">
                           <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-4">
                             <div>
                               <p className="text-white/40">Invested</p>

@@ -241,3 +241,21 @@ export async function fetchCompositeBatch(
     { scores: {}, errors: [] }
   );
 }
+
+// ---- P/E feed freshness ----
+
+export interface PEFeedStatus {
+  last_successful_fetch: string | null;
+  last_attempt_status: string | null;
+}
+
+export async function fetchPEFeedStatus(): Promise<PEFeedStatus> {
+  const data = await fetchJSON<{
+    last_successful_fetch: string | null;
+    last_attempt_status: string | null;
+  }>(`${BASE}/pe`);
+  return {
+    last_successful_fetch: data.last_successful_fetch ?? null,
+    last_attempt_status: data.last_attempt_status ?? null,
+  };
+}

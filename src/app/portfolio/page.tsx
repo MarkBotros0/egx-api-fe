@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import PortfolioSummary from "../components/PortfolioSummary";
 import RiskDashboard from "../components/RiskDashboard";
 import HoldingsTable from "../components/HoldingsTable";
+import PEFreshnessBanner from "../components/PEFreshnessBanner";
 import AddHoldingForm from "../components/AddHoldingForm";
 import AdvicePanel from "../components/AdvicePanel";
 import CorrelationHeatmap from "../components/CorrelationHeatmap";
@@ -322,6 +323,7 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            <PEFreshnessBanner />
             {/* Summary — top-of-page overview */}
             {!analysis && portfolio?.portfolio.length ? (
               <ChartSkeleton height="h-48" />
