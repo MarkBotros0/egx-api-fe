@@ -171,22 +171,6 @@ export interface EntryExit {
 // Max buy price — beginner-safe cap combining support-proximity + R:R≥2
 // ============================================================
 
-export type MaxBuyVerdict = "ok" | "near_limit" | "above_limit";
-
-export interface MaxBuyPrice {
-  price: number;
-  verdict: MaxBuyVerdict;
-  verdict_distance_pct: number;
-  stop_loss: number;
-  target: number | null;
-  risk_reward_at_max: number | null;
-  caps: {
-    support: number | null;
-    risk_reward: number | null;
-  };
-  reasons: string[];
-}
-
 // ============================================================
 // Per-stock forecast — expected-move band + Monte Carlo cone
 // Both are descriptive (range of plausible outcomes), NOT predictions.
@@ -294,7 +278,6 @@ export interface AnalysisResponse {
   entry_exit?: EntryExit | null;
   pe?: PEData | null;
   forecast?: StockForecast | null;
-  max_buy_price?: MaxBuyPrice | null;
 }
 
 // ============================================================

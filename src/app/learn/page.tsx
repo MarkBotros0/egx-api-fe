@@ -360,10 +360,10 @@ export default function LearnPage() {
           />
           <Concept
             id="max_buy_price"
-            title="Max Buy Price — Don't Chase"
-            definition="The highest price at which entering a stock still respects two beginner-safe rules: (1) don't pay more than 5% above nearest support, and (2) potential reward to nearest resistance must be at least 2× the distance to your stop-loss. Paying more than this is called 'chasing' — the trade's math stops working in your favor."
-            whyItMatters="Chasing is how beginners lose money in bull markets. A stock can be genuinely good AND genuinely too expensive today. The Max Buy Price answers the question 'how high can I go before the trade stops making sense?' with a single number, computed from the same support / resistance / ATR the rest of the app uses. It's a risk guardrail, not a price target."
-            howToUse="On the stock detail page, check the Max Buy Price card before placing an order. If current price ≤ max: OK to buy at today's price. Within 2% of max: enter carefully, consider a smaller position. Above max: wait for a pullback instead of chasing — patience beats FOMO. The card shows the suggested stop-loss, target (resistance), and risk:reward ratio at the max so you can see exactly what trade you'd be taking."
+            title="Don't Chase — and why there's no 'Max Buy Price' card"
+            definition="Chasing means paying up for a stock that has already run, so far above its support that a sensible stop-loss would sit a painful distance below your entry. The app used to reduce this to a single 'Max Buy Price' number. That card has been removed, because the number was misleading far more often than it was useful."
+            whyItMatters="The old card derived its reward from the nearest resistance ABOVE the price. But a stock in a strong uptrend making new highs has no resistance above it — so the reward came out as zero or negative and the card told you to wait. The stronger the breakout, the more certainly it said 'wait for a pullback', including on stocks the composite score rated Buy. On a sample of real EGX stocks it said wait on 7 of 8 and never once said it was OK to buy. A rule that rejects every stock is not a safety rail, it is noise — and it contradicted the rest of the app."
+            howToUse="Use the Entry Zone card instead: it activates when price is genuinely near a tested support AND momentum is not overbought, and it gives you a buy band plus the stop-loss to set. For the 'am I chasing?' question, look at the Key Levels card — if the nearest support is far below the current price, your stop has to be far away too, which means either a smaller position or waiting for a better level. And judge the trade itself on the composite score and its Risk-Adjusted category rather than on any single price threshold."
           />
           <Concept
             title="Position Sizing"
