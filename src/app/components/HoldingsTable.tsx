@@ -310,7 +310,7 @@ export default function HoldingsTable({
                 <th className="px-4 py-3 font-medium">
                   <LearnTooltip
                     term="Score"
-                    explanation="Composite 0-100 score blending 8 categories: trend, momentum, volume, volatility, divergence, quality, risk-adjusted return and relative strength. 80 and above = Strong Buy; below 20 = Strong Sell."
+                    explanation="Composite 0-100 score blending 8 categories: trend, momentum, volume, volatility, divergence, quality, risk-adjusted return and relative strength. It describes present condition, not what to do: 80+ means most categories read positively, under 20 means most read poorly. Backtesting found it does not predict which stock outperforms."
                   >
                     <span>Score</span>
                   </LearnTooltip>

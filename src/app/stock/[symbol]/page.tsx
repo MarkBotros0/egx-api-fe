@@ -294,8 +294,12 @@ export default function StockDetailPage() {
                         size="lg"
                       />
                       <div className="text-center md:text-left">
+                        {/* "Technical Condition", not "Signal". A backtest
+                            over 2007-2026 found the score cannot rank stocks
+                            against each other, so the label describes what it
+                            measures rather than implying an action. */}
                         <div className="text-[10px] uppercase tracking-wider text-white/40">
-                          Composite Signal
+                          Technical Condition
                         </div>
                         {/* Same colour function as the gauge ring above, so
                             the signal text and the ring can never disagree.

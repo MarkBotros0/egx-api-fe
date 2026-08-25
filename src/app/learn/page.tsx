@@ -260,9 +260,16 @@ export default function LearnPage() {
           <Concept
             id="composite_score"
             title="What is the Composite Score?"
-            definition="The Composite Score is a single 0–100 number that blends EIGHT technical categories — Trend, Momentum, Volume, Volatility, Divergence, Quality, Risk-Adjusted, and Relative Strength — into one glanceable signal. Scores translate to signals: below 20 Strong Sell, 20–39 Sell, 40–59 Hold, 60–79 Buy, 80 and above Strong Buy. A macro modulation is then applied on top: in a bearish EGX30 regime the whole range shifts down — bullish scores are damped toward neutral and weak scores pushed lower. In a bullish or sideways market the score is left exactly as computed."
-            whyItMatters="Looking at 20+ indicators individually and reaching a coherent conclusion is hard, especially for new investors. The composite score does this blending for you and factors in whether your stock is actually beating the Egyptian T-bill rate, whether it's leading the market, and whether the broader EGX30 trend supports buying. It turns complex data into one actionable read."
-            howToUse="Find the composite score on every stock detail page (the circular gauge at the top), on portfolio holding rows, and as an average across your whole portfolio. Use it as a first filter: only research stocks scoring above 60 (Buy) if you are looking for longs. Use it as a quick health check: a portfolio average below 40 means most of your holdings have deteriorating technicals."
+            definition="The Composite Score is a single 0–100 number that blends EIGHT technical categories — Trend, Momentum, Volume, Volatility, Divergence, Quality, Risk-Adjusted, and Relative Strength — into one glanceable reading of the stock's present technical condition. Scores translate to labels: below 20 Very Weak, 20–39 Weak, 40–59 Neutral, 60–79 Strong, 80 and above Very Strong. These describe condition, NOT an instruction to buy or sell — see “What the score cannot do” below. A macro modulation is then applied on top: in a bearish EGX30 regime the whole range shifts down — bullish scores are damped toward neutral and weak scores pushed lower. In a bullish or sideways market the score is left exactly as computed."
+            whyItMatters="Looking at 20+ indicators individually and reaching a coherent conclusion is hard, especially for new investors. The composite does that blending for you and shows its working — every category expands to the exact reasons behind its number. Its value is that it summarises a stock's condition quickly and honestly, not that it tells you what happens next."
+            howToUse="Find it on every stock detail page (the circular gauge at the top), on portfolio holding rows, and averaged across your portfolio. Use it to ORIENT, not to decide: tap into the categories and read the reasons, which are checkable statements about the stock today. Treat the number itself as a starting point for research, never as the research."
+          />
+          <Concept
+            id="score_limits"
+            title="What the Score Cannot Do"
+            definition="The composite score was tested against 19 years of EGX history (2007–2026, ~37,000 observations) to see whether higher scores were followed by better returns. They were not. Sorted into ten buckets by score, nine of the ten had a median 21-day forward return of exactly 0.00%, and the highest-scoring bucket had the most negative median of all."
+            whyItMatters="This is the single most important thing to understand about the number. The individual facts behind it are correct — the moving averages, the volume, the 52-week range, the dividend are all computed properly and verified. What has no evidence behind it is the idea that blending them into one number tells you which stock will outperform. Among liquid stocks the lowest-scoring names slightly OUTPERFORMED the highest-scoring ones, which is why the labels describe condition and no longer say Buy or Sell."
+            howToUse="Never size a position off the score. Use it to shortlist and to spot what is going on with a stock quickly, then make the decision on things the score does not contain: why the price moved, whether earnings are real and recurring, where your stop goes, and how much you can afford to lose. If you want one rule: a low score is NOT a reason to sell, because historically those stocks bounced about as often as the high scorers."
           />
           <Concept
             title="The Eight Score Categories"
@@ -322,10 +329,10 @@ export default function LearnPage() {
           />
           <Concept
             id="decision_step_score"
-            title="Step 2 — Check the Composite Score"
-            definition="Open the stock detail page. Is the Composite ≥ 60 (Buy) or ≥ 80 (Strong Buy)? Which categories are driving the score? Expand each category bar and read the reasons."
-            whyItMatters="If the score is below 60, the technical setup is not in your favour. Starting with a weak setup means you're fighting the market — even if the stock is a great long-term story, short-term it's likely to fall further."
-            howToUse="Only proceed to Step 3 if the score is ≥ 60. If it's between 50 and 60, add the stock to your Watchlist and revisit weekly. If it's below 40, this is actively a SELL candidate, not a buy."
+            title="Step 2 — Read the Composite Breakdown"
+            definition="Open the stock detail page, but do not stop at the number. Expand each category bar and read the reasons — those are specific, checkable statements about the stock today, and they are where the value is."
+            whyItMatters="Backtesting found the score itself does not predict which stock outperforms (see “What the score cannot do”). The reasons behind it are a different matter: “price above SMA200”, “thin liquidity — hard to exit”, “24% below its 52-week high”, “P/E 6.8, cheap versus the EGX median” are all verified facts. Use the facts, not the average of them."
+            howToUse="Use the score to orient: a high one usually means an established uptrend, a low one usually means a stock that has been falling. Neither is a verdict. Critically, a LOW score is not a sell signal — historically the lowest-scoring EGX stocks bounced about as often as the highest-scoring ones. If the categories disagree with each other, that is genuine information: it means the picture is mixed and you should be slower, not faster."
           />
           <Concept
             id="decision_step_risk"

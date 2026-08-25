@@ -97,7 +97,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
           <div>
             <LearnTooltip
               term="Avg Composite Score"
-              explanation="Value-weighted average composite score across your holdings, so bigger positions count for more. 0-100, blending 8 categories: trend, momentum, volume, volatility, divergence, quality, risk-adjusted return and relative strength. 80 and above = leaning Strong Buy; below 20 = leaning Strong Sell."
+              explanation="Value-weighted average composite score across your holdings, so bigger positions count for more. 0-100, blending 8 categories: trend, momentum, volume, volatility, divergence, quality, risk-adjusted return and relative strength. It summarises the current technical condition of what you hold — it is not a forecast of how the portfolio will perform."
             >
               <p className="text-xs text-white/40">Avg Score</p>
             </LearnTooltip>

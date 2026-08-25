@@ -86,13 +86,23 @@ export function scoreBand(score: number): ScoreBand {
   return "strong_sell";
 }
 
-/** Human-readable label per band — matches the backend `signal` string. */
+/**
+ * Human-readable label per band — matches the backend `signal` string.
+ *
+ * These describe CONDITION, not action. They used to read Strong Buy / Buy /
+ * Hold / Sell / Strong Sell. A walk-forward backtest over 2007-2026 found the
+ * score cannot rank one stock above another — nine of ten score deciles had a
+ * median 21-day forward return of 0.00%, and among liquid names the
+ * "Sell"-labelled stocks slightly outperformed the "Buy" ones. The band keys
+ * keep their original names so nothing downstream breaks; only the claim made
+ * to the reader changed.
+ */
 export const SCORE_BAND_LABEL: Record<ScoreBand, string> = {
-  strong_sell: "Strong Sell",
-  sell: "Sell",
-  hold: "Hold",
-  buy: "Buy",
-  strong_buy: "Strong Buy",
+  strong_sell: "Very Weak",
+  sell: "Weak",
+  hold: "Neutral",
+  buy: "Strong",
+  strong_buy: "Very Strong",
 };
 
 // === Fundamentals (P/E and dividend yield) ===

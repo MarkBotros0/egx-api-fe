@@ -142,10 +142,14 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
         </div>
       )}
 
+      {/* This used to say "does not predict the future" as a generic
+          disclaimer. It is now a measured finding, so it says so specifically
+          — a vague hedge is easy to read past; a number is not. */}
       <p className="mt-4 text-[10px] leading-relaxed text-white/30">
-        Composite score is an educational tool combining technical indicators.
-        It does not predict the future. Always consider fundamentals, news, and
-        macro conditions before trading.
+        This score describes a stock&rsquo;s current technical condition. It is not a
+        forecast: tested across the EGX from 2007&ndash;2026, higher scores did not
+        precede better returns than lower ones. Read the categories above for
+        what is true today, and consider fundamentals, news and macro before trading.
       </p>
 
       <ScoreWeightsModal

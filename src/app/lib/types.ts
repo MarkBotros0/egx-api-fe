@@ -236,12 +236,16 @@ export interface LiquidityInfo {
   dead_sessions?: number | null;
 }
 
+/**
+ * Describes the stock's present technical CONDITION, not an action.
+ * Mirrors `classify_signal` in egx-api-be/app/core/composite.py.
+ */
 export type CompositeSignal =
-  | "Strong Sell"
-  | "Sell"
-  | "Hold"
-  | "Buy"
-  | "Strong Buy";
+  | "Very Weak"
+  | "Weak"
+  | "Neutral"
+  | "Strong"
+  | "Very Strong";
 
 export interface CategoryScore {
   score: number | null;
