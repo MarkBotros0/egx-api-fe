@@ -274,10 +274,10 @@ export default function Dashboard() {
                 }`}
               >
                 <LearnTooltip
-                  term={`Signal: ${showComposite ? "On" : "Off"}`}
-                  explanation="Turns on the Buy / Hold / Sell badge on each card. Signals are computed on DAILY bars, which is the timeframe every entry zone, stop-loss and portfolio alert is built on. You can switch to Weekly or Monthly to check the bigger trend, but that resets to Daily next visit so you always start from the most reliable view."
+                  term={`Score: ${showComposite ? "On" : "Off"}`}
+                  explanation="Turns on the 0-100 composite score on each card. The number tells you more than a Buy/Hold word does: 61 and 79 are both 'Buy' but they are very different setups. Scores are computed on DAILY bars, the timeframe every entry zone, stop-loss and portfolio alert is built on, and they match the gauge on the stock detail page exactly. You can switch to Weekly or Monthly for trend context, but that resets to Daily next visit."
                 >
-                  <span>Signal: {showComposite ? "On" : "Off"}</span>
+                  <span>Score: {showComposite ? "On" : "Off"}</span>
                 </LearnTooltip>
               </button>
               {showComposite && (
@@ -307,7 +307,7 @@ export default function Dashboard() {
                   identical to a page of daily ones. */}
               {showComposite && compositeInterval !== "Daily" && (
                 <span className="whitespace-nowrap text-[10px] text-[#ffaa00]">
-                  Showing {compositeInterval.toLowerCase()} signals — trend context, not entry timing
+                  Showing {compositeInterval.toLowerCase()} scores — trend context, not entry timing
                 </span>
               )}
             </div>
@@ -341,6 +341,7 @@ export default function Dashboard() {
                         change={pd?.change}
                         changePct={pd?.changePct}
                         sparklineData={pd?.sparkline}
+                        compositeScore={cd?.score ?? null}
                         compositeSignal={cd?.signal ?? null}
                         interval={showComposite ? compositeInterval : undefined}
                         // The price change comes from the same batch call as

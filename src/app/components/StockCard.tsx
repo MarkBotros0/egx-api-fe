@@ -6,7 +6,7 @@ import {
   Line,
   ResponsiveContainer,
 } from "recharts";
-import SignalBadge from "./SignalBadge";
+import { scoreColor } from "./CompositeGauge";
 import type { CompositeSignal } from "../lib/types";
 
 interface StockCardProps {
@@ -18,6 +18,8 @@ interface StockCardProps {
   sparklineData?: number[];
   sector?: string;
   compositeSignal?: CompositeSignal | null;
+  /** 0-100 composite. Shown as the number rather than a Buy/Hold word. */
+  compositeScore?: number | null;
   interval?: string;
   /**
    * Interval the price change covers. The dashboard's batch endpoint returns
@@ -36,6 +38,7 @@ export default function StockCard({
   sparklineData,
   sector,
   compositeSignal,
+  compositeScore,
   interval,
   changeInterval,
 }: StockCardProps) {
@@ -71,8 +74,25 @@ export default function StockCard({
               {name}
             </p>
           </div>
-          {compositeSignal ? (
-            <SignalBadge signal={compositeSignal} size="sm" />
+          {/* The score itself, not a Buy/Hold word. The number carries how
+              strong the reading is - 61 and 79 are both "Buy" but they are
+              not the same setup - and it matches the gauge on the detail
+              page, so the two surfaces cannot appear to disagree. */}
+          {compositeScore != null ? (
+            <span
+              className="flex shrink-0 flex-col items-center leading-none"
+              title={compositeSignal ? `${compositeScore.toFixed(0)} / 100 — ${compositeSignal}` : undefined}
+            >
+              <span
+                className="font-mono text-lg font-bold"
+                style={{ color: scoreColor(compositeScore) }}
+              >
+                {compositeScore.toFixed(0)}
+              </span>
+              <span className="mt-0.5 text-[8px] uppercase tracking-wider text-white/30">
+                score
+              </span>
+            </span>
           ) : sector ? (
             <span className="whitespace-nowrap rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent/70">
               {sector}
