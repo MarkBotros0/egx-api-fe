@@ -23,6 +23,32 @@ import type { AnalysisResponse } from "../../lib/types";
 const INTERVALS = ["Daily", "Weekly", "Monthly"];
 const BAR_COUNTS = [60, 100, 200, 500];
 
+// Chart-only controls. These draw a line on the price chart and nothing else —
+// no refetch, no effect on the composite score or the stats — so they live
+// directly above the chart rather than in the page-level control row, where
+// they read as if they changed the score.
+const OVERLAYS = [
+  { key: "sma20" as const, label: "SMA 20", color: "#ffaa00" },
+  { key: "sma50" as const, label: "SMA 50", color: "#ff6600" },
+  { key: "sma200" as const, label: "SMA 200", color: "#ff0066" },
+  { key: "ema12" as const, label: "EMA 12", color: "#00ccff" },
+  { key: "ema26" as const, label: "EMA 26", color: "#cc00ff" },
+  { key: "bollinger" as const, label: "Bollinger", color: "#4488ff" },
+];
+
+function overlayExplanation(key: string, label: string): string {
+  if (key === "sma200") {
+    return "200-day SMA — the most important long-term trend indicator. Used for Golden Cross / Death Cross signals.";
+  }
+  if (key.startsWith("sma")) {
+    return `Simple Moving Average (${label.split(" ")[1]}-day). Shows the average price over the period. Price above SMA = bullish trend.`;
+  }
+  if (key.startsWith("ema")) {
+    return `Exponential Moving Average (${label.split(" ")[1]}-day). Like SMA but reacts faster to recent price changes.`;
+  }
+  return "Bollinger Bands show volatility. When bands squeeze = big move coming. Price at upper band = possibly overbought.";
+}
+
 export default function StockDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -180,7 +206,18 @@ export default function StockDetailPage() {
               </button>
             ))}
           </div>
-          <div className="flex gap-1.5">
+          {/* Bar count refetches and re-trims the whole page — the visible
+              window, the cumulative return in Key Statistics, avg volume — so
+              it belongs with Interval, not with the chart overlays. */}
+          <div className="flex items-center gap-1.5">
+            <LearnTooltip
+              term="History"
+              explanation="How many bars of history to load. It sets how far back every chart on this page goes, and the cumulative return in Key Statistics is measured over exactly this window. Indicators are always computed on a longer internal window, so a short setting here never makes SMA 200 or the composite score less accurate."
+            >
+              <span className="text-[10px] uppercase tracking-wider text-white/30">
+                History
+              </span>
+            </LearnTooltip>
             {BAR_COUNTS.map((b) => (
               <button
                 key={b}
@@ -192,46 +229,6 @@ export default function StockDetailPage() {
                 }`}
               >
                 {b}
-              </button>
-            ))}
-          </div>
-
-          {/* Overlay toggles */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar border-l border-white/10 pl-3 md:flex-wrap md:overflow-visible">
-            {[
-              { key: "sma20" as const, label: "SMA 20", color: "#ffaa00" },
-              { key: "sma50" as const, label: "SMA 50", color: "#ff6600" },
-              { key: "sma200" as const, label: "SMA 200", color: "#ff0066" },
-              { key: "ema12" as const, label: "EMA 12", color: "#00ccff" },
-              { key: "ema26" as const, label: "EMA 26", color: "#cc00ff" },
-              { key: "bollinger" as const, label: "Bollinger", color: "#4488ff" },
-            ].map(({ key, label, color }) => (
-              <button
-                key={key}
-                onClick={() =>
-                  setOverlays((prev) => ({ ...prev, [key]: !prev[key] }))
-                }
-                className={`min-h-[32px] whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  overlays[key]
-                    ? "bg-white/10"
-                    : "text-white/30 hover:text-white/50"
-                }`}
-                style={{ color: overlays[key] ? color : undefined }}
-              >
-                <LearnTooltip
-                  term={label}
-                  explanation={
-                    key === "sma200"
-                      ? "200-day SMA — the most important long-term trend indicator. Used for Golden Cross / Death Cross signals."
-                      : key.startsWith("sma")
-                      ? `Simple Moving Average (${label.split(" ")[1]}-day). Shows the average price over the period. Price above SMA = bullish trend.`
-                      : key.startsWith("ema")
-                        ? `Exponential Moving Average (${label.split(" ")[1]}-day). Like SMA but reacts faster to recent price changes.`
-                        : "Bollinger Bands show volatility. When bands squeeze = big move coming. Price at upper band = possibly overbought."
-                  }
-                >
-                  <span>{label}</span>
-                </LearnTooltip>
               </button>
             ))}
           </div>
@@ -383,7 +380,39 @@ export default function StockDetailPage() {
                 </div>
               )}
 
+              {/* Chart overlays — attached to the chart they draw on */}
               <div className="min-h-[250px]">
+                <div className="mb-2 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
+                  <LearnTooltip
+                    term="Chart overlays"
+                    explanation="Lines drawn on the price chart only. Turning one on or off changes nothing else on this page — not the composite score, not the statistics. Use them to see what the indicators behind the score actually look like against price."
+                  >
+                    <span className="shrink-0 text-[10px] uppercase tracking-wider text-white/30">
+                      Overlays
+                    </span>
+                  </LearnTooltip>
+                  {OVERLAYS.map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      onClick={() =>
+                        setOverlays((prev) => ({ ...prev, [key]: !prev[key] }))
+                      }
+                      className={`min-h-[32px] whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        overlays[key]
+                          ? "bg-white/10"
+                          : "text-white/30 hover:text-white/50"
+                      }`}
+                      style={{ color: overlays[key] ? color : undefined }}
+                    >
+                      <LearnTooltip
+                        term={label}
+                        explanation={overlayExplanation(key, label)}
+                      >
+                        <span>{label}</span>
+                      </LearnTooltip>
+                    </button>
+                  ))}
+                </div>
                 <PriceChart
                   data={priceChartData}
                   overlays={overlays}
