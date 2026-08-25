@@ -311,7 +311,7 @@ export default function HoldingsTable({
                 <th className="px-4 py-3 font-medium">
                   <LearnTooltip
                     term="Score"
-                    explanation="Composite 0-100 score blending trend, momentum, volume, volatility, and divergence signals. 80+ = Strong Buy, 0-20 = Strong Sell."
+                    explanation="Composite 0-100 score blending 8 categories: trend, momentum, volume, volatility, divergence, quality, risk-adjusted return and relative strength. 80 and above = Strong Buy; below 20 = Strong Sell."
                   >
                     <span>Score</span>
                   </LearnTooltip>
@@ -477,14 +477,27 @@ export default function HoldingsTable({
                               <p className="text-white/40">Current Value</p>
                               <p className="font-mono text-white">{h.current_value.toFixed(2)} EGP</p>
                             </div>
+                            {/* The backend returns null under ~30 days held,
+                                where annualizing is meaningless (a +5% week
+                                extrapolates to five figures). */}
                             <div>
-                              <p className="text-white/40">Annualized Return</p>
-                              <p className={`font-mono ${h.annualized_return >= 0 ? "text-gain" : "text-loss"}`}>
-                                {h.annualized_return.toFixed(1)}%
+                              <p className="text-white/40" title="Your position's gain since you bought it, projected to a full year. This measures your purchase, not the stock's own 12-month performance — the Risk-Adjusted category in the score uses the latter.">
+                                Annualized Return
                               </p>
+                              {h.annualized_return != null ? (
+                                <p className={`font-mono ${h.annualized_return >= 0 ? "text-gain" : "text-loss"}`}>
+                                  {h.annualized_return.toFixed(1)}%
+                                </p>
+                              ) : (
+                                <p className="font-mono text-white/30" title="Needs at least 30 days held before annualizing means anything.">
+                                  --
+                                </p>
+                              )}
                             </div>
                             <div>
-                              <p className="text-white/40">Volatility</p>
+                              <p className="text-white/40" title="A typical one-day move (20-day standard deviation of daily returns). The score breakdown quotes an annualized figure, roughly 16x this.">
+                                Volatility (20d daily)
+                              </p>
                               <p className="font-mono text-white/70">
                                 {h.volatility != null ? `${(h.volatility * 100).toFixed(2)}%` : "--"}
                               </p>
@@ -509,13 +522,27 @@ export default function HoldingsTable({
                                 </p>
                               </div>
                             )}
+                            {/* distance_pct is SIGNED (negative = level is
+                                below price). Printing it raw showed
+                                "38.40 (-5.2%)" in green, which reads as a
+                                loss. Show the magnitude plus a direction
+                                word, matching KeyLevelsCard, and flag the
+                                level as broken when price has crossed it. */}
                             {h.key_levels?.nearest_support && (
                               <div>
                                 <p className="text-white/40">Nearest Support</p>
-                                <p className="font-mono text-gain">
+                                <p
+                                  className={`font-mono ${
+                                    h.key_levels.nearest_support.distance_pct > 0
+                                      ? "text-loss"
+                                      : "text-gain"
+                                  }`}
+                                >
                                   {h.key_levels.nearest_support.price.toFixed(2)}
                                   <span className="ml-1 text-[10px] text-white/40">
-                                    ({h.key_levels.nearest_support.distance_pct.toFixed(1)}%)
+                                    {h.key_levels.nearest_support.distance_pct > 0
+                                      ? `(broken — ${h.key_levels.nearest_support.distance_pct.toFixed(1)}% above)`
+                                      : `(${Math.abs(h.key_levels.nearest_support.distance_pct).toFixed(1)}% below)`}
                                   </span>
                                 </p>
                               </div>
@@ -523,10 +550,18 @@ export default function HoldingsTable({
                             {h.key_levels?.nearest_resistance && (
                               <div>
                                 <p className="text-white/40">Nearest Resistance</p>
-                                <p className="font-mono text-loss">
+                                <p
+                                  className={`font-mono ${
+                                    h.key_levels.nearest_resistance.distance_pct < 0
+                                      ? "text-gain"
+                                      : "text-loss"
+                                  }`}
+                                >
                                   {h.key_levels.nearest_resistance.price.toFixed(2)}
                                   <span className="ml-1 text-[10px] text-white/40">
-                                    ({h.key_levels.nearest_resistance.distance_pct.toFixed(1)}%)
+                                    {h.key_levels.nearest_resistance.distance_pct < 0
+                                      ? `(cleared — ${Math.abs(h.key_levels.nearest_resistance.distance_pct).toFixed(1)}% below)`
+                                      : `(${h.key_levels.nearest_resistance.distance_pct.toFixed(1)}% above)`}
                                   </span>
                                 </p>
                               </div>

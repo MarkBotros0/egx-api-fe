@@ -12,6 +12,21 @@ import {
 } from "recharts";
 import type { MonteCarloResult } from "@/app/lib/types";
 
+/**
+ * Percentile outcomes arrive as growth MULTIPLIERS (1.0 = flat), so the
+ * displayed percentage is (value - 1). Both helpers read the sign off the
+ * value rather than assuming it from the tile's name — the "best case" can
+ * be negative for a portfolio with strong downward drift.
+ */
+function formatOutcome(multiplier: number): string {
+  const pct = (multiplier - 1) * 100;
+  return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
+
+function outcomeTone(multiplier: number): string {
+  return multiplier >= 1 ? "text-gain" : "text-loss";
+}
+
 interface MonteCarloChartProps {
   data: MonteCarloResult;
 }
@@ -127,22 +142,26 @@ export default function MonteCarloChart({ data }: MonteCarloChartProps) {
             {(probability_of_loss * 100).toFixed(0)}%
           </p>
         </div>
+        {/* Each tile takes its sign and colour from the value itself. A
+            hardcoded "+" on the best case rendered "+-3.2%" in green when a
+            portfolio's 95th percentile was still a loss, and the worst case
+            was painted red even when it was positive. */}
         <div className="rounded-lg bg-white/[0.03] p-3">
           <p className="text-[10px] text-white/40">Worst Case (5%)</p>
-          <p className="font-mono text-sm font-bold text-loss">
-            {((data.worst_case_5pct - 1) * 100).toFixed(1)}%
+          <p className={`font-mono text-sm font-bold ${outcomeTone(data.worst_case_5pct)}`}>
+            {formatOutcome(data.worst_case_5pct)}
           </p>
         </div>
         <div className="rounded-lg bg-white/[0.03] p-3">
           <p className="text-[10px] text-white/40">Median Outcome</p>
-          <p className={`font-mono text-sm font-bold ${data.median >= 1 ? "text-gain" : "text-loss"}`}>
-            {((data.median - 1) * 100).toFixed(1)}%
+          <p className={`font-mono text-sm font-bold ${outcomeTone(data.median)}`}>
+            {formatOutcome(data.median)}
           </p>
         </div>
         <div className="rounded-lg bg-white/[0.03] p-3">
           <p className="text-[10px] text-white/40">Best Case (95%)</p>
-          <p className="font-mono text-sm font-bold text-gain">
-            +{((data.best_case_95pct - 1) * 100).toFixed(1)}%
+          <p className={`font-mono text-sm font-bold ${outcomeTone(data.best_case_95pct)}`}>
+            {formatOutcome(data.best_case_95pct)}
           </p>
         </div>
       </div>

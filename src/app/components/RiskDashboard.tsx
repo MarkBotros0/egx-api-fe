@@ -94,13 +94,16 @@ export default function RiskDashboard({ metrics }: RiskDashboardProps) {
           suffix={metrics.max_drawdown?.trough_date ? `on ${metrics.max_drawdown.trough_date}` : undefined}
           tooltip={{
             term: "Max Drawdown",
-            explanation: "The largest peak-to-trough decline in your portfolio's value. Shows the worst-case scenario you've experienced. Ask yourself: could I stomach this emotionally?",
+            explanation: "The largest peak-to-trough decline this mix of holdings would have gone through over the analysis window — at your current weights, including dates before you owned them. It measures how bumpy the mix is, not what your account actually did. Ask yourself: could I stomach this emotionally?",
           }}
         />
+        {/* Both halves of this tile express the same loss. The EGP figure is
+            an absolute magnitude while the backend's pct is a negative
+            return, so without the abs() it read "12,480 EGP" over "-2.8%". */}
         <RiskMetric
           label="Daily VaR (95%)"
           value={metrics.var_95_egp != null ? `${metrics.var_95_egp.toLocaleString()} EGP` : "--"}
-          suffix={metrics.var_95_pct != null ? `${(metrics.var_95_pct * 100).toFixed(1)}% of portfolio` : undefined}
+          suffix={metrics.var_95_pct != null ? `${Math.abs(metrics.var_95_pct * 100).toFixed(1)}% of portfolio` : undefined}
           tooltip={{
             term: "Value at Risk (VaR)",
             explanation: "On 95% of days, your portfolio won't lose more than this amount. On the worst 5% of days, losses could exceed this. Make sure you're comfortable with this number.",

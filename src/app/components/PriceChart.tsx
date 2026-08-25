@@ -103,24 +103,36 @@ export default function PriceChart({
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* Bollinger Bands — rendered as a shaded area */}
+          {/* Bollinger Bands — shaded envelope.
+              Recharts fills an Area from the chart FLOOR, not from a
+              companion series, so two translucent Areas stacked up painted
+              the region BELOW the lower band twice (darkest) and the actual
+              envelope once. Price breaking below the lower band looked like
+              it was inside the band — the opposite of the oversold read the
+              overlay exists to give. Fix: paint the upper Area, then erase
+              everything under the lower band with an opaque fill in the page
+              background colour (the same technique MonteCarloChart and
+              ForecastCard use for their cones). Order matters. */}
           {overlays.bollinger && (
             <>
               <Area
                 type="monotone"
                 dataKey="bollinger_upper"
                 stroke="none"
-                fill="rgba(68,136,255,0.08)"
+                fill="rgba(68,136,255,0.10)"
                 name="BB Upper"
                 connectNulls
+                isAnimationActive={false}
               />
               <Area
                 type="monotone"
                 dataKey="bollinger_lower"
                 stroke="none"
-                fill="rgba(68,136,255,0.08)"
+                fill="#0a0a0f"
+                fillOpacity={1}
                 name="BB Lower"
                 connectNulls
+                isAnimationActive={false}
               />
               <Line
                 type="monotone"
@@ -213,7 +225,12 @@ export default function PriceChart({
             />
           )}
 
-          {/* Support levels */}
+          {/* Support / resistance / Fibonacci levels.
+              `ifOverflow="extendDomain"` is required: these levels are derived
+              from the full ~400-bar history while the chart plots only the
+              selected bar count, and Recharts DISCARDS reference lines outside
+              the axis domain by default. Levels named in the Key Levels card
+              were silently missing from the chart below it. */}
           {supports?.map((s, i) => (
             <ReferenceLine
               key={`support-${i}`}
@@ -221,11 +238,11 @@ export default function PriceChart({
               stroke="rgba(0,255,136,0.4)"
               strokeDasharray="4 4"
               strokeWidth={1}
-              label={{ value: `S ${s.price}`, position: "left", fontSize: 9, fill: "rgba(0,255,136,0.5)" }}
+              ifOverflow="extendDomain"
+              label={{ value: `S ${s.price.toFixed(2)}`, position: "left", fontSize: 9, fill: "rgba(0,255,136,0.5)" }}
             />
           ))}
 
-          {/* Resistance levels */}
           {resistances?.map((r, i) => (
             <ReferenceLine
               key={`resistance-${i}`}
@@ -233,11 +250,11 @@ export default function PriceChart({
               stroke="rgba(255,51,85,0.4)"
               strokeDasharray="4 4"
               strokeWidth={1}
-              label={{ value: `R ${r.price}`, position: "left", fontSize: 9, fill: "rgba(255,51,85,0.5)" }}
+              ifOverflow="extendDomain"
+              label={{ value: `R ${r.price.toFixed(2)}`, position: "left", fontSize: 9, fill: "rgba(255,51,85,0.5)" }}
             />
           ))}
 
-          {/* Fibonacci levels */}
           {fibonacci && Object.entries(fibonacci.levels).map(([label, price]) => (
             <ReferenceLine
               key={`fib-${label}`}
@@ -245,6 +262,7 @@ export default function PriceChart({
               stroke="rgba(255,170,0,0.25)"
               strokeDasharray="2 4"
               strokeWidth={1}
+              ifOverflow="extendDomain"
               label={{ value: label, position: "right", fontSize: 8, fill: "rgba(255,170,0,0.4)" }}
             />
           ))}

@@ -160,6 +160,18 @@ function WatchlistRow({
   const color = isPositive ? "#00ff88" : "#ff3355";
   const chartData = sparkline?.map((v, i) => ({ i, v })) ?? [];
 
+  // Colour the line by the move it actually draws (~30 sessions), not by
+  // today's single-bar change — otherwise a month-long decline can render
+  // in green because the last session ticked up.
+  const sparkStart = sparkline?.[0];
+  const sparkEnd = sparkline?.[sparkline.length - 1];
+  const sparkColor =
+    sparkStart !== undefined && sparkEnd !== undefined
+      ? sparkEnd >= sparkStart
+        ? "#00ff88"
+        : "#ff3355"
+      : color;
+
   return (
     <div className="group relative flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5 transition-colors hover:border-white/10 hover:bg-white/[0.05]">
       <Link
@@ -193,7 +205,7 @@ function WatchlistRow({
                 <Line
                   type="monotone"
                   dataKey="v"
-                  stroke={color}
+                  stroke={sparkColor}
                   strokeWidth={1.5}
                   dot={false}
                 />

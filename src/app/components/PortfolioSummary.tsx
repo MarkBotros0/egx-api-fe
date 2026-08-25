@@ -39,6 +39,28 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
       <h2 className="mb-4 text-lg font-semibold text-white">Portfolio Summary</h2>
 
+      {/* Totals cover only the holdings we could price. Saying so is
+          essential: silently dropping one used to leave its cost basis in
+          total_invested with no matching value, showing a large phantom
+          loss with nothing on screen to explain it. */}
+      {metrics.excluded_count > 0 && (
+        <div className="mb-4 rounded-lg border border-[#ffaa00]/30 bg-[#ffaa00]/[0.06] px-3 py-2">
+          <p className="text-xs text-[#ffaa00]">
+            {metrics.excluded_count} holding{metrics.excluded_count > 1 ? "s" : ""}{" "}
+            could not be priced and{" "}
+            {metrics.excluded_count > 1 ? "are" : "is"} left out of these totals
+            {metrics.excluded_invested > 0 && (
+              <>
+                {" "}
+                ({metrics.excluded_invested.toLocaleString("en", { maximumFractionDigits: 0 })}{" "}
+                EGP of cost basis)
+              </>
+            )}
+            . The figures below describe the rest of your portfolio.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div>
           <p className="text-xs text-white/40">Total Value</p>
@@ -61,7 +83,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
         <div>
           <LearnTooltip
             term="Diversification Score"
-            explanation="A 0-100 score measuring how well-spread your investments are across different stocks and sectors. Higher = better diversified = lower risk. Score drops if any single stock is >30% or any sector is >50% of your portfolio."
+            explanation="A 0-100 score measuring how well-spread your investments are across different stocks and sectors. Higher = better diversified = lower risk. The score starts dropping at the same points that trigger a concentration warning: any single stock above 35%, or any sector above 40%, of your portfolio."
           >
             <p className="text-xs text-white/40">Diversification</p>
           </LearnTooltip>
@@ -75,7 +97,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
           <div>
             <LearnTooltip
               term="Avg Composite Score"
-              explanation="Average composite score across all holdings. 0-100 blending trend, momentum, volume, volatility, and divergence signals. 80+ = portfolio leaning Strong Buy, 0-20 = portfolio leaning Strong Sell."
+              explanation="Value-weighted average composite score across your holdings, so bigger positions count for more. 0-100, blending 8 categories: trend, momentum, volume, volatility, divergence, quality, risk-adjusted return and relative strength. 80 and above = leaning Strong Buy; below 20 = leaning Strong Sell."
             >
               <p className="text-xs text-white/40">Avg Score</p>
             </LearnTooltip>

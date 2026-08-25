@@ -73,9 +73,20 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
                   <span className="font-medium text-white/90">
                     {CATEGORY_LABELS[name]}
                   </span>
-                  <span className="text-white/40">
-                    {cat.weight.toFixed(0)}% weight
-                  </span>
+                  {/* Show the weight this category ACTUALLY carried. When a
+                      category can't be scored its weight is redistributed
+                      across the rest, so printing the configured weight made
+                      the bars fail to reconcile with the gauge — and an
+                      excluded category advertised "13% weight" beside a dash. */}
+                  {score !== null ? (
+                    <span className="text-white/40">
+                      {(cat.effective_weight ?? cat.weight).toFixed(0)}% weight
+                    </span>
+                  ) : (
+                    <span className="text-white/30 italic">
+                      excluded — not enough data
+                    </span>
+                  )}
                 </div>
                 <span
                   className="font-mono font-semibold"

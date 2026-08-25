@@ -8,10 +8,26 @@ interface EntryExitCardProps {
   entryExit: EntryExit | null | undefined;
 }
 
-const CONFIDENCE_STYLES: Record<ZoneConfidence, { label: string; badge: string }> = {
-  high: { label: "High", badge: "bg-gain/20 text-gain border-gain/30" },
-  medium: { label: "Medium", badge: "bg-accent/20 text-accent border-accent/30" },
-  low: { label: "Low", badge: "bg-white/10 text-white/60 border-white/10" },
+/**
+ * Confidence badges take the tone of their ZONE, not a fixed palette.
+ * A single map painted a high-confidence EXIT — the strongest trim/sell cue
+ * the app produces — in gain-green, the exact colour used for a price gain,
+ * inside a red card. Green must never label a sell signal.
+ */
+const CONFIDENCE_STYLES: Record<
+  "entry" | "exit",
+  Record<ZoneConfidence, { label: string; badge: string }>
+> = {
+  entry: {
+    high: { label: "High", badge: "bg-gain/20 text-gain border-gain/30" },
+    medium: { label: "Medium", badge: "bg-accent/20 text-accent border-accent/30" },
+    low: { label: "Low", badge: "bg-white/10 text-white/60 border-white/10" },
+  },
+  exit: {
+    high: { label: "High", badge: "bg-loss/20 text-loss border-loss/30" },
+    medium: { label: "Medium", badge: "bg-[#ffaa00]/20 text-[#ffaa00] border-[#ffaa00]/30" },
+    low: { label: "Low", badge: "bg-white/10 text-white/60 border-white/10" },
+  },
 };
 
 export default function EntryExitCard({ entryExit }: EntryExitCardProps) {
@@ -92,7 +108,7 @@ function ZoneBlock({
   const bgTint = isEntry
     ? "border-gain/20 bg-gain/[0.04]"
     : "border-loss/20 bg-loss/[0.04]";
-  const confStyle = confidence ? CONFIDENCE_STYLES[confidence] : null;
+  const confStyle = confidence ? CONFIDENCE_STYLES[kind][confidence] : null;
 
   return (
     <div className={`rounded-lg border ${bgTint} px-3 py-3`}>

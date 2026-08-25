@@ -19,6 +19,12 @@ interface StockCardProps {
   sector?: string;
   compositeSignal?: CompositeSignal | null;
   interval?: string;
+  /**
+   * Interval the price change covers. The dashboard's batch endpoint returns
+   * a one-bar change on whatever interval is selected, so on "Monthly" the
+   * percentage is month-over-month, not today's move.
+   */
+  changeInterval?: string;
 }
 
 export default function StockCard({
@@ -31,11 +37,24 @@ export default function StockCard({
   sector,
   compositeSignal,
   interval,
+  changeInterval,
 }: StockCardProps) {
   const isPositive = (changePct ?? 0) >= 0;
   const color = isPositive ? "#00ff88" : "#ff3355";
 
   const chartData = sparklineData?.map((v, i) => ({ i, v })) ?? [];
+
+  // The sparkline draws ~30 sessions, so colour it by the move across that
+  // window — not by `changePct`, which is a SINGLE bar. A stock down 22%
+  // over the month that ticked up 0.4% today drew a visibly falling line in
+  // gain-green. The price-change text below keeps its own (correct) colour.
+  const sparkStart = sparklineData?.[0];
+  const sparkEnd = sparklineData?.[sparklineData.length - 1];
+  const sparkPositive =
+    sparkStart !== undefined && sparkEnd !== undefined
+      ? sparkEnd >= sparkStart
+      : isPositive;
+  const sparkColor = sparkPositive ? "#00ff88" : "#ff3355";
   const href = interval
     ? `/stock/${symbol}?interval=${encodeURIComponent(interval)}`
     : `/stock/${symbol}`;
@@ -71,11 +90,24 @@ export default function StockCard({
                 <p
                   className="font-mono text-xs font-medium"
                   style={{ color }}
+                  title={
+                    changeInterval && changeInterval !== "Daily"
+                      ? `Change over one ${changeInterval.toLowerCase().replace(/ly$/, "")} bar`
+                      : "Change since the previous close"
+                  }
                 >
                   {isPositive ? "+" : ""}
                   {change?.toFixed(2)} ({isPositive ? "+" : ""}
                   {changePct?.toFixed(2)}%)
                 </p>
+                {/* Say so when the percentage is not today's move — on
+                    "Monthly" it is a month-over-month change sitting in the
+                    same spot a daily change normally occupies. */}
+                {changeInterval && changeInterval !== "Daily" && (
+                  <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/30">
+                    {changeInterval === "Weekly" ? "vs last week" : "vs last month"}
+                  </p>
+                )}
               </>
             ) : (
               <p className="font-mono text-sm text-white/30">--</p>
@@ -89,7 +121,7 @@ export default function StockCard({
                   <Line
                     type="monotone"
                     dataKey="v"
-                    stroke={color}
+                    stroke={sparkColor}
                     strokeWidth={1.5}
                     dot={false}
                   />

@@ -6,10 +6,32 @@ interface MacroCardProps {
   data: MacroData;
 }
 
-function DirectionArrow({ direction }: { direction: string | null }) {
-  if (direction === "up") return <span className="text-loss">↑</span>;
-  if (direction === "down") return <span className="text-gain">↓</span>;
-  return <span className="text-white/30">→</span>;
+/**
+ * `positiveIsGood` decides the colour, because "up" means opposite things
+ * for these indicators. A rising EGX30 is a bull market (green); a rising
+ * USD/EGP is the pound weakening (red). One shared mapping painted a
+ * rising EGX30 in the same red used for a losing position, right next to
+ * the app's own "the overall market is bullish" signal.
+ *
+ * `neutral` renders both directions in grey — for the CBE rate, where up
+ * and down are context, not good news or bad.
+ */
+function DirectionArrow({
+  direction,
+  positiveIsGood = true,
+  neutral = false,
+}: {
+  direction: string | null;
+  positiveIsGood?: boolean;
+  neutral?: boolean;
+}) {
+  if (direction !== "up" && direction !== "down") {
+    return <span className="text-white/30">→</span>;
+  }
+  const arrow = direction === "up" ? "↑" : "↓";
+  if (neutral) return <span className="text-white/40">{arrow}</span>;
+  const isGood = direction === "up" ? positiveIsGood : !positiveIsGood;
+  return <span className={isGood ? "text-gain" : "text-loss"}>{arrow}</span>;
 }
 
 function MacroIndicator({
@@ -18,12 +40,16 @@ function MacroIndicator({
   suffix,
   direction,
   detail,
+  positiveIsGood = true,
+  neutral = false,
 }: {
   label: string;
   value: number | null;
   suffix?: string;
   direction: string | null;
   detail?: string;
+  positiveIsGood?: boolean;
+  neutral?: boolean;
 }) {
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
@@ -34,7 +60,11 @@ function MacroIndicator({
             {typeof value === "number" && value > 1000 ? value.toLocaleString("en", { maximumFractionDigits: 0 }) : value}
           </span>
           {suffix && <span className="text-xs text-white/30">{suffix}</span>}
-          <DirectionArrow direction={direction} />
+          <DirectionArrow
+            direction={direction}
+            positiveIsGood={positiveIsGood}
+            neutral={neutral}
+          />
         </div>
       ) : (
         <p className="mt-1 text-sm text-white/20">Unavailable</p>
@@ -75,8 +105,10 @@ export default function MacroCard({ data }: MacroCardProps) {
     fxDetail = "Currency stability supports the market";
   }
 
+  // `!= null` rather than truthiness: a flat 0.0% month is real data, and
+  // hiding it reads as "unavailable".
   let egx30Detail: string | undefined;
-  if (egx30?.monthly_change_pct) {
+  if (egx30?.monthly_change_pct != null) {
     egx30Detail = `${egx30.monthly_change_pct > 0 ? "+" : ""}${egx30.monthly_change_pct.toFixed(1)}% this month`;
   }
 
@@ -90,18 +122,21 @@ export default function MacroCard({ data }: MacroCardProps) {
           suffix="%"
           direction={rate?.direction ?? null}
           detail={rateDetail}
+          neutral
         />
         <MacroIndicator
           label="USD/EGP"
           value={usdegp?.value ?? null}
           direction={usdegp?.direction ?? null}
           detail={fxDetail}
+          positiveIsGood={false}
         />
         <MacroIndicator
           label="EGX30 Index"
           value={egx30?.value ?? null}
           direction={egx30?.direction ?? null}
           detail={egx30Detail}
+          positiveIsGood
         />
       </div>
     </div>

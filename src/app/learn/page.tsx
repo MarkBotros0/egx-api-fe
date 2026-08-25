@@ -169,13 +169,13 @@ export default function LearnPage() {
             id="entry_exit_zones"
             title="Entry & Exit Zones"
             definition="An entry zone is a price band near support where momentum is NOT overbought — a beginner-friendly buy setup. An exit zone is a band near resistance where momentum IS overbought — a cue to trim, take partial profits, or tighten your stop-loss. Each zone has a confidence tier (low / medium / high) based on how strong the level is and how extreme the momentum reading is."
-            whyItMatters="Support/resistance levels alone can mislead — a stock can sit at support and keep dropping. Combining the level with a momentum filter (RSI not overbought for entries, RSI overbought for exits) filters out weaker setups. The result is fewer but higher-quality decisions, which is exactly what a beginner needs. Low confidence = a hint to watch; high confidence = a setup worth acting on."
+            whyItMatters="Support/resistance levels alone can mislead — a stock can sit at support and keep dropping. Combining the level with a momentum filter (RSI not overbought for entries, RSI overbought for exits) filters out weaker setups. The result is fewer but higher-quality decisions, which is exactly what a beginner needs. Low confidence = a hint to watch; high confidence = a setup worth acting on. Note the zones use tighter RSI cutoffs than the classic 30/70 lines drawn on the RSI chart: an entry is vetoed once RSI reaches 65, and an exit can trigger from 65 upward. So a zone can fire without the RSI panel showing a crossed line — that is deliberate, not a mismatch."
             howToUse="Look at the Entry / Exit Zones card on the stock detail page, and the zone pills on the portfolio holdings table. When an entry zone is active, it shows the buy price band and a suggested stop-loss (1.5× ATR below support). When an exit zone is active, it shows the trim band. Pair this with the 6-step decision framework below — always check the macro and composite score first, never enter a zone blindly, and set your stop-loss before you buy."
           />
           <Concept
             title="Fibonacci Retracement"
             definition="Fibonacci levels (23.6%, 38.2%, 50%, 61.8%, 78.6%) are derived from the mathematical Fibonacci sequence. They mark potential support/resistance levels between a recent high and low."
-            whyItMatters="The 61.8% level (the 'golden ratio') is considered the strongest retracement level. Many traders watch Fibonacci levels for entry points during pullbacks in an uptrend."
+            whyItMatters="The 61.8% level (the 'golden ratio') is considered the strongest retracement level. Many traders watch Fibonacci levels for entry points during pullbacks in an uptrend. Direction matters: in an uptrend the levels are measured DOWN from the recent high, and in a downtrend UP from the recent low, because a retracement always runs back toward where the move started."
             howToUse="Fibonacci levels appear as gold dashed lines on the price chart. In an uptrend, if the price pulls back to the 38.2% or 61.8% level and bounces, it's often a good entry point. If it falls below the 78.6% level, the uptrend may be over."
           />
           <Concept
@@ -183,7 +183,7 @@ export default function LearnPage() {
             title="ATR — Average True Range"
             definition="ATR measures the average daily price movement (including gaps), calculated over the last 14 days. If ATR is 3.5 EGP, the stock typically moves 3.5 EGP per day."
             whyItMatters="ATR is essential for setting stop-losses. Setting a stop-loss within 1x ATR means you'll likely get stopped out by normal price noise. A stop-loss at 1.5-2x ATR gives the trade room to breathe."
-            howToUse="Check the ATR value in the stats panel. Set your stop-loss at least 1.5x ATR below your entry price. Example: if you buy at 100 EGP and ATR is 4 EGP, set your stop at 94 EGP (100 - 1.5 × 4). The advice panel will suggest specific stop-loss distances based on ATR."
+            howToUse="Check the ATR value in the stats panel. This app places every suggested stop at 1.5x ATR below the nearest SUPPORT level — not below your entry price — so the number is the same whatever price you happened to pay, and it sits under the level buyers have defended before. Example: support is 98 EGP and ATR is 4 EGP, so the stop goes at 92 EGP (98 - 1.5 × 4). The Entry Zone and Max Buy Price cards both show this exact figure."
           />
           <Concept
             id="obv"
@@ -204,6 +204,13 @@ export default function LearnPage() {
             definition="Multi-timeframe analysis compares signals on different chart intervals (e.g., Daily and Weekly) to determine if a trend is genuine or just short-term noise. When both timeframes agree, the signal is much stronger."
             whyItMatters="A stock that looks bullish on a daily chart may actually be in a downtrend on the weekly chart — you'd be buying a temporary bounce inside a larger decline. When daily and weekly trends align (both bullish or both bearish), the probability of success is significantly higher."
             howToUse="Look for the alignment badge on the stock detail page (e.g., 'Daily + Weekly aligned (bullish)'). When you see this, any buy signal from RSI, MACD, or ADX is more reliable. When you see 'Daily bullish vs Weekly bearish — mixed signals', be cautious: you may be trading against the larger trend. Reduce position size or wait for the weekly trend to turn."
+          />
+          <Concept
+            id="which_interval"
+            title="Which interval should I follow?"
+            definition="The Daily / Weekly / Monthly buttons on the stock detail page change the size of each bar. Every indicator and the composite score are then recalculated on that timeframe, so the numbers genuinely change — a Daily RSI measures the last ~2 weeks of momentum, a Weekly RSI the last ~3 months. Neither is 'the real one'; they answer different questions."
+            whyItMatters="Seeing the score move when you tap Weekly is not an error, but it does mean you have to know which reading you are acting on. Traders lose money by checking a long timeframe, getting excited, and then entering on a short-term spike — or by panic-selling a daily dip inside a healthy multi-year uptrend."
+            howToUse="Use DAILY as your primary view: it is the best-supported timeframe in this app and the one all entry zones, stop-losses and portfolio signals are built on. Use WEEKLY to check the bigger trend before you commit — if weekly is falling, be far more demanding of a daily buy signal. MONTHLY is context only: a 200-month average needs 16 years of history, so some score categories have less to work with there. The rule of thumb: the longer timeframe decides WHETHER to buy, the daily decides WHEN. When they disagree, respect the longer one and wait."
           />
           <Concept
             id="stochastic"
@@ -246,7 +253,7 @@ export default function LearnPage() {
           <Concept
             id="composite_score"
             title="What is the Composite Score?"
-            definition="The Composite Score is a single 0–100 number that blends EIGHT technical categories — Trend, Momentum, Volume, Volatility, Divergence, Quality, Risk-Adjusted, and Relative Strength — into one glanceable signal. Scores translate to signals: 0–20 Strong Sell, 21–40 Sell, 41–60 Hold, 61–80 Buy, 81–100 Strong Buy. A macro modulation is then applied on top: scores get dampened when the overall market (EGX30) is in a bearish regime."
+            definition="The Composite Score is a single 0–100 number that blends EIGHT technical categories — Trend, Momentum, Volume, Volatility, Divergence, Quality, Risk-Adjusted, and Relative Strength — into one glanceable signal. Scores translate to signals: below 20 Strong Sell, 20–39 Sell, 40–59 Hold, 60–79 Buy, 80 and above Strong Buy. A macro modulation is then applied on top: in a bearish EGX30 regime the whole range shifts down — bullish scores are damped toward neutral and weak scores pushed lower. In a bullish or sideways market the score is left exactly as computed."
             whyItMatters="Looking at 20+ indicators individually and reaching a coherent conclusion is hard, especially for new investors. The composite score does this blending for you and factors in whether your stock is actually beating the Egyptian T-bill rate, whether it's leading the market, and whether the broader EGX30 trend supports buying. It turns complex data into one actionable read."
             howToUse="Find the composite score on every stock detail page (the circular gauge at the top), on portfolio holding rows, and as an average across your whole portfolio. Use it as a first filter: only research stocks scoring above 60 (Buy) if you are looking for longs. Use it as a quick health check: a portfolio average below 40 means most of your holdings have deteriorating technicals."
           />
@@ -329,7 +336,7 @@ export default function LearnPage() {
           <Concept
             id="decision_step_stop"
             title="Step 5 — Set Your Stop-Loss BEFORE Buying"
-            definition="Decide the exact price at which you'll exit if the trade goes against you. Use the ATR suggestion from the advice panel: set stop 1.5–2x ATR below entry. Enter this stop-loss value when adding the stock to your portfolio."
+            definition="Decide the exact price at which you'll exit if the trade goes against you. Use the figure the app already computed: 1.5x ATR below the nearest support, shown on the Entry Zone and Max Buy Price cards. Enter this stop-loss value when adding the stock to your portfolio, and the app will alert you when price reaches it."
             whyItMatters="Without a stop-loss, small losses become catastrophic. You MUST decide your exit plan before you buy — because after you buy, emotions (hope, fear) will override logic. A pre-committed stop-loss protects you from yourself."
             howToUse="Example: buying at 100 EGP, ATR is 3 EGP → stop-loss at 94-95 EGP (about 5% below). Accept that you may get stopped out by normal volatility; that's fine. A stopped-out small loss is much better than a no-stop catastrophic loss."
           />

@@ -325,6 +325,12 @@ export default function Dashboard() {
                         sparklineData={pd?.sparkline}
                         compositeSignal={cd?.signal ?? null}
                         interval={showComposite ? compositeInterval : undefined}
+                        // The price change comes from the same batch call as
+                        // the signal, so it is a change over ONE BAR of the
+                        // selected interval — a month-over-month move on
+                        // "Monthly". Without this the card silently changed
+                        // what its percentage meant.
+                        changeInterval={showComposite ? compositeInterval : "Daily"}
                       />
                     );
                   })}

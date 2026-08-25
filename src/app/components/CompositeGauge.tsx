@@ -5,6 +5,7 @@ import {
   SCORE_HOLD_MAX,
   SCORE_SELL_MAX,
   SCORE_STRONG_SELL_MAX,
+  scoreBand,
 } from "../lib/constants";
 import type { CompositeSignal } from "../lib/types";
 
@@ -33,13 +34,29 @@ function lerpColor(a: string, b: string, t: number): string {
   return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, "0")}`;
 }
 
+/**
+ * Colour for a composite score.
+ *
+ * Bands are lower-bound-inclusive, matching `scoreBand` and the backend's
+ * `classify_signal`. The previous version compared with `<=`, which put
+ * every boundary score in the band BELOW its label — a score of 60 drew an
+ * amber "Hold" ring under a green BUY badge, and a 20 fired the Strong-Sell
+ * red plus its pulse animation next to a SELL badge.
+ */
 export function scoreColor(score: number): string {
-  // 0 → deep red, 40 → red/orange, 50 → amber, 60 → green, 100 → bright green
-  if (score <= SCORE_STRONG_SELL_MAX) return "#ff3355";
-  if (score <= SCORE_SELL_MAX) return lerpColor("#ff3355", "#ff6644", (score - SCORE_STRONG_SELL_MAX) / (SCORE_SELL_MAX - SCORE_STRONG_SELL_MAX));
-  if (score <= SCORE_HOLD_MAX) return lerpColor("#ff6644", "#ffaa00", (score - SCORE_SELL_MAX) / (SCORE_HOLD_MAX - SCORE_SELL_MAX));
-  if (score <= SCORE_BUY_MAX) return lerpColor("#ffaa00", "#00cc66", (score - SCORE_HOLD_MAX) / (SCORE_BUY_MAX - SCORE_HOLD_MAX));
-  return lerpColor("#00cc66", "#00ff88", (score - SCORE_BUY_MAX) / (100 - SCORE_BUY_MAX));
+  switch (scoreBand(score)) {
+    case "strong_sell":
+      // 0 → deep red, approaching the Sell hue at 20
+      return lerpColor("#ff3355", "#ff6644", score / SCORE_STRONG_SELL_MAX);
+    case "sell":
+      return lerpColor("#ff6644", "#ffaa00", (score - SCORE_STRONG_SELL_MAX) / (SCORE_SELL_MAX - SCORE_STRONG_SELL_MAX));
+    case "hold":
+      return lerpColor("#ffaa00", "#c8b400", (score - SCORE_SELL_MAX) / (SCORE_HOLD_MAX - SCORE_SELL_MAX));
+    case "buy":
+      return lerpColor("#00cc66", "#00e07a", (score - SCORE_HOLD_MAX) / (SCORE_BUY_MAX - SCORE_HOLD_MAX));
+    case "strong_buy":
+      return lerpColor("#00e07a", "#00ff88", Math.min(1, (score - SCORE_BUY_MAX) / (100 - SCORE_BUY_MAX)));
+  }
 }
 
 const SIZES = {
@@ -66,7 +83,9 @@ export default function CompositeGauge({
   const pct = hasScore ? Math.max(0, Math.min(100, score as number)) / 100 : 0;
   const dashOffset = circumference * (1 - pct);
 
-  const pulsing = hasScore && (score as number) <= SCORE_STRONG_SELL_MAX;
+  // Only a genuine Strong Sell (below 20) gets the alarm animation. `<=`
+  // fired it at exactly 20, which the backend classifies as plain "Sell".
+  const pulsing = hasScore && scoreBand(score as number) === "strong_sell";
   const label = showLabel ?? size !== "sm";
 
   return (

@@ -54,14 +54,46 @@ export const COMPARE_DEFAULT_LOOKBACK_MONTHS = 6;
 export const SR_LEVELS_DISPLAYED = 3;
 
 // === Composite Score thresholds ===
-// Mirrors the backend signal cutoffs: Strong Sell ≤20, Sell ≤40,
-// Hold ≤60, Buy ≤80, Strong Buy >80. Keep in sync with
-// SCORE_*_MAX in egx-api-be/app/core/constants.py.
+// Bands are HALF-OPEN with the LOWER bound inclusive, exactly matching
+// `classify_signal` in egx-api-be/app/core/composite.py:
+//
+//   Strong Sell  < 20        Sell  20–39.99      Hold  40–59.99
+//   Buy          60–79.99    Strong Buy  ≥ 80
+//
+// The names read as "max" for historical reasons but each value is really
+// the MINIMUM of the band above it. Using `<=` against them (as the gauge
+// once did) shifts every band down by one: a score of exactly 60 would
+// render Hold-amber while its badge said BUY.
+// Keep in sync with SCORE_*_MAX in egx-api-be/app/core/constants.py.
 
 export const SCORE_STRONG_SELL_MAX = 20;
 export const SCORE_SELL_MAX = 40;
 export const SCORE_HOLD_MAX = 60;
 export const SCORE_BUY_MAX = 80;
+
+export type ScoreBand = "strong_sell" | "sell" | "hold" | "buy" | "strong_buy";
+
+/**
+ * The one place a score becomes a band. Every colour, label and style in
+ * the app derives from this so they cannot disagree at a boundary.
+ * Mirrors the backend's `>=` comparison order.
+ */
+export function scoreBand(score: number): ScoreBand {
+  if (score >= SCORE_BUY_MAX) return "strong_buy";
+  if (score >= SCORE_HOLD_MAX) return "buy";
+  if (score >= SCORE_SELL_MAX) return "hold";
+  if (score >= SCORE_STRONG_SELL_MAX) return "sell";
+  return "strong_sell";
+}
+
+/** Human-readable label per band — matches the backend `signal` string. */
+export const SCORE_BAND_LABEL: Record<ScoreBand, string> = {
+  strong_sell: "Strong Sell",
+  sell: "Sell",
+  hold: "Hold",
+  buy: "Buy",
+  strong_buy: "Strong Buy",
+};
 
 // === Risk dashboard thresholds ===
 

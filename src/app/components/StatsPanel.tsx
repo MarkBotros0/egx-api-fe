@@ -91,7 +91,7 @@ export default function StatsPanel({
           tooltip={{
             term: "52-Week High",
             explanation:
-              "The highest closing price in the last 252 trading days (~1 year). Stocks near their 52-week high have strong momentum but may face resistance.",
+              "The highest price reached in the last 252 trading days (~1 year), including intraday highs. This window is fixed — changing the chart's bar count doesn't change it. Stocks near their 52-week high have strong momentum but may face resistance.",
           }}
         />
         <StatRow
@@ -100,7 +100,7 @@ export default function StatsPanel({
           tooltip={{
             term: "52-Week Low",
             explanation:
-              "The lowest closing price in the last year. Stocks near their 52-week low may be undervalued or may have fundamental problems — investigate before buying.",
+              "The lowest price reached in the last year, including intraday lows. Stocks near their 52-week low may be undervalued or may have fundamental problems — investigate before buying.",
           }}
         />
         <StatRow
@@ -132,12 +132,12 @@ export default function StatsPanel({
         )}
         {latestVolatility != null && (
           <StatRow
-            label="Volatility (20d)"
+            label="Volatility (20d daily)"
             value={`${(latestVolatility * 100).toFixed(2)}%`}
             tooltip={{
-              term: "Volatility",
+              term: "Volatility (daily)",
               explanation:
-                "Measures how much the price fluctuates day-to-day. High volatility = more risk but also more potential reward. Calculated as the standard deviation of daily returns.",
+                "A typical ONE-DAY move, measured as the standard deviation of daily returns over the last 20 days. The Risk-Adjusted category in the score breakdown quotes an ANNUALIZED figure instead — roughly this number times 16 — so the two look very different for the same stock. High volatility = more risk but also more potential reward.",
             }}
           />
         )}
@@ -160,10 +160,19 @@ export default function StatsPanel({
             tooltip={{
               term: "Beta vs EGX30",
               explanation:
-                "Measures how much this stock moves relative to the EGX30 index. Beta > 1 = more volatile than market. Beta < 1 = less volatile. Beta = 1 = moves with the market.",
+                "Measures how much this stock moves relative to the EGX30 index. Beta > 1 = more volatile than market. Beta < 1 = less volatile. Beta = 1 = moves with the market. A negative beta means it tends to move in the OPPOSITE direction to the index — its size still tells you how big those moves are.",
             }}
+            // Volatility is about magnitude: a beta of -2.10 is twice as
+            // volatile as the index, so testing the raw value painted it
+            // green as "less volatile than the market".
             color={
-              beta > 1.3 ? "text-loss" : beta < 0.8 ? "text-gain" : undefined
+              Math.abs(beta) > 1.3
+                ? "text-loss"
+                : beta < 0
+                ? "text-accent"
+                : beta < 0.8
+                ? "text-gain"
+                : undefined
             }
           />
         )}
@@ -174,7 +183,7 @@ export default function StatsPanel({
             tooltip={{
               term: "ATR — Average True Range",
               explanation:
-                "Measures average daily price movement. Use it to set stop-losses: 1.5-2x ATR below your entry avoids being stopped out by normal noise.",
+                "Measures average daily price movement. Use it to set stop-losses: this app places them 1.5x ATR below the nearest support level, far enough that normal daily noise won't stop you out. The Entry Zone and Max Buy Price cards show the exact figure.",
             }}
           />
         )}

@@ -6,7 +6,7 @@ import PriceChart from "../../components/PriceChart";
 import VolumeChart from "../../components/VolumeChart";
 import IndicatorPanel from "../../components/IndicatorPanel";
 import StatsPanel from "../../components/StatsPanel";
-import CompositeGauge from "../../components/CompositeGauge";
+import CompositeGauge, { scoreColor } from "../../components/CompositeGauge";
 import ScoreBreakdown from "../../components/ScoreBreakdown";
 import KeyLevelsCard from "../../components/KeyLevelsCard";
 import EntryExitCard from "../../components/EntryExitCard";
@@ -95,6 +95,9 @@ export default function StockDetailPage() {
       volume: data.ohlcv.volume[i],
       close: data.ohlcv.close[i],
       open: data.ohlcv.open[i],
+      // Bars are coloured by close-vs-previous-close, matching how the
+      // price change and every other up/down cue in the app is defined.
+      prevClose: i > 0 ? data.ohlcv.close[i - 1] : undefined,
     }));
   }, [data]);
 
@@ -149,7 +152,19 @@ export default function StockDetailPage() {
 
         {/* Controls — scrollable pills on mobile */}
         <div className="mb-4 space-y-2 overflow-x-auto no-scrollbar md:space-y-0 md:flex md:flex-wrap md:items-center md:gap-3">
-          <div className="flex gap-1.5">
+          {/* Switching interval re-computes every indicator AND the composite
+              score on that timeframe — the numbers are supposed to differ.
+              Say so, because a changing score with no explanation reads as a
+              bug and leaves the user unsure which one to act on. */}
+          <div className="flex items-center gap-1.5">
+            <LearnTooltip
+              term="Chart interval"
+              explanation="Changes the bar size, and with it every indicator and the composite score. A Daily RSI reads the last ~2 weeks of momentum; a Weekly RSI reads ~3 months. Both are valid — they answer different questions. Use Daily for timing an entry or exit, and Weekly or Monthly to check the bigger trend you're trading with or against. When they disagree, the longer timeframe sets the context and the shorter one sets the timing. Monthly has the least history to work with (a 200-month average needs 16 years), so some categories score from fewer inputs there."
+            >
+              <span className="text-[10px] uppercase tracking-wider text-white/30">
+                Interval
+              </span>
+            </LearnTooltip>
             {INTERVALS.map((iv) => (
               <button
                 key={iv}
@@ -281,18 +296,27 @@ export default function StockDetailPage() {
                         <div className="text-[10px] uppercase tracking-wider text-white/40">
                           Composite Signal
                         </div>
+                        {/* Same colour function as the gauge ring above, so
+                            the signal text and the ring can never disagree.
+                            An inline mapping here used to paint "Hold" in
+                            loss-red at a score of exactly 40. */}
                         <div
                           className="font-mono text-base font-semibold"
-                          style={{
-                            color:
-                              data.composite_score.score >= 60
-                                ? "#00ff88"
-                                : data.composite_score.score <= 40
-                                ? "#ff3355"
-                                : "#ffaa00",
-                          }}
+                          style={{ color: scoreColor(data.composite_score.score) }}
                         >
                           {data.composite_score.signal}
+                        </div>
+                        {/* Name the timeframe on the score itself. The number
+                            changes with the interval pills, and without a
+                            label there is no way to tell which reading you
+                            are looking at. */}
+                        <div className="mt-1 text-[10px] text-white/30">
+                          on {interval.toLowerCase()} bars
+                          {interval !== "Daily" && (
+                            <span className="block text-white/25">
+                              Daily is the primary view for timing
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

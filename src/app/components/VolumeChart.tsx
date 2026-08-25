@@ -16,6 +16,8 @@ interface VolumeDataPoint {
   volume: number;
   close: number;
   open: number;
+  /** Previous session's close — drives the up/down colouring. */
+  prevClose?: number;
 }
 
 interface VolumeChartProps {
@@ -64,12 +66,21 @@ export default function VolumeChart({ data, height = 120 }: VolumeChartProps) {
             labelStyle={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}
           />
           <Bar dataKey="volume" radius={[2, 2, 0, 0]}>
-            {data.map((d, i) => (
-              <Cell
-                key={i}
-                fill={d.close >= d.open ? "rgba(0,255,136,0.5)" : "rgba(255,51,85,0.5)"}
-              />
-            ))}
+            {data.map((d, i) => {
+              // An "up day" is close vs the PREVIOUS close — the definition
+              // used by the price change, the sparkline and the backend's
+              // volume/price confirmation. Comparing against the same day's
+              // open instead painted a gap-down session that recovered off
+              // its low green, directly under a falling price line.
+              const reference = d.prevClose ?? data[i - 1]?.close ?? d.open;
+              const up = d.close >= reference;
+              return (
+                <Cell
+                  key={i}
+                  fill={up ? "rgba(0,255,136,0.5)" : "rgba(255,51,85,0.5)"}
+                />
+              );
+            })}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

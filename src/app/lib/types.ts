@@ -358,7 +358,8 @@ export interface HoldingAnalysis {
   pnl: number;
   pnl_pct: number;
   days_held: number;
-  annualized_return: number;
+  /** Null until ~30 days held — annualizing a shorter window is meaningless. */
+  annualized_return: number | null;
   rsi: number | null;
   sma_50: number | null;
   above_sma: boolean | null;
@@ -454,6 +455,9 @@ export interface PortfolioMetrics {
   total_current_value: number;
   total_pnl: number;
   total_pnl_pct: number;
+  /** Cost basis of holdings left out of every total because pricing failed. */
+  excluded_invested: number;
+  excluded_count: number;
   sector_allocation: Record<string, number>;
   stock_concentration: Record<string, number>;
   diversification_score: number;
@@ -470,8 +474,20 @@ export interface PortfolioMetrics {
   avg_correlation: number | null;
 }
 
+export interface ExcludedHolding {
+  symbol: string;
+  invested: number;
+  error: string;
+}
+
 export interface PortfolioAnalysisResponse {
   holdings: HoldingAnalysis[];
+  /**
+   * Holdings whose market data could not be fetched. Their cost basis is
+   * NOT in total_invested — counting cost with no matching value would
+   * fabricate a loss — so totals describe only the rest of the portfolio.
+   */
+  excluded_holdings: ExcludedHolding[];
   portfolio_metrics: PortfolioMetrics;
   correlation_matrix: CorrelationMatrix | null;
   monte_carlo: MonteCarloResult | null;
