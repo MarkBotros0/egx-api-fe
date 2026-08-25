@@ -30,7 +30,9 @@ export default function StockDetailPage() {
   const symbol = (params.symbol as string).toUpperCase();
   const { add, remove, has } = useWatchlist();
 
-  // Dashboard cards pass ?interval=Weekly|Monthly so scores match the card
+  // Dashboard cards pass ?interval=Weekly|Monthly so the detail page opens on
+  // the same timeframe the card was scored on. Daily is the fallback and the
+  // normal case — the dashboard itself always starts on Daily now.
   const initialInterval = (() => {
     const q = searchParams.get("interval");
     return q && INTERVALS.includes(q) ? q : "Daily";

@@ -34,14 +34,19 @@ export default function Dashboard() {
   const [compositeInterval, setCompositeInterval] =
     useState<CompositeInterval>("Daily");
 
-  // Hydrate toggle + interval from localStorage on mount (client-only).
+  // Hydrate the on/off toggle from localStorage (client-only).
+  //
+  // The INTERVAL is deliberately NOT restored. It used to be, which meant one
+  // tap on "Monthly" stuck permanently: every later visit reopened on Monthly,
+  // and the cards linked to stock pages with ?interval=Monthly, so the whole
+  // app silently sat on the least reliable timeframe. Daily is the view every
+  // entry zone, stop-loss and portfolio signal is built on, so each session
+  // now starts there and switching is an explicit, per-session choice.
   useEffect(() => {
     const enabled = window.localStorage.getItem(LS_COMPOSITE_ENABLED);
     if (enabled === "false") setShowComposite(false);
-    const iv = window.localStorage.getItem(LS_COMPOSITE_INTERVAL);
-    if (iv && (COMPOSITE_INTERVALS as readonly string[]).includes(iv)) {
-      setCompositeInterval(iv as CompositeInterval);
-    }
+    // Clear the old preference so it stops lingering in existing browsers.
+    window.localStorage.removeItem(LS_COMPOSITE_INTERVAL);
   }, []);
   const [priceData, setPriceData] = useState<
     Record<string, { price: number; change: number; changePct: number; sparkline: number[] }>
@@ -91,9 +96,9 @@ export default function Dashboard() {
     });
   };
 
+  // Not persisted — see the mount effect above. Resets to Daily next visit.
   const pickInterval = (iv: CompositeInterval) => {
     setCompositeInterval(iv);
-    window.localStorage.setItem(LS_COMPOSITE_INTERVAL, iv);
   };
 
   // Reset caches when user saves new weights, hits refresh, toggles score, or changes interval
@@ -270,7 +275,7 @@ export default function Dashboard() {
               >
                 <LearnTooltip
                   term={`Signal: ${showComposite ? "On" : "Off"}`}
-                  explanation="Turns on the Buy / Hold / Sell badge on each card. The signal is computed from the composite score on the interval you pick — Daily, Weekly, or Monthly. Open any card to see the full 8-category breakdown on the detail page."
+                  explanation="Turns on the Buy / Hold / Sell badge on each card. Signals are computed on DAILY bars, which is the timeframe every entry zone, stop-loss and portfolio alert is built on. You can switch to Weekly or Monthly to check the bigger trend, but that resets to Daily next visit so you always start from the most reliable view."
                 >
                   <span>Signal: {showComposite ? "On" : "Off"}</span>
                 </LearnTooltip>
@@ -281,6 +286,11 @@ export default function Dashboard() {
                     <button
                       key={iv}
                       onClick={() => pickInterval(iv)}
+                      title={
+                        iv === "Daily"
+                          ? "Daily — the primary view; entry zones, stop-losses and portfolio alerts all use it"
+                          : `${iv} — trend context only. Resets to Daily next visit.`
+                      }
                       className={`min-h-[36px] whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                         compositeInterval === iv
                           ? "bg-accent/20 text-accent"
@@ -291,6 +301,14 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
+              )}
+              {/* Say plainly when the grid is NOT showing the primary view —
+                  otherwise a whole page of less-reliable signals looks
+                  identical to a page of daily ones. */}
+              {showComposite && compositeInterval !== "Daily" && (
+                <span className="whitespace-nowrap text-[10px] text-[#ffaa00]">
+                  Showing {compositeInterval.toLowerCase()} signals — trend context, not entry timing
+                </span>
               )}
             </div>
 
