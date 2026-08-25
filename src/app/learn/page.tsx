@@ -265,6 +265,13 @@ export default function LearnPage() {
             howToUse="Find it on every stock detail page (the circular gauge at the top), on portfolio holding rows, and averaged across your portfolio. Use it to ORIENT, not to decide: tap into the categories and read the reasons, which are checkable statements about the stock today. Treat the number itself as a starting point for research, never as the research."
           />
           <Concept
+            id="market_condition"
+            title="Market Condition — the one thing that did forecast"
+            definition="The average composite score across the EGX30 and EGX70 constituents, shown on the dashboard. It is a reading of how broadly healthy the market is right now — not a call on any individual stock."
+            whyItMatters="The per-stock score cannot rank one stock above another. But the market-wide AVERAGE of those same scores does carry information about the market itself: measured over 221 monthly readings from 2007 to 2026, it had a rank correlation of +0.32 with the EGX30's next three months, across 74 independent periods. Cross-sectional ranking and market-level condition are different questions, and the score answers the second one far better than the first."
+            howToUse="Read it as a caution signal rather than a green light. When the reading has been in the bottom third (below 45), the next three months averaged roughly nothing and were positive only about half the time. Above that, they were positive around seven times in ten — but the middle and top bands are not meaningfully different from each other, so treat it as weak-versus-not rather than a dial. Use it to decide whether to deploy cash now or wait, never to pick which stock to buy. And note the base rate: the EGX rose a lot over this window in EGP terms, so 'weak' means flat, not falling."
+          />
+          <Concept
             id="score_limits"
             title="What the Score Cannot Do"
             definition="The composite score was tested against 19 years of EGX history (2007–2026, ~37,000 observations) to see whether higher scores were followed by better returns. They were not. Sorted into ten buckets by score, nine of the ten had a median 21-day forward return of exactly 0.00%, and the highest-scoring bucket had the most negative median of all."

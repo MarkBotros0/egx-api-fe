@@ -259,3 +259,27 @@ export async function fetchPEFeedStatus(): Promise<PEFeedStatus> {
     last_attempt_status: data.last_attempt_status ?? null,
   };
 }
+
+// ---- Market condition reading ----
+
+export interface MarketRegime {
+  mean_score: number | null;
+  n_symbols: number;
+  band: "weak" | "mixed" | "broad" | null;
+  label: string;
+  summary: string;
+  horizon_days: number;
+  hist_median_3m_pct?: number;
+  hist_positive_rate?: number;
+  observations?: number;
+  association_rho?: number;
+  association_n?: number;
+  universe_size?: number;
+  stale?: boolean;
+  observed_at?: string;
+  n_symbols_now?: number;
+}
+
+export async function fetchMarketRegime(): Promise<MarketRegime> {
+  return fetchJSON<MarketRegime>(`${BASE}/market_regime`);
+}

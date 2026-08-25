@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import StockCard from "./components/StockCard";
 import IndexFilter from "./components/IndexFilter";
+import MarketRegimeCard from "./components/MarketRegimeCard";
 import SectorFilter from "./components/SectorFilter";
 import WatchlistPanel, { useWatchlist } from "./components/Watchlist";
 import { useTickers } from "./components/TickersProvider";
@@ -369,9 +370,12 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Watchlist sidebar */}
+          {/* Sidebar: market condition, then watchlist */}
           <div className="w-full lg:w-80">
-            <div className="lg:sticky lg:top-[72px]">
+            <div className="space-y-4 lg:sticky lg:top-[72px]">
+              {/* Sits above the watchlist because it frames everything below
+                  it: it is about the market, not any one stock. */}
+              <MarketRegimeCard />
               <WatchlistPanel tickers={tickers} priceData={priceData} />
             </div>
           </div>
