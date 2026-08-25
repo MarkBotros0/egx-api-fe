@@ -94,9 +94,16 @@ export default function LearnPage() {
           <Concept
             id="pe_ratio"
             title="P/E Ratio — Price-to-Earnings"
-            definition="How many EGP investors are paying for every 1 EGP of annual profit. Pulled from egx.com.eg and refreshed nightly. A P/E of 15 means you pay 15 EGP today for each 1 EGP the company earns in a year."
-            whyItMatters="P/E is the single most-watched valuation number. Low P/E can mean the stock is cheap — or that the market expects earnings to fall. High P/E can mean a quality growth story — or an expensive stock about to disappoint. Context matters in Egypt: with T-bills paying ~25% risk-free, a P/E above 20 needs strong growth to be worth it versus just holding cash."
-            howToUse="Treat P/E as a sanity check, not a standalone signal. Below 10 in Egypt is noticeably cheap; 10–20 is fair value; 20–30 is fully valued; above 30 is expensive and only justified by strong, confirmed growth. Negative P/E means the company is loss-making — earnings-based valuation doesn't apply, lean on trend and relative strength instead."
+            definition="How many EGP investors are paying for every 1 EGP of annual profit, refreshed nightly. A P/E of 12 means you pay 12 EGP today for each 1 EGP the company earns in a year. Only about a fifth of EGX stocks publish enough for a trailing P/E, so a dash simply means no data — not that the company is bad."
+            whyItMatters="P/E is the most-watched valuation number, but only relative to its own market. The EGX median is about 12, far below what you would see in the US or Europe, so a P/E of 14 is roughly average here even though it would look cheap elsewhere. Judging EGX stocks by foreign yardsticks makes almost everything look like a bargain."
+            howToUse="Compare against the EGX median of ~12, not against 'low means cheap'. Under 8 is genuinely cheap for this market; 8–15 is around average; 15–25 is on the expensive side; above 25 needs confirmed growth to justify. Below 3 is a WARNING, not a bargain — it almost always means one-off earnings or a share price that has already collapsed. When a company is loss-making the app says so directly instead of quoting a P/E; lean on trend and relative strength there."
+          />
+          <Concept
+            id="dividend_yield"
+            title="Dividend Yield — Cash in Hand"
+            definition="The annual dividend as a percentage of the current share price. A 5% yield on a 100 EGP stock means about 5 EGP a year in cash. The EGX median among payers is roughly 3%."
+            whyItMatters="Here is the uncomfortable Egyptian truth: with T-bills near 25%, NO EGX dividend yield is competitive as income. A 7% yield still loses badly to risk-free cash. So do not buy a stock for its dividend. What a steady dividend does tell you is that the company generates real cash and its management is disciplined about returning it — that is much harder to fake than a reported profit, which is why it feeds the Quality score."
+            howToUse="Read yield as evidence of quality, never as income. Around 3% is typical; 4–8% is a genuinely strong payer. Above 15% is a red flag rather than a prize — it is usually a one-off special dividend, or the yield only looks high because the share price collapsed. Always check whether the payout recurs before counting on it. A company paying nothing is not being penalised; plenty of good growth companies reinvest instead."
           />
         </Section>
 
@@ -259,7 +266,7 @@ export default function LearnPage() {
           />
           <Concept
             title="The Eight Score Categories"
-            definition="Trend: price vs SMAs, ADX, golden/death cross. Momentum: RSI, MACD, Stochastic. Volume: OBV, MFI, volume-price confirmation. Volatility: Bollinger Bands position and squeeze. Divergence: RSI/MACD divergence vs price. Quality: trend consistency + multi-timeframe alignment + drawdown depth. Risk-Adjusted: annualized return vs the 25% T-bill + ATR context. Relative Strength: alpha vs the EGX30 over 30 days."
+            definition="Trend: price vs SMAs, ADX, golden/death cross. Momentum: RSI, MACD, Stochastic. Volume: OBV, MFI, volume-price confirmation, and tradeable liquidity. Volatility: Bollinger Bands position and squeeze. Divergence: RSI/MACD divergence vs price. Quality: trend consistency + multi-timeframe alignment + distance from the 52-week high + P/E and dividend yield vs the EGX median. Risk-Adjusted: annualized return vs the 25% T-bill + ATR context. Relative Strength: alpha vs the EGX30 over 30 days."
             whyItMatters="The three newer categories — Quality, Risk-Adjusted, and Relative Strength — address the three most expensive beginner mistakes: (1) chasing choppy stocks whose trends flip weekly, (2) holding stocks that underperform cash, and (3) holding market laggards. Each category captures a different dimension; the score is only as confident as the agreement across them."
             howToUse="Tap any category bar in the Score Breakdown to expand its reasons list — plain-language explanations of exactly what's contributing positively or negatively. A stock scoring 70 with all 8 categories contributing is much stronger than a 70 where only 2 categories scored high. Watch for 'N/A' categories on freshly-listed stocks — Risk-Adjusted requires at least 120 days of history."
           />
@@ -278,8 +285,9 @@ export default function LearnPage() {
             howToUse="Before buying any stock, check Relative Strength. If it's a laggard, you need a very specific thesis (e.g., a turnaround catalyst) to justify the purchase. For existing holdings, persistent laggards are candidates for replacement — consider switching to a leader in the same sector."
           />
           <Concept
-            title="Quality — Clean Trends and Recovery"
-            definition="Quality rewards stocks whose trends are SMOOTH (few whipsaws), whose daily and weekly timeframes agree, and which aren't stuck deep in a drawdown. Technically the category combines: fraction of last 20 days closing above the 20-day SMA, multi-timeframe alignment, and current drawdown depth."
+            id="quality"
+            title="Quality — Clean Trends and Sound Value"
+            definition="Quality rewards stocks whose trends are SMOOTH (few whipsaws), whose daily and weekly timeframes agree, which aren't far below their 52-week high, and which are sensibly valued. Technically the category combines: fraction of the last 20 days closing above the 20-day SMA, multi-timeframe alignment, distance from the 52-week high, and — where the data exists — P/E and dividend yield against the EGX median."
             whyItMatters="Choppy stocks are where over-trading losses come from. A stock flipping between +3% and -3% daily will generate constant buy/sell signals and drain you in transaction costs and emotional stress. Clean trends are 'investable'; choppy stocks are traps for beginners."
             howToUse="If Quality is red but Trend is green, you're looking at a stock that recently turned — but its history is messy. Wait for a few weeks of clean trending before committing capital. The Quality category is heavily weighted in the default 'Beginner Safe' preset for exactly this reason."
           />
@@ -386,9 +394,9 @@ export default function LearnPage() {
           <Concept
             id="liquidity"
             title="Liquidity — Can You Get Out?"
-            definition="Liquidity measures how easily you can buy or sell a stock without moving its price. Measured by average daily volume. EGX30 stocks typically trade millions of shares/day; NILEX stocks might trade a few thousand."
-            whyItMatters="Thin liquidity is a beginner trap. In a panic, illiquid stocks have no bid — you may literally be unable to sell at any reasonable price. Wide bid/ask spreads also cost you real money on every trade (sometimes 2-3% round-trip)."
-            howToUse="The app warns you when a stock has thin volume (index-aware: a NILEX stock isn't expected to trade like COMI). If you see the 'low liquidity' warning, keep position size tiny (≤ 2% of portfolio) and use limit orders only. Prefer EGX30/EGX70 names for core positions."
+            definition="Liquidity measures how easily you can buy or sell a stock without moving its price. Measured by average daily volume, and by how many recent sessions had no trading at all. EGX30 stocks typically trade millions of shares/day; NILEX stocks might trade a few thousand."
+            whyItMatters="Thin liquidity is a beginner trap. In a panic, illiquid stocks have no bid — you may literally be unable to sell at any reasonable price. Wide bid/ask spreads also cost you real money on every trade (sometimes 2-3% round-trip). Averages can hide this: a suspended stock with one old block trade can still show a respectable 'average' volume while being untradeable, which is why the app counts dead sessions separately."
+            howToUse="Thin volume now lowers the Volume part of the composite score, and the comparison is index-aware — a NILEX stock isn't expected to trade like COMI. Normal liquidity earns no bonus; only genuinely untradeable stocks are marked down. If you see a thin-volume warning, keep position size tiny (≤ 2% of portfolio) and use limit orders only. If it says there was no trading on most recent sessions, treat the quoted price as fiction. Prefer EGX30/EGX70 names for core positions."
           />
           <Concept
             id="cash_underperformer"

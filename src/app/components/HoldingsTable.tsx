@@ -5,12 +5,11 @@ import Link from "next/link";
 import type { HoldingAnalysis, EntryExit } from "@/app/lib/types";
 import LearnTooltip from "./LearnTooltip";
 import CompositeGauge from "./CompositeGauge";
+import { peColor as peBandColor } from "@/app/lib/constants";
 
+/** Same bands as StatsPanel and the backend; falls back to a visible neutral. */
 function peColor(pe: number): string {
-  if (pe < 0) return "text-loss";
-  if (pe < 15) return "text-gain";
-  if (pe > 30) return "text-loss";
-  return "text-white/60";
+  return peBandColor(pe) ?? "text-white/60";
 }
 
 function zonePill(entryExit: EntryExit | null | undefined) {
@@ -328,7 +327,7 @@ export default function HoldingsTable({
                   </LearnTooltip>
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  <LearnTooltip term="P/E" explanation="Price-to-Earnings ratio from EGX. Green <15 (cheap/fair), red >30 or negative (expensive/loss-making). Dash = no stored data.">
+                  <LearnTooltip term="P/E" explanation="Price-to-Earnings ratio, judged against the EGX median of about 12. Green under 8 (genuinely cheap here), red at 25 or above (expensive). Under 3 shows neutral, not green — that is usually one-off earnings or a collapsed price, not a bargain. Dash = no stored data.">
                     <span>P/E</span>
                   </LearnTooltip>
                 </th>

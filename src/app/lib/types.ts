@@ -208,14 +208,32 @@ export interface StockForecast {
 }
 
 // ============================================================
-// P/E ratio (nightly EGX scrape)
+// Fundamentals (nightly refresh — see egx-api-be/app/core/pe_fetch.py)
 // ============================================================
 
 export interface PEData {
   company_name: string | null;
+  /** Trailing P/E. Null when the source has none — usually a loss-maker. */
   pe_ratio: number | null;
+  /**
+   * Percent, e.g. 3.12. Zero is REAL data meaning the company pays no
+   * dividend; only null means unknown. Do not conflate the two.
+   */
   dividend_yield: number | null;
+  /** From diluted EPS. The source reports a null P/E, never a negative one. */
+  loss_making?: boolean | null;
   fetched_at: string;
+}
+
+/** Tradeability check — see indicators.liquidity_score. */
+export interface LiquidityInfo {
+  avg_volume: number | null;
+  classification: "thin" | "low" | "normal" | null;
+  thin: boolean;
+  /** Which index tier's volume floors were applied. */
+  index_membership?: string | null;
+  /** Sessions in the last 20 with no trading at all. */
+  dead_sessions?: number | null;
 }
 
 export type CompositeSignal =
@@ -383,6 +401,7 @@ export interface HoldingAnalysis {
   key_levels?: KeyLevels | null;
   entry_exit?: EntryExit | null;
   pe?: PEData | null;
+  liquidity?: LiquidityInfo | null;
   error?: string;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import LearnTooltip from "./LearnTooltip";
+import { DY_SUSPICIOUS_MIN, peColor } from "@/app/lib/constants";
 import type { AnalysisStats, CrossoverInfo, PEData } from "@/app/lib/types";
 
 interface StatsPanelProps {
@@ -183,8 +184,20 @@ export default function StatsPanel({
             tooltip={{
               term: "ATR — Average True Range",
               explanation:
-                "Measures average daily price movement. Use it to set stop-losses: this app places them 1.5x ATR below the nearest support level, far enough that normal daily noise won't stop you out. The Entry Zone and Max Buy Price cards show the exact figure.",
+                "Measures average daily price movement. Use it to set stop-losses: this app places them 1.5x ATR below the nearest support level, far enough that normal daily noise won't stop you out. The Entry Zone card shows the exact figure.",
             }}
+          />
+        )}
+        {pe && pe.loss_making && (
+          <StatRow
+            label="Earnings"
+            value="Loss-making"
+            tooltip={{
+              term: "Loss-making",
+              explanation:
+                "The company reported negative earnings over the last twelve months, so there is no meaningful P/E to quote. Valuation has to lean on trend and relative strength instead.",
+            }}
+            color="text-loss"
           />
         )}
         {pe && pe.pe_ratio != null && (
@@ -194,7 +207,7 @@ export default function StatsPanel({
             tooltip={{
               term: "P/E Ratio",
               explanation:
-                "Price-to-Earnings: how many EGP investors pay for every 1 EGP of annual profit. Egypt context: T-bills pay ~25% risk-free, so a P/E above 20 needs strong growth to be worth it versus cash.",
+                "Price-to-Earnings: how many EGP investors pay for every 1 EGP of annual profit. Judge it against the EGX median of about 12, not against global markets — under 8 is genuinely cheap here, over 25 is expensive. Below 3 is a warning, not a bargain: it usually means one-off earnings or a collapsed share price.",
             }}
             color={peColor(pe.pe_ratio)}
           />
@@ -206,8 +219,11 @@ export default function StatsPanel({
             tooltip={{
               term: "Dividend Yield",
               explanation:
-                "Annual dividends as a percentage of current share price. Compare to the 25% T-bill rate — a 3% dividend yield is small next to risk-free cash in Egypt.",
+                "Annual dividends as a percentage of the current share price. The EGX median is about 3%. Read a healthy yield as evidence the company generates real cash, not as income — even 8% loses to the ~25% T-bill. Above 15% is a red flag: usually a one-off special dividend or a share price that has collapsed.",
             }}
+            color={
+              pe.dividend_yield >= DY_SUSPICIOUS_MIN ? "text-loss" : undefined
+            }
           />
         )}
       </div>
@@ -223,12 +239,6 @@ function formatPE(pe: PEData): string {
   return parts[0] + (parts[1] ? ` · ${parts[1]}` : "");
 }
 
-function peColor(pe: number): string | undefined {
-  if (pe < 0) return "text-loss";
-  if (pe < 15) return "text-gain";
-  if (pe > 30) return "text-loss";
-  return undefined;
-}
 
 function formatVolume(v: number): string {
   if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";

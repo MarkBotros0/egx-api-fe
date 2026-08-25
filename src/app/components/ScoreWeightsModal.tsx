@@ -29,7 +29,7 @@ const CATEGORY_META: Record<
   volume: {
     label: "Volume",
     description:
-      "OBV vs price, Money Flow Index (MFI), and volume-price confirmation.",
+      "OBV vs price, Money Flow Index (MFI), volume-price confirmation, and whether the stock is liquid enough to actually trade.",
   },
   volatility: {
     label: "Volatility",
@@ -42,7 +42,7 @@ const CATEGORY_META: Record<
   quality: {
     label: "Quality",
     description:
-      "Trend consistency, multi-timeframe alignment, and drawdown depth.",
+      "Trend consistency, multi-timeframe alignment, distance from the 52-week high, plus valuation: P/E and dividend yield versus the EGX median.",
   },
   risk_adjusted: {
     label: "Risk-Adjusted",

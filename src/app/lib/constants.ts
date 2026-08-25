@@ -95,6 +95,39 @@ export const SCORE_BAND_LABEL: Record<ScoreBand, string> = {
   strong_buy: "Strong Buy",
 };
 
+// === Fundamentals (P/E and dividend yield) ===
+// Bands mirror `score_quality` in egx-api-be/app/core/composite.py and are
+// centred on the EGX MEDIAN (P/E ~12.4), not on a developed-market notion of
+// cheap. The old frontend cut-offs (<15 green, >30 red) were a band apart
+// from the backend's, so a stock could render green while the score marked it
+// down. Keep both in sync.
+
+/** Below this, a P/E is implausible rather than cheap — verify the earnings. */
+export const PE_IMPLAUSIBLY_LOW = 3;
+/** Cheap versus the EGX median. */
+export const PE_CHEAP_MAX = 8;
+/** Around the EGX median (~12.4). */
+export const PE_MEDIAN_MAX = 15;
+/** Above this a P/E is expensive for this market. */
+export const PE_EXPENSIVE_MIN = 25;
+
+/**
+ * Tailwind class for a trailing P/E, or undefined for the neutral middle.
+ * One definition — StatsPanel and HoldingsTable both had their own copy.
+ */
+export function peColor(pe: number): string | undefined {
+  if (pe < PE_IMPLAUSIBLY_LOW) return "text-white/60";
+  if (pe < PE_CHEAP_MAX) return "text-gain";
+  if (pe < PE_MEDIAN_MAX) return undefined;
+  if (pe >= PE_EXPENSIVE_MIN) return "text-loss";
+  return undefined;
+}
+
+/** EGX median dividend yield (%), for framing "is this a real payout?". */
+export const DY_EGX_MEDIAN = 3.1;
+/** At or above this, a yield is usually a special dividend or a collapsed price. */
+export const DY_SUSPICIOUS_MIN = 15;
+
 // === Risk dashboard thresholds ===
 
 /** Sharpe ≥ this is "good" given Egypt's ~25% risk-free rate. */
