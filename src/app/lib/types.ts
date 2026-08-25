@@ -134,7 +134,10 @@ export interface NearestLevel {
   price: number;
   /** Signed: negative when level is below current price, positive when above. */
   distance_pct: number;
+  /** How many pivots clustered here. 1 = touched once, not a tested level. */
   strength: number;
+  /** Bars since price last traded through this level; null if unknown. */
+  bars_ago?: number | null;
 }
 
 export interface KeyLevels {
@@ -143,6 +146,10 @@ export interface KeyLevels {
   nearest_resistance: NearestLevel | null;
   room_to_support_pct: number | null;
   room_to_resistance_pct: number | null;
+  /** No resistance ABOVE price at all — the stock is at/near new highs. */
+  clear_air_above?: boolean;
+  /** No support BELOW price at all. */
+  clear_air_below?: boolean;
 }
 
 export type ZoneConfidence = "low" | "medium" | "high";
