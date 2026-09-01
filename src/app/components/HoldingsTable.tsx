@@ -89,11 +89,26 @@ function ZoneDetail({ entryExit }: { entryExit: EntryExit | null | undefined }) 
   );
 }
 
+/** Dividends are anchored to the SYMBOL, not to one purchase lot. When the user
+ *  holds the same symbol in more than one row, this figure is that symbol's
+ *  total — so it says so, rather than pretending to be this row's own. */
+function DividendPill({ holding }: { holding: HoldingAnalysis }) {
+  const amount = holding.dividends_collected ?? 0;
+  if (amount <= 0) return null;
+  return (
+    <span className="ml-2 inline-flex items-center rounded-full bg-gain/10 px-2 py-0.5 text-[10px] font-medium text-gain">
+      +{amount.toLocaleString(undefined, { maximumFractionDigits: 0 })} div
+      {holding.dividends_symbol_shared ? " (all lots)" : ""}
+    </span>
+  );
+}
+
 interface HoldingsTableProps {
   holdings: HoldingAnalysis[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onSell: (id: string) => void;
+  onAddDividend: (holding: HoldingAnalysis) => void;
 }
 
 export default function HoldingsTable({
@@ -101,6 +116,7 @@ export default function HoldingsTable({
   onEdit,
   onDelete,
   onSell,
+  onAddDividend,
 }: HoldingsTableProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -135,12 +151,18 @@ export default function HoldingsTable({
                 <span className="font-mono text-xs font-medium text-white">{h.symbol}</span>
                 <p className="mt-1 text-xs text-loss">{h.error}</p>
                 {h.id && (
-                  <div className="mt-3 border-t border-white/5 pt-3">
+                  <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
                     <button
                       onClick={() => onSell(h.id!)}
-                      className="min-h-[44px] w-full rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
+                      className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
                     >
                       Sell
+                    </button>
+                    <button
+                      onClick={() => onAddDividend(h)}
+                      className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-white/40 hover:text-gain"
+                    >
+                      Dividend
                     </button>
                   </div>
                 )}
@@ -168,6 +190,7 @@ export default function HoldingsTable({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium text-white">{h.symbol}</span>
+                    <DividendPill holding={h} />
                     <span className="text-xs text-white/30 truncate">{h.name}</span>
                   </div>
                   <div className="mt-1.5 flex items-baseline gap-3 text-xs">
@@ -286,6 +309,19 @@ export default function HoldingsTable({
                         </p>
                       </div>
                     )}
+                    {(h.dividends_collected ?? 0) > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-white/30">
+                          Dividends {h.dividends_symbol_shared ? `(all ${h.symbol} lots)` : "collected"}
+                        </p>
+                        <p className="mt-0.5 font-mono text-sm text-gain">
+                          +{(h.dividends_collected ?? 0).toLocaleString(undefined, {
+                            maximumFractionDigits: 0,
+                          })}{" "}
+                          EGP
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Entry/exit zone detail — mobile */}
@@ -304,6 +340,12 @@ export default function HoldingsTable({
                       className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
                     >
                       Sell
+                    </button>
+                    <button
+                      onClick={() => onAddDividend(h)}
+                      className="min-h-[44px] flex-1 rounded-lg border border-white/10 py-2 text-sm font-medium text-white/40 hover:text-gain"
+                    >
+                      Dividend
                     </button>
                     <button
                       onClick={() => {
@@ -380,12 +422,20 @@ export default function HoldingsTable({
                       </td>
                       <td className="px-4 py-3">
                         {h.id && (
-                          <button
-                            onClick={() => onSell(h.id!)}
-                            className="text-xs text-gain/70 hover:text-gain"
-                          >
-                            Sell
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => onSell(h.id!)}
+                              className="text-xs text-gain/70 hover:text-gain"
+                            >
+                              Sell
+                            </button>
+                            <button
+                              onClick={() => onAddDividend(h)}
+                              className="min-h-[44px] text-xs text-white/40 hover:text-gain"
+                            >
+                              Dividend
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -402,6 +452,7 @@ export default function HoldingsTable({
                         <span className="font-mono text-xs font-medium text-white">
                           {h.symbol}
                         </span>
+                        <DividendPill holding={h} />
                         <p className="text-[10px] text-white/30">
                           {h.name}
                           {h.buy_date ? ` · ${h.buy_date}` : ""}
@@ -492,6 +543,12 @@ export default function HoldingsTable({
                             className="text-xs text-gain/70 hover:text-gain"
                           >
                             Sell
+                          </button>
+                          <button
+                            onClick={() => onAddDividend(h)}
+                            className="min-h-[44px] text-xs text-white/40 hover:text-gain"
+                          >
+                            Dividend
                           </button>
                           <button
                             onClick={() => {
@@ -609,6 +666,19 @@ export default function HoldingsTable({
                               <p className="text-white/40">Buy Date</p>
                               <p className="font-mono text-white/70">{h.buy_date}</p>
                             </div>
+                            {(h.dividends_collected ?? 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wide text-white/30">
+                                  Dividends {h.dividends_symbol_shared ? `(all ${h.symbol} lots)` : "collected"}
+                                </p>
+                                <p className="mt-0.5 font-mono text-sm text-gain">
+                                  +{(h.dividends_collected ?? 0).toLocaleString(undefined, {
+                                    maximumFractionDigits: 0,
+                                  })}{" "}
+                                  EGP
+                                </p>
+                              </div>
+                            )}
                           </div>
 
                           {/* Entry/exit zone detail — desktop */}
