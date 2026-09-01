@@ -535,13 +535,21 @@ export default function PortfolioPage() {
           <>
             {/* Mobile: full-screen */}
             <div className="fixed inset-0 z-[60] flex flex-col bg-charcoal-dark md:hidden">
-              <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-                <h2 className="text-sm font-medium text-white">Record Dividend</h2>
+              {/* Header — respects safe-area-inset-top so it clears the status
+                  bar in the installed PWA, and shrink-0 so it cannot squash
+                  when the form below it overflows. Identical to the Record
+                  Sale modal's header on purpose: two full-screen modals that
+                  sit at the same z-index must not look like different apps. */}
+              <div
+                className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 pb-3"
+                style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
+              >
+                <h2 className="text-lg font-bold text-white">Record Dividend</h2>
                 <button
                   onClick={closeDividendForm}
-                  className="min-h-[44px] px-2 text-sm text-white/50"
+                  className="min-h-[44px] min-w-[44px] text-sm text-white/50"
                 >
-                  Close
+                  Cancel
                 </button>
               </div>
               <div
