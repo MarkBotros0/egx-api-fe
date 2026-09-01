@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import PortfolioSummary from "../components/PortfolioSummary";
 import RiskDashboard from "../components/RiskDashboard";
 import HoldingsTable from "../components/HoldingsTable";
 import PEFreshnessBanner from "../components/PEFreshnessBanner";
 import AddHoldingForm from "../components/AddHoldingForm";
 import SellHoldingForm from "../components/SellHoldingForm";
+import AddDividendForm from "../components/AddDividendForm";
+import DividendsTable from "../components/DividendsTable";
 import RealizedGainsCard from "../components/RealizedGainsCard";
 import ClosedPositionsTable from "../components/ClosedPositionsTable";
 import AdvicePanel from "../components/AdvicePanel";
@@ -25,6 +27,8 @@ import {
   fetchSales,
   recordSale,
   deleteSale,
+  recordDividend,
+  deleteDividend,
 } from "../lib/api";
 import type {
   Portfolio,
@@ -50,6 +54,13 @@ export default function PortfolioPage() {
   const [salesError, setSalesError] = useState<string | null>(null);
   const [sellingId, setSellingId] = useState<string | null>(null);
   const [sellError, setSellError] = useState<string | null>(null);
+  const [dividendFor, setDividendFor] = useState<{
+    symbol: string;
+    name: string;
+    sector: string;
+    shares: number | null;
+  } | null>(null);
+  const [dividendError, setDividendError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { version: weightsVersion } = useScoreWeights();
 
@@ -71,7 +82,7 @@ export default function PortfolioPage() {
   // table — locking the body there froze the page with the form scrolled out
   // of view and its Cancel button unreachable, so only a reload escaped.
   useEffect(() => {
-    if (!showForm && !sellModalOpen) return;
+    if (!showForm && !sellModalOpen && !dividendFor) return;
     if (window.matchMedia("(min-width: 768px)").matches) return;
     const scrollY = window.scrollY;
     document.body.style.position = "fixed";
@@ -85,7 +96,7 @@ export default function PortfolioPage() {
       document.body.style.overflow = "";
       window.scrollTo(0, scrollY);
     };
-  }, [showForm, sellModalOpen]);
+  }, [showForm, sellModalOpen, dividendFor]);
 
   // Load portfolio from Turso via API
   const loadPortfolio = useCallback(async () => {
@@ -245,10 +256,92 @@ export default function PortfolioPage() {
     }
   };
 
+  const handleAddDividend = (holding: {
+    symbol: string;
+    name?: string;
+    sector?: string;
+    quantity?: number;
+  }) => {
+    // Reopening starts clean — a rejection from a previous attempt describes
+    // values that are no longer on screen.
+    setDividendError(null);
+    setDividendFor({
+      symbol: holding.symbol,
+      name: holding.name ?? holding.symbol,
+      sector: holding.sector ?? "",
+      shares: holding.quantity ?? null,
+    });
+  };
+
+  const closeDividendForm = () => {
+    setDividendError(null);
+    setDividendFor(null);
+  };
+
+  const handleDividendSubmit = async (data: {
+    symbol: string;
+    name: string;
+    sector: string;
+    amount: number;
+    pay_date: string;
+    shares: number | null;
+    notes: string;
+  }) => {
+    try {
+      setDividendError(null);
+      await recordDividend(data);
+      setDividendFor(null);
+      // A dividend changes no share count, so the heavy analysis only needs
+      // re-running for the per-holding figure — which comes from it.
+      await Promise.all([refreshAfterMutation(), loadSales()]);
+    } catch (e: any) {
+      // Into the form, not the page banner: on mobile the form covers the whole
+      // viewport, so a banner behind it is invisible and the rejection reads as
+      // the button doing nothing. This is also where the 409 duplicate message
+      // surfaces.
+      setDividendError(e.message);
+    }
+  };
+
+  const handleDeleteDividend = async (id: string) => {
+    try {
+      await deleteDividend(id);
+      await Promise.all([refreshAfterMutation(), loadSales()]);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   const editingHolding = editingId
     ? portfolio?.portfolio.find((h) => h.id === editingId)
     : null;
   // `sellingHolding` is derived near the top, beside the scroll-lock effect.
+
+  // Open holdings AND symbols with a trading history, so a dividend can be
+  // recorded against a position that has already been sold.
+  const dividendSymbols = useMemo(() => {
+    const map = new Map<
+      string,
+      { symbol: string; name: string; sector: string; shares: number | null }
+    >();
+    for (const s of sales?.sales ?? []) {
+      map.set(s.symbol, {
+        symbol: s.symbol, name: s.name, sector: s.sector, shares: null,
+      });
+    }
+    // Open holdings win — they carry a live share count.
+    for (const h of portfolio?.portfolio ?? []) {
+      map.set(h.symbol, {
+        symbol: h.symbol,
+        name: h.name ?? h.symbol,
+        sector: h.sector ?? "",
+        shares: h.quantity ?? null,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.symbol.localeCompare(b.symbol)
+    );
+  }, [sales, portfolio]);
 
   return (
     <div>
@@ -434,6 +527,51 @@ export default function PortfolioPage() {
           </>
         )}
 
+        {/* Dividend form — full screen on mobile, inline on desktop.
+            Gated on `dividendFor`, the same value the scroll-lock effect
+            checks, so the body-scroll lock can never outlive what is on
+            screen. */}
+        {dividendFor && (
+          <>
+            {/* Mobile: full-screen */}
+            <div className="fixed inset-0 z-[60] flex flex-col bg-charcoal-dark md:hidden">
+              <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+                <h2 className="text-sm font-medium text-white">Record Dividend</h2>
+                <button
+                  onClick={closeDividendForm}
+                  className="min-h-[44px] px-2 text-sm text-white/50"
+                >
+                  Close
+                </button>
+              </div>
+              <div
+                className="flex-1 overflow-y-auto p-4"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                <AddDividendForm
+                  symbols={dividendSymbols}
+                  presetSymbol={dividendFor.symbol}
+                  onSubmit={handleDividendSubmit}
+                  onCancel={closeDividendForm}
+                  error={dividendError}
+                  onDismissError={() => setDividendError(null)}
+                />
+              </div>
+            </div>
+            {/* Desktop: inline card */}
+            <div className="mb-6 hidden md:block">
+              <AddDividendForm
+                symbols={dividendSymbols}
+                presetSymbol={dividendFor.symbol}
+                onSubmit={handleDividendSubmit}
+                onCancel={closeDividendForm}
+                error={dividendError}
+                onDismissError={() => setDividendError(null)}
+              />
+            </div>
+          </>
+        )}
+
         {error && (
           <div className="mb-4 rounded-xl border border-loss/20 bg-loss/5 p-4 text-sm text-loss">
             {error}
@@ -470,7 +608,8 @@ export default function PortfolioPage() {
           !showForm &&
           salesLoaded &&
           !salesError &&
-          !sales?.sales.length ? (
+          !sales?.sales.length &&
+          !sales?.dividends.length ? (
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-16 text-center">
             <p className="mb-2 text-lg text-white/50">No holdings yet</p>
             <p className="mb-4 text-sm text-white/30">
@@ -500,6 +639,12 @@ export default function PortfolioPage() {
                 onDelete={handleDeleteSale}
               />
             )}
+            {sales && (
+              <DividendsTable
+                dividends={sales.dividends}
+                onDelete={handleDeleteDividend}
+              />
+            )}
             <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
               <p className="text-sm text-white/40">You have no open positions.</p>
               <button
@@ -520,7 +665,7 @@ export default function PortfolioPage() {
               <PortfolioSummary metrics={analysis.portfolio_metrics} />
             ) : null}
 
-            {sales && sales.sales.length > 0 && (
+            {sales && (sales.sales.length > 0 || sales.dividends.length > 0) && (
               <RealizedGainsCard
                 summary={sales.summary}
                 riskFreeRatePct={sales.risk_free_rate_pct}
@@ -533,6 +678,12 @@ export default function PortfolioPage() {
                 onDelete={handleDeleteSale}
               />
             )}
+            {sales && (
+              <DividendsTable
+                dividends={sales.dividends}
+                onDelete={handleDeleteDividend}
+              />
+            )}
 
             {/* Holdings table */}
             {!analysis && portfolio?.portfolio.length ? (
@@ -543,6 +694,7 @@ export default function PortfolioPage() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onSell={handleSell}
+                onAddDividend={handleAddDividend}
               />
             ) : null}
 
