@@ -46,9 +46,21 @@ export default function PortfolioPage() {
   const [error, setError] = useState<string | null>(null);
   const { version: weightsVersion } = useScoreWeights();
 
+  // Derived above the scroll-lock effect on purpose: the lock and the sell
+  // modal's render condition MUST be the same expression. `sellingId` alone is
+  // not it — the Sell button comes from `analysis.holdings` while this lookup
+  // reads `portfolio.portfolio`, two separate fetches that can disagree (delete
+  // a holding while its sell form is open and the form vanishes with the id
+  // still set). Locking on the id alone left the body unscrollable with no
+  // modal on screen and no Cancel button to escape it.
+  const sellingHolding = sellingId
+    ? portfolio?.portfolio.find((h) => h.id === sellingId)
+    : null;
+  const sellModalOpen = Boolean(sellingHolding);
+
   // Lock body scroll when mobile modal is open (iOS needs position:fixed, not just overflow:hidden)
   useEffect(() => {
-    if (!showForm && !sellingId) return;
+    if (!showForm && !sellModalOpen) return;
     const scrollY = window.scrollY;
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
@@ -61,7 +73,7 @@ export default function PortfolioPage() {
       document.body.style.overflow = "";
       window.scrollTo(0, scrollY);
     };
-  }, [showForm, sellingId]);
+  }, [showForm, sellModalOpen]);
 
   // Load portfolio from Turso via API
   const loadPortfolio = useCallback(async () => {
@@ -207,10 +219,7 @@ export default function PortfolioPage() {
   const editingHolding = editingId
     ? portfolio?.portfolio.find((h) => h.id === editingId)
     : null;
-
-  const sellingHolding = sellingId
-    ? portfolio?.portfolio.find((h) => h.id === sellingId)
-    : null;
+  // `sellingHolding` is derived near the top, beside the scroll-lock effect.
 
   return (
     <div>
@@ -352,8 +361,10 @@ export default function PortfolioPage() {
           </>
         )}
 
-        {/* Sell form — full screen on mobile, inline on desktop */}
-        {sellingId && sellingHolding && (
+        {/* Sell form — full screen on mobile, inline on desktop.
+            Gated on `sellingHolding`, the same value `sellModalOpen` is derived
+            from, so the body-scroll lock can never outlive what is on screen. */}
+        {sellingHolding && (
           <>
             <div className="fixed inset-0 z-[60] flex flex-col bg-charcoal-dark md:hidden">
               <div
