@@ -15,6 +15,8 @@ import type {
   MacroData,
   ScoreWeights,
   CompositeSignal,
+  Sale,
+  SalesResponse,
 } from "./types";
 
 export interface ScoreWeightsResponse {
@@ -145,6 +147,34 @@ export async function deleteHolding(id: string): Promise<{ deleted: string }> {
 
 export async function fetchPortfolioAnalysis(): Promise<PortfolioAnalysisResponse> {
   return fetchJSON<PortfolioAnalysisResponse>(`${BASE}/portfolio_analysis`);
+}
+
+// ---- Sales / Realized gains ----
+
+export async function fetchSales(): Promise<SalesResponse> {
+  return fetchJSON<SalesResponse>(`${BASE}/sales`);
+}
+
+export async function recordSale(body: {
+  holding_id: string;
+  quantity: number;
+  sell_price: number;
+  sell_date: string;
+  notes?: string;
+}): Promise<{ sale: Sale; holding: PortfolioHolding }> {
+  return fetchJSON<{ sale: Sale; holding: PortfolioHolding }>(`${BASE}/sales`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteSale(
+  id: string
+): Promise<{ deleted: string; holding_id: string; restored_quantity: number | null }> {
+  return fetchJSON(`${BASE}/sales?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 // ---- Macro ----
