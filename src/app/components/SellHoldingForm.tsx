@@ -8,6 +8,7 @@ interface SellHoldingFormProps {
     name: string;
     quantity: number;
     buy_price: number;
+    buy_date: string;
   };
   onSubmit: (data: {
     quantity: number;
@@ -16,12 +17,19 @@ interface SellHoldingFormProps {
     notes: string;
   }) => Promise<void> | void;
   onCancel?: () => void;
+  /** Rejection from the API, rendered inside the form. On mobile the form
+   *  fills the viewport, so a banner on the page behind it is invisible. */
+  error?: string | null;
+  /** Called on the first edit after a rejection so a stale message clears. */
+  onDismissError?: () => void;
 }
 
 export default function SellHoldingForm({
   holding,
   onSubmit,
   onCancel,
+  error = null,
+  onDismissError,
 }: SellHoldingFormProps) {
   // Pre-filled to the whole position: selling out entirely is the common case.
   const [quantity, setQuantity] = useState(holding.quantity.toString());
@@ -29,6 +37,12 @@ export default function SellHoldingForm({
   const [sellDate, setSellDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Every field edit clears the last rejection: the message described the
+  // values that were submitted, not the ones now on screen.
+  const edited = () => {
+    if (error) onDismissError?.();
+  };
 
   const qty = parseInt(quantity);
   const price = parseFloat(sellPrice);
@@ -78,7 +92,10 @@ export default function SellHoldingForm({
           <input
             type="number"
             value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            onChange={(e) => {
+              setQuantity(e.target.value);
+              edited();
+            }}
             min={1}
             max={holding.quantity}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white outline-none focus:border-accent/50 md:text-sm"
@@ -101,7 +118,10 @@ export default function SellHoldingForm({
           <input
             type="number"
             value={sellPrice}
-            onChange={(e) => setSellPrice(e.target.value)}
+            onChange={(e) => {
+              setSellPrice(e.target.value);
+              edited();
+            }}
             min={0.01}
             step={0.01}
             placeholder="95.00"
@@ -112,13 +132,22 @@ export default function SellHoldingForm({
 
         <div>
           <label className="mb-1 block text-xs text-white/40">Sell Date</label>
+          {/* `min` is the buy date: the backend rejects a sale dated before
+              the purchase, so the picker should not offer one. */}
           <input
             type="date"
             value={sellDate}
+            min={holding.buy_date || undefined}
             max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setSellDate(e.target.value)}
+            onChange={(e) => {
+              setSellDate(e.target.value);
+              edited();
+            }}
             className="w-full min-w-0 appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-[16px] text-white outline-none focus:border-accent/50 md:text-sm"
           />
+          <p className="mt-1 text-[10px] text-white/30">
+            On or after the buy date ({holding.buy_date || "unknown"})
+          </p>
         </div>
 
         <div>
@@ -128,7 +157,10 @@ export default function SellHoldingForm({
           <input
             type="text"
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              edited();
+            }}
             placeholder="Why did you sell?"
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
           />
@@ -152,6 +184,18 @@ export default function SellHoldingForm({
               </span>
             )}
           </p>
+        </div>
+      )}
+
+      {/* Sits directly above the buttons so the rejection is on screen at the
+          same place the user just tapped — the mobile form is a full-screen
+          modal and a banner on the page behind it would never be seen. */}
+      {error && (
+        <div
+          role="alert"
+          className="mt-4 rounded-lg border border-loss/30 bg-loss/10 p-3 text-xs text-loss"
+        >
+          {error}
         </div>
       )}
 

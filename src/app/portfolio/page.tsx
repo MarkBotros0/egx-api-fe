@@ -42,7 +42,14 @@ export default function PortfolioPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sales, setSales] = useState<SalesResponse | null>(null);
+  // `sales === null` alone cannot distinguish "still loading", "failed" and
+  // "no sales ever" — and the never-traded empty state must only show for the
+  // third. Tracked separately so a slow or failing /api/sales never renders
+  // "No holdings yet" over a real trading history.
+  const [salesLoaded, setSalesLoaded] = useState(false);
+  const [salesError, setSalesError] = useState<string | null>(null);
   const [sellingId, setSellingId] = useState<string | null>(null);
+  const [sellError, setSellError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { version: weightsVersion } = useScoreWeights();
 
@@ -59,8 +66,13 @@ export default function PortfolioPage() {
   const sellModalOpen = Boolean(sellingHolding);
 
   // Lock body scroll when mobile modal is open (iOS needs position:fixed, not just overflow:hidden)
+  //
+  // Mobile ONLY. Above `md` both forms render INLINE, above the holdings
+  // table — locking the body there froze the page with the form scrolled out
+  // of view and its Cancel button unreachable, so only a reload escaped.
   useEffect(() => {
     if (!showForm && !sellModalOpen) return;
+    if (window.matchMedia("(min-width: 768px)").matches) return;
     const scrollY = window.scrollY;
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
@@ -99,8 +111,13 @@ export default function PortfolioPage() {
   const loadSales = useCallback(async () => {
     try {
       setSales(await fetchSales());
-    } catch {
-      // A sales failure must not take down the portfolio page.
+      setSalesError(null);
+    } catch (e: any) {
+      // A sales failure must not take down the portfolio page — it is
+      // surfaced as its own retry line, not the page-wide error banner.
+      setSalesError(e?.message || "Could not load closed positions");
+    } finally {
+      setSalesLoaded(true);
     }
   }, []);
 
@@ -188,7 +205,15 @@ export default function PortfolioPage() {
   };
 
   const handleSell = (id: string) => {
+    // Reopening starts clean — a rejection from a previous attempt describes
+    // values that are no longer on screen.
+    setSellError(null);
     setSellingId(id);
+  };
+
+  const closeSellForm = () => {
+    setSellError(null);
+    setSellingId(null);
   };
 
   const handleSellSubmit = async (data: {
@@ -199,11 +224,15 @@ export default function PortfolioPage() {
   }) => {
     if (!sellingId) return;
     try {
+      setSellError(null);
       await recordSale({ holding_id: sellingId, ...data });
       setSellingId(null);
       await Promise.all([refreshAfterMutation(), loadSales()]);
     } catch (e: any) {
-      setError(e.message);
+      // Into the form, not the page banner: on mobile the form covers the
+      // whole viewport, so a banner behind it is invisible and the rejection
+      // reads as the button doing nothing.
+      setSellError(e.message);
     }
   };
 
@@ -373,7 +402,7 @@ export default function PortfolioPage() {
               >
                 <h2 className="text-lg font-bold text-white">Record Sale</h2>
                 <button
-                  onClick={() => setSellingId(null)}
+                  onClick={closeSellForm}
                   className="min-h-[44px] min-w-[44px] text-sm text-white/50"
                 >
                   Cancel
@@ -386,7 +415,9 @@ export default function PortfolioPage() {
                 <SellHoldingForm
                   holding={sellingHolding}
                   onSubmit={handleSellSubmit}
-                  onCancel={() => setSellingId(null)}
+                  onCancel={closeSellForm}
+                  error={sellError}
+                  onDismissError={() => setSellError(null)}
                 />
               </div>
             </div>
@@ -395,7 +426,9 @@ export default function PortfolioPage() {
               <SellHoldingForm
                 holding={sellingHolding}
                 onSubmit={handleSellSubmit}
-                onCancel={() => setSellingId(null)}
+                onCancel={closeSellForm}
+                error={sellError}
+                onDismissError={() => setSellError(null)}
               />
             </div>
           </>
@@ -413,12 +446,31 @@ export default function PortfolioPage() {
           </div>
         )}
 
+        {/* Closed positions fail on their own line, never as the page-wide
+            banner — the rest of the page is unaffected by a /api/sales
+            outage, and without this the failure was completely silent. */}
+        {salesError && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-loss/20 bg-loss/5 px-4 py-3 text-xs text-loss">
+            <span>Couldn&apos;t load your closed positions.</span>
+            <button
+              onClick={() => loadSales()}
+              className="min-h-[44px] text-xs text-white/50 underline hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {portfolioLoading && !portfolio ? (
           <div className="space-y-6">
             <ChartSkeleton height="h-48" />
             <TableSkeleton rows={4} />
           </div>
-        ) : !portfolio?.portfolio.length && !showForm && !sales?.sales.length ? (
+        ) : !portfolio?.portfolio.length &&
+          !showForm &&
+          salesLoaded &&
+          !salesError &&
+          !sales?.sales.length ? (
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-16 text-center">
             <p className="mb-2 text-lg text-white/50">No holdings yet</p>
             <p className="mb-4 text-sm text-white/30">

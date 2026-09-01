@@ -126,11 +126,24 @@ export default function HoldingsTable({
           const isPnlPositive = h.pnl >= 0;
           const isMenuOpen = menuOpen === h.id;
 
+          // A holding whose price feed is down still has to be sellable —
+          // recording a sale never fetches a price. The error stays visible;
+          // the action is added beside it, not instead of it.
           if (h.error) {
             return (
               <div key={rowKey} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
                 <span className="font-mono text-xs font-medium text-white">{h.symbol}</span>
                 <p className="mt-1 text-xs text-loss">{h.error}</p>
+                {h.id && (
+                  <div className="mt-3 border-t border-white/5 pt-3">
+                    <button
+                      onClick={() => onSell(h.id!)}
+                      className="min-h-[44px] w-full rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
+                    >
+                      Sell
+                    </button>
+                  </div>
+                )}
               </div>
             );
           }
@@ -353,14 +366,27 @@ export default function HoldingsTable({
                 const isExpanded = expanded === h.id;
                 const isPnlPositive = h.pnl >= 0;
 
+                // Sellable despite the error — see the mobile branch above.
+                // colSpan is 10, not 11, so the Actions column stays its own
+                // cell and the row still totals the table's 12 columns.
                 if (h.error) {
                   return (
                     <tr key={rowKey} className="border-b border-white/5">
                       <td className="px-4 py-3 font-mono text-xs font-medium text-white">
                         {h.symbol}
                       </td>
-                      <td colSpan={11} className="px-4 py-3 text-xs text-loss">
+                      <td colSpan={10} className="px-4 py-3 text-xs text-loss">
                         {h.error}
+                      </td>
+                      <td className="px-4 py-3">
+                        {h.id && (
+                          <button
+                            onClick={() => onSell(h.id!)}
+                            className="text-xs text-gain/70 hover:text-gain"
+                          >
+                            Sell
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
