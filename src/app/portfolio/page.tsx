@@ -115,6 +115,12 @@ export default function PortfolioPage() {
   useEffect(() => {
     if (portfolio && portfolio.portfolio.length > 0 && analysis === null) {
       analyze();
+    } else if (portfolio && portfolio.portfolio.length === 0) {
+      // No holdings left to analyse — nothing else will clear the loading flag
+      // that refreshAfterMutation set, so clear it here. Selling out completely
+      // lands on the sold-out branch, where a stuck spinner and a permanently
+      // disabled refresh button would be the only things on screen.
+      setLoading(false);
     }
   }, [portfolio, analysis, analyze]);
 
