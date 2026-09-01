@@ -93,12 +93,14 @@ interface HoldingsTableProps {
   holdings: HoldingAnalysis[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onSell: (id: string) => void;
 }
 
 export default function HoldingsTable({
   holdings,
   onEdit,
   onDelete,
+  onSell,
 }: HoldingsTableProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -285,6 +287,12 @@ export default function HoldingsTable({
                       Edit
                     </button>
                     <button
+                      onClick={() => h.id && onSell(h.id)}
+                      className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
+                    >
+                      Sell
+                    </button>
+                    <button
                       onClick={() => {
                         if (h.id) setConfirmDelete({ id: h.id, symbol: h.symbol });
                       }}
@@ -452,6 +460,12 @@ export default function HoldingsTable({
                             className="text-xs text-accent/70 hover:text-accent"
                           >
                             Edit
+                          </button>
+                          <button
+                            onClick={() => h.id && onSell(h.id)}
+                            className="text-xs text-gain/70 hover:text-gain"
+                          >
+                            Sell
                           </button>
                           <button
                             onClick={() => {
