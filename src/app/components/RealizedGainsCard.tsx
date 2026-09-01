@@ -29,14 +29,14 @@ export default function RealizedGainsCard({
     );
   }
 
-  const positive = summary.total_realized_pnl >= 0;
+  const positive = summary.total_winnings >= 0;
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 md:p-6">
       <h2 className="mb-4 text-sm font-medium text-white/70">
         <LearnTooltip
           term="Realized Winnings"
-          explanation="Profit you have actually banked by selling, in EGP. Unlike the P&L on your open holdings, this cannot go back down — the trade is closed. It counts capital gains only; dividends are not included."
+          explanation="Money you have actually banked: profit from selling, plus any dividends the companies paid you. Unlike the P&L on your open holdings this cannot go back down — the trades are closed and the cash is received."
         >
           Realized Winnings
         </LearnTooltip>
@@ -49,8 +49,23 @@ export default function RealizedGainsCard({
             positive ? "text-gain" : "text-loss"
           }`}
         >
-          {egp(summary.total_realized_pnl)} EGP
+          {egp(summary.total_winnings)} EGP
         </p>
+        {summary.total_dividends > 0 && (
+          <p className="mt-1 font-mono text-xs text-white/50">
+            {egp(summary.total_realized_pnl)} from sales
+            <span className="mx-1.5 text-white/20">·</span>
+            <span className="text-gain">
+              {summary.total_dividends.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </span>{" "}
+            in dividends
+            <span className="ml-1 text-white/30">
+              ({summary.dividend_count})
+            </span>
+          </p>
+        )}
         {summary.total_realized_pnl_pct !== null && (
           <p className="mt-1 text-sm text-white/40">
             {summary.total_realized_pnl_pct >= 0 ? "+" : ""}
@@ -58,7 +73,7 @@ export default function RealizedGainsCard({
             {summary.total_cost.toLocaleString(undefined, {
               maximumFractionDigits: 0,
             })}{" "}
-            EGP invested
+            EGP invested in closed trades
           </p>
         )}
       </div>
@@ -131,19 +146,31 @@ export default function RealizedGainsCard({
                   {s.symbol}
                 </p>
                 <p className="truncate text-[10px] text-white/30">
-                  {s.quantity} shares · {s.sales_count}{" "}
-                  {s.sales_count === 1 ? "sale" : "sales"}
+                  {s.sales_count === 0
+                    ? "Dividends only — not sold"
+                    : `${s.quantity} shares · ${s.sales_count} ${
+                        s.sales_count === 1 ? "sale" : "sales"
+                      }`}
                 </p>
               </div>
               <div className="shrink-0 text-right">
                 <p
                   className={`font-mono text-sm font-semibold ${
-                    s.realized_pnl >= 0 ? "text-gain" : "text-loss"
+                    s.total_winnings >= 0 ? "text-gain" : "text-loss"
                   }`}
                 >
-                  {egp(s.realized_pnl)}
+                  {egp(s.total_winnings)}
                 </p>
-                {s.realized_pnl_pct !== null && (
+                {s.dividends > 0 && (
+                  <p className="text-[10px] text-white/40">
+                    incl.{" "}
+                    {s.dividends.toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    dividends
+                  </p>
+                )}
+                {s.dividends === 0 && s.realized_pnl_pct !== null && (
                   <p className="text-[10px] text-white/30">
                     {s.realized_pnl_pct >= 0 ? "+" : ""}
                     {s.realized_pnl_pct.toFixed(1)}%
