@@ -6,6 +6,9 @@ import RiskDashboard from "../components/RiskDashboard";
 import HoldingsTable from "../components/HoldingsTable";
 import PEFreshnessBanner from "../components/PEFreshnessBanner";
 import AddHoldingForm from "../components/AddHoldingForm";
+import SellHoldingForm from "../components/SellHoldingForm";
+import RealizedGainsCard from "../components/RealizedGainsCard";
+import ClosedPositionsTable from "../components/ClosedPositionsTable";
 import AdvicePanel from "../components/AdvicePanel";
 import CorrelationHeatmap from "../components/CorrelationHeatmap";
 import MonteCarloChart from "../components/MonteCarloChart";
@@ -19,11 +22,15 @@ import {
   updateHolding,
   deleteHolding,
   fetchPortfolioAnalysis,
+  fetchSales,
+  recordSale,
+  deleteSale,
 } from "../lib/api";
 import type {
   Portfolio,
   PortfolioAnalysisResponse,
   PortfolioHolding,
+  SalesResponse,
 } from "../lib/types";
 
 export default function PortfolioPage() {
@@ -34,12 +41,14 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [sales, setSales] = useState<SalesResponse | null>(null);
+  const [sellingId, setSellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { version: weightsVersion } = useScoreWeights();
 
   // Lock body scroll when mobile modal is open (iOS needs position:fixed, not just overflow:hidden)
   useEffect(() => {
-    if (!showForm) return;
+    if (!showForm && !sellingId) return;
     const scrollY = window.scrollY;
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
@@ -52,7 +61,7 @@ export default function PortfolioPage() {
       document.body.style.overflow = "";
       window.scrollTo(0, scrollY);
     };
-  }, [showForm]);
+  }, [showForm, sellingId]);
 
   // Load portfolio from Turso via API
   const loadPortfolio = useCallback(async () => {
@@ -72,6 +81,20 @@ export default function PortfolioPage() {
   useEffect(() => {
     loadPortfolio();
   }, [loadPortfolio]);
+
+  // Sales are loaded on their own: they need no price fetch, so the Winnings
+  // card paints immediately even when portfolio analysis is slow or fails.
+  const loadSales = useCallback(async () => {
+    try {
+      setSales(await fetchSales());
+    } catch {
+      // A sales failure must not take down the portfolio page.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSales();
+  }, [loadSales]);
 
   // Analyze portfolio
   const analyze = useCallback(async () => {
@@ -146,8 +169,41 @@ export default function PortfolioPage() {
     }
   };
 
+  const handleSell = (id: string) => {
+    setSellingId(id);
+  };
+
+  const handleSellSubmit = async (data: {
+    quantity: number;
+    sell_price: number;
+    sell_date: string;
+    notes: string;
+  }) => {
+    if (!sellingId) return;
+    try {
+      await recordSale({ holding_id: sellingId, ...data });
+      setSellingId(null);
+      await Promise.all([refreshAfterMutation(), loadSales()]);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleDeleteSale = async (id: string) => {
+    try {
+      await deleteSale(id);
+      await Promise.all([refreshAfterMutation(), loadSales()]);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   const editingHolding = editingId
     ? portfolio?.portfolio.find((h) => h.id === editingId)
+    : null;
+
+  const sellingHolding = sellingId
+    ? portfolio?.portfolio.find((h) => h.id === sellingId)
     : null;
 
   return (
@@ -290,6 +346,44 @@ export default function PortfolioPage() {
           </>
         )}
 
+        {/* Sell form — full screen on mobile, inline on desktop */}
+        {sellingId && sellingHolding && (
+          <>
+            <div className="fixed inset-0 z-[60] flex flex-col bg-charcoal-dark md:hidden">
+              <div
+                className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 pb-3"
+                style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
+              >
+                <h2 className="text-lg font-bold text-white">Record Sale</h2>
+                <button
+                  onClick={() => setSellingId(null)}
+                  className="min-h-[44px] min-w-[44px] text-sm text-white/50"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div
+                className="flex-1 overflow-y-auto p-4"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                <SellHoldingForm
+                  holding={sellingHolding}
+                  onSubmit={handleSellSubmit}
+                  onCancel={() => setSellingId(null)}
+                />
+              </div>
+            </div>
+
+            <div className="mb-6 hidden md:block">
+              <SellHoldingForm
+                holding={sellingHolding}
+                onSubmit={handleSellSubmit}
+                onCancel={() => setSellingId(null)}
+              />
+            </div>
+          </>
+        )}
+
         {error && (
           <div className="mb-4 rounded-xl border border-loss/20 bg-loss/5 p-4 text-sm text-loss">
             {error}
@@ -307,7 +401,7 @@ export default function PortfolioPage() {
             <ChartSkeleton height="h-48" />
             <TableSkeleton rows={4} />
           </div>
-        ) : !portfolio?.portfolio.length && !showForm ? (
+        ) : !portfolio?.portfolio.length && !showForm && !sales?.sales.length ? (
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-16 text-center">
             <p className="mb-2 text-lg text-white/50">No holdings yet</p>
             <p className="mb-4 text-sm text-white/30">
@@ -321,6 +415,32 @@ export default function PortfolioPage() {
               Add Your First Stock
             </button>
           </div>
+        ) : !portfolio?.portfolio.length && !showForm ? (
+          /* Sold out, but there is a trading history to keep on screen. */
+          <div className="space-y-6">
+            {sales && (
+              <RealizedGainsCard
+                summary={sales.summary}
+                riskFreeRatePct={sales.risk_free_rate_pct}
+              />
+            )}
+            {sales && (
+              <ClosedPositionsTable
+                sales={sales.sales}
+                riskFreeRatePct={sales.risk_free_rate_pct}
+                onDelete={handleDeleteSale}
+              />
+            )}
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
+              <p className="text-sm text-white/40">You have no open positions.</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-3 rounded-lg bg-accent px-6 py-2 text-sm font-medium text-charcoal-dark"
+              >
+                Add a Stock
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="space-y-6">
             <PEFreshnessBanner />
@@ -331,6 +451,20 @@ export default function PortfolioPage() {
               <PortfolioSummary metrics={analysis.portfolio_metrics} />
             ) : null}
 
+            {sales && sales.sales.length > 0 && (
+              <RealizedGainsCard
+                summary={sales.summary}
+                riskFreeRatePct={sales.risk_free_rate_pct}
+              />
+            )}
+            {sales && sales.sales.length > 0 && (
+              <ClosedPositionsTable
+                sales={sales.sales}
+                riskFreeRatePct={sales.risk_free_rate_pct}
+                onDelete={handleDeleteSale}
+              />
+            )}
+
             {/* Holdings table */}
             {!analysis && portfolio?.portfolio.length ? (
               <TableSkeleton rows={Math.min(portfolio.portfolio.length, 6)} />
@@ -339,6 +473,7 @@ export default function PortfolioPage() {
                 holdings={analysis.holdings}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onSell={handleSell}
               />
             ) : null}
 
