@@ -290,6 +290,70 @@ export async function fetchPEFeedStatus(): Promise<PEFeedStatus> {
   };
 }
 
+// ---- User administration (admin only) ----
+
+export interface ManagedUser {
+  id: string;
+  username: string;
+  role: "user" | "admin";
+  is_active: boolean;
+  created_at: string;
+  holdings_count: number;
+}
+
+/**
+ * `generated_password` is populated ONLY when the backend generated one, and
+ * only on the response to the call that created it. It is never readable again.
+ */
+export interface PasswordResult {
+  generated_password: string | null;
+}
+
+export async function fetchUsers(): Promise<{ users: ManagedUser[] }> {
+  return fetchJSON<{ users: ManagedUser[] }>(`${BASE}/users`);
+}
+
+export async function createUser(
+  username: string,
+  password?: string
+): Promise<{ user: ManagedUser } & PasswordResult> {
+  return fetchJSON(`${BASE}/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password: password || null }),
+  });
+}
+
+export async function resetUserPassword(
+  id: string,
+  password?: string
+): Promise<{ id: string; username: string } & PasswordResult> {
+  return fetchJSON(`${BASE}/users/${encodeURIComponent(id)}/password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: password || null }),
+  });
+}
+
+export async function setUserActive(
+  id: string,
+  isActive: boolean
+): Promise<ManagedUser> {
+  return fetchJSON<ManagedUser>(`${BASE}/users/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+}
+
+export async function deleteUser(
+  id: string
+): Promise<{ deleted: string; username: string }> {
+  return fetchJSON(`${BASE}/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 // ---- Market condition reading ----
 
 export interface MarketRegime {

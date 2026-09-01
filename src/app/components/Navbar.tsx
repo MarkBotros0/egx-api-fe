@@ -12,11 +12,15 @@ const NAV_LINKS = [
   { href: "/learn", label: "Learn" },
 ];
 
+const ADMIN_LINK = { href: "/admin", label: "Users" };
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+
+  const links = isAdmin ? [...NAV_LINKS, ADMIN_LINK] : NAV_LINKS;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +45,7 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
-          {NAV_LINKS.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}

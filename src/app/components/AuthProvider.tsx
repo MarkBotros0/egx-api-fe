@@ -16,19 +16,28 @@ const UNAUTHORIZED_EVENT = "egx:unauthorized";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
+export type UserRole = "user" | "admin";
+
 export interface AuthUser {
   id: string;
   username: string;
+  role: UserRole;
 }
 
 interface AuthCtx {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+}
+
+/** Anything that isn't literally "admin" is a plain user. */
+function asRole(value: unknown): UserRole {
+  return value === "admin" ? "admin" : "user";
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -48,7 +57,10 @@ function readStoredUser(): AuthUser | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed.id === "string" && typeof parsed.username === "string") {
-      return parsed;
+      // Cached from a previous session and only ever used optimistically —
+      // /auth/me re-reads the role from the DB on every load, and the backend
+      // enforces it regardless of what is in localStorage.
+      return { id: parsed.id, username: parsed.username, role: asRole(parsed.role) };
     }
   } catch {}
   return null;
@@ -111,7 +123,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const data = await res.json();
         if (res.ok && data?.id && data?.username) {
-          const fresh = { id: data.id, username: data.username } as AuthUser;
+          const fresh: AuthUser = {
+            id: data.id,
+            username: data.username,
+            role: asRole(data.role),
+          };
           setUser(fresh);
           setToken(stored);
           setPresenceCookie(true);
@@ -143,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // we leave them where they are.
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (path.startsWith("/portfolio")) {
+        if (path.startsWith("/portfolio") || path.startsWith("/admin")) {
           const next = encodeURIComponent(path);
           window.location.href = `/login?next=${next}`;
         }
@@ -167,7 +183,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(msg);
     }
     const newToken: string = data.access_token;
-    const newUser: AuthUser = data.user;
+    const newUser: AuthUser = {
+      id: data.user?.id,
+      username: data.user?.username,
+      role: asRole(data.user?.role),
+    };
     try {
       localStorage.setItem(TOKEN_KEY, newToken);
       localStorage.setItem(USER_KEY, JSON.stringify(newUser));
@@ -189,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       token,
       isAuthenticated: !!user && !!token,
+      isAdmin: user?.role === "admin",
       isLoading,
       error,
       login,
@@ -207,6 +228,7 @@ export function useAuth(): AuthCtx {
       user: null,
       token: null,
       isAuthenticated: false,
+      isAdmin: false,
       isLoading: false,
       error: null,
       login: async () => {},

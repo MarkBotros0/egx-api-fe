@@ -18,6 +18,7 @@ import {
   DEFAULT_WEIGHTS,
   FALLBACK_WEIGHT_PRESETS,
 } from "../lib/constants";
+import { useAuth } from "./AuthProvider";
 
 interface ScoreWeightsCtx {
   weights: ScoreWeights;
@@ -37,6 +38,7 @@ interface ScoreWeightsCtx {
 const Ctx = createContext<ScoreWeightsCtx | null>(null);
 
 export function ScoreWeightsProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuth();
   const [weights, setWeights] = useState<ScoreWeights>(DEFAULT_WEIGHTS);
   const [draft, setDraftState] = useState<ScoreWeights>(DEFAULT_WEIGHTS);
   const [presets, setPresets] = useState<Record<string, ScoreWeights>>(FALLBACK_WEIGHT_PRESETS);
@@ -45,8 +47,22 @@ export function ScoreWeightsProvider({ children }: { children: React.ReactNode }
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
+  // Keyed on the user, not [] — weights are per-user now, and logout → login
+  // as someone else is a client-side navigation with no reload, so an empty
+  // dep array would leave user B looking at user A's sliders and scores.
+  // Mirrors WatchlistProvider, which is scoped the same way.
   useEffect(() => {
     let cancelled = false;
+
+    if (!isAuthenticated) {
+      // Signed out: fall back to the defaults the public dashboard scores with.
+      setWeights(DEFAULT_WEIGHTS);
+      setDraftState(DEFAULT_WEIGHTS);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     fetchScoreWeights()
       .then((resp: ScoreWeightsResponse) => {
         if (cancelled) return;
@@ -73,7 +89,7 @@ export function ScoreWeightsProvider({ children }: { children: React.ReactNode }
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   const setDraft = useCallback((d: ScoreWeights) => setDraftState(d), []);
 

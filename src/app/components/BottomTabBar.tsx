@@ -2,6 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "./AuthProvider";
+
+const ADMIN_TAB = {
+  href: "/admin",
+  label: "Users",
+  icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+};
 
 const TABS = [
   {
@@ -50,13 +64,19 @@ const TABS = [
 
 export default function BottomTabBar() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
+
+  // Five tabs still clear the 44px touch target on a 360px screen; the
+  // min-width drops so the labels don't truncate.
+  const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
+  const tabWidth = tabs.length > 4 ? "min-w-[56px]" : "min-w-[64px]";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-md md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex h-[60px] items-center justify-around">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive =
             tab.href === "/"
               ? pathname === "/" || pathname.startsWith("/stock/")
@@ -66,7 +86,7 @@ export default function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex min-w-[64px] flex-col items-center gap-0.5 px-2 py-1 transition-colors ${
+              className={`flex ${tabWidth} flex-col items-center gap-0.5 px-2 py-1 transition-colors ${
                 isActive ? "text-[#4488ff]" : "text-white/40"
               }`}
             >

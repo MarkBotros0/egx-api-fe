@@ -115,8 +115,12 @@ public/                         # Static assets, PWA manifest
 
 ### Portfolio (`src/app/portfolio/page.tsx`)
 - Add/Edit/Delete holdings with live re-analysis after each change
-- **Target Price** and **Stop Loss** tracked per holding (optional) — drive distance calculations and stop-loss/target-hit signals
-- **Notes** field per holding for custom annotations
+- **Target Price**, **Stop Loss** and **Notes** are still stored per holding and
+  still drive distance calculations and stop-loss/target-hit signals, but
+  **`AddHoldingForm` no longer exposes them** (2026-09-01 — the add/edit form is
+  deliberately down to symbol, quantity, buy price, buy date). Existing values
+  are carried through the edit payload unchanged so an edit cannot wipe them;
+  nothing in the UI can set a new one today.
 - **Sell** action per holding (full or partial) → `RealizedGainsCard` + collapsed `ClosedPositionsTable`.
 - Mobile: FAB (floating action button) to add; full-screen modal form
 - Desktop: inline form, top-right "+ Add Stock" button
@@ -535,7 +539,7 @@ The Learn page's "How to Take a Decision" section and the in-app signals both fo
 2. **Read the composite BREAKDOWN, not the number.** The category reasons are checkable facts; the blended score is not predictive (see the signal-band note). A low score is **not** a sell signal — historically the lowest-scoring EGX stocks bounced about as often as the highest.
 3. **Check Risk-Adjusted.** Is annualized return comfortably above the ~25% T-bill? If not, be sceptical.
 4. **Check Relative Strength.** Is the stock a leader (outperforming EGX30) or a laggard (underperforming by >10%)?
-5. **Set the stop-loss BEFORE buying.** The house convention is **1.5× ATR below the nearest support** (`STOP_LOSS_ATR_MULTIPLIER` in `core/constants.py`) — anchored to support, not to your entry price, so the number is objective and computable before you buy. `levels.compute_entry_exit`, `entry_price.compute_max_buy_price` and the `atr_stop` signal all use that one constant. Enter the value on the Portfolio add form.
+5. **Set the stop-loss BEFORE buying.** The house convention is **1.5× ATR below the nearest support** (`STOP_LOSS_ATR_MULTIPLIER` in `core/constants.py`) — anchored to support, not to your entry price, so the number is objective and computable before you buy. `levels.compute_entry_exit`, `entry_price.compute_max_buy_price` and the `atr_stop` signal all use that one constant. (The Portfolio add form no longer has a stop-loss field — see the Portfolio section.)
 6. **Size the position at 5–10% max** per stock (2–3% for thin-liquidity / NILEX names).
 
 ## Portfolio Risk Metrics (`egx-api-be/app/routers/portfolio_analysis.py`)
