@@ -420,6 +420,13 @@ export default function LearnPage() {
             howToUse="The portfolio page flags cash underperformers with a warning signal. When you see one: (1) does the thesis still hold for the next 90 days? (2) is there a specific catalyst coming? If no on both, seriously consider selling and moving the capital to T-bills until a better opportunity presents itself."
           />
           <Concept
+            id="realized_gains"
+            title="Realized vs Unrealized — Banking a Win"
+            definition="An unrealized gain is profit on paper: your stock is up but you still own it, so the number moves every day and can vanish. A realized gain is profit you have banked by selling. It cannot go back down."
+            whyItMatters="Beginners often judge themselves on paper gains, which flatter in a rising market and punish in a falling one. Your realized record is the honest scoreboard: it is what actually happened. But size alone is misleading — a 10% gain earned in a month and a 10% gain earned over three years are completely different results."
+            howToUse="Check the Winnings card after each sale. Look at the annualized return next to each closed trade, not just the EGP figure. With T-bills near 25%, a small gain held for years actually lost to risk-free cash — that is a lesson about position sizing and patience, not a reason to trade more often. Trades held under 30 days show no annualized figure, because annualizing a few days of return produces meaningless numbers."
+          />
+          <Concept
             id="expected_move"
             title="Expected Move & Monte Carlo Cone"
             definition="Two statistical views of 'what does normal look like' for a stock. The expected-move band shows the typical 1-σ move on a day, week, and month — roughly 2 of every 3 days, the price moves less than the daily figure. The Monte Carlo cone runs 1,000 simulated paths forward 60 trading days using the stock's historical drift and volatility, and plots the 5th/25th/50th/75th/95th percentile price ranges."
