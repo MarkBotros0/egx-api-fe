@@ -427,6 +427,13 @@ export default function LearnPage() {
             howToUse="Check the Winnings card after each sale. Look at the annualized return next to each closed trade, not just the EGP figure. With T-bills near 25%, a small gain held for years actually lost to risk-free cash — that is a lesson about position sizing and patience, not a reason to trade more often. Trades held under 30 days show no annualized figure, because annualizing a few days of return produces meaningless numbers."
           />
           <Concept
+            id="dividends"
+            title="Dividends (Profit Share)"
+            definition="A dividend is cash a company pays you out of its profits, just for holding the shares — no selling involved. On the EGX it is announced per share, and what reaches your account is already after the 5-10% dividend tax."
+            whyItMatters="With Egyptian T-bills near 25%, no EGX dividend yield competes as income — even a strong 8% loses to simply leaving the money in T-bills. What a dividend IS good evidence of is that the company generates real cash rather than accounting profit. Judge it that way, not as an income stream."
+            howToUse="Record what actually landed in your account, not the announced gross. The app adds it to your realized winnings and shows it against the stock that paid it, so a bank holding that is flat on price but pays steadily does not read as dead money. A dividend worth more than about 15% of the share price is usually a special payout or a collapsed price — not income quality."
+          />
+          <Concept
             id="expected_move"
             title="Expected Move & Monte Carlo Cone"
             definition="Two statistical views of 'what does normal look like' for a stock. The expected-move band shows the typical 1-σ move on a day, week, and month — roughly 2 of every 3 days, the price moves less than the daily figure. The Monte Carlo cone runs 1,000 simulated paths forward 60 trading days using the stock's historical drift and volatility, and plots the 5th/25th/50th/75th/95th percentile price ranges."
