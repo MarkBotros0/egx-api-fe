@@ -17,6 +17,7 @@ import type {
   CompositeSignal,
   Sale,
   SalesResponse,
+  Dividend,
 } from "./types";
 
 export interface ScoreWeightsResponse {
@@ -173,6 +174,32 @@ export async function deleteSale(
   id: string
 ): Promise<{ deleted: string; holding_id: string; restored_quantity: number | null }> {
   return fetchJSON(`${BASE}/sales?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// ---- Dividends ----
+// Reads arrive on fetchSales(): the Winnings headline is gains + dividends and
+// that sum is computed server-side, so the card needs one fetch, not two.
+
+export async function recordDividend(body: {
+  symbol: string;
+  name?: string;
+  sector?: string;
+  amount: number;
+  pay_date: string;
+  shares?: number | null;
+  notes?: string;
+}): Promise<{ dividend: Dividend }> {
+  return fetchJSON<{ dividend: Dividend }>(`${BASE}/dividends`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteDividend(id: string): Promise<{ deleted: string }> {
+  return fetchJSON(`${BASE}/dividends?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }

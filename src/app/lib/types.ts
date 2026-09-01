@@ -406,6 +406,11 @@ export interface HoldingAnalysis {
   entry_exit?: EntryExit | null;
   pe?: PEData | null;
   liquidity?: LiquidityInfo | null;
+  /** EGP collected against this SYMBOL, 0 when none. */
+  dividends_collected?: number;
+  /** True when the user has more than one open holding of this symbol, in
+   *  which case dividends_collected is the symbol's total, not this row's. */
+  dividends_symbol_shared?: boolean;
   error?: string;
 }
 
@@ -513,6 +518,22 @@ export interface PortfolioAnalysisResponse {
 // Sales / Realized gains
 // ============================================================
 
+export interface Dividend {
+  id: string;
+  symbol: string;
+  name: string;
+  sector: string;
+  /** Total EGP received, already net of withholding tax. Never a gross figure. */
+  amount: number;
+  pay_date: string;
+  /** Optional — shares held when paid. Null when the user did not record it. */
+  shares: number | null;
+  notes: string;
+  created_at: string;
+  /** Computed server-side; null when shares is null or 0. */
+  amount_per_share: number | null;
+}
+
 export interface Sale {
   id: string;
   holding_id: string;
@@ -548,6 +569,8 @@ export interface SymbolRealized {
   proceeds: number;
   realized_pnl: number;
   realized_pnl_pct: number | null;
+  dividends: number;
+  total_winnings: number;
 }
 
 export interface SalesSummary {
@@ -564,6 +587,10 @@ export interface SalesSummary {
   best_trade: Sale | null;
   worst_trade: Sale | null;
   by_symbol: SymbolRealized[];
+  total_dividends: number;
+  dividend_count: number;
+  /** total_realized_pnl + total_dividends. The card's headline. */
+  total_winnings: number;
 }
 
 export interface SalesResponse {
@@ -571,4 +598,5 @@ export interface SalesResponse {
   summary: SalesSummary;
   currency: string;
   risk_free_rate_pct: number;
+  dividends: Dividend[];
 }
