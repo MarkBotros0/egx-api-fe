@@ -58,11 +58,17 @@ export default function AddDividendForm({
 
   const picked = symbols.find((s) => s.symbol === symbol);
   const amountNum = parseFloat(amount);
-  const sharesNum = shares.trim() === "" ? null : parseInt(shares, 10);
+  const sharesRaw = shares.trim();
+  const sharesNum = sharesRaw === "" ? null : Number(sharesRaw);
+  // Whole shares only — the backend's validate_dividend rejects a fractional
+  // share count outright, so a truncating parseInt("5.7") would silently
+  // record a number the user never typed. Do not "simplify" this back to
+  // parseInt.
+  const validShares =
+    sharesNum === null ||
+    (Number.isFinite(sharesNum) && Number.isInteger(sharesNum) && sharesNum > 0);
 
   const validAmount = Number.isFinite(amountNum) && amountNum > 0;
-  const validShares =
-    sharesNum === null || (Number.isFinite(sharesNum) && sharesNum > 0);
   const canSubmit = Boolean(symbol) && validAmount && validShares && !submitting;
 
   const perShare =
@@ -135,7 +141,7 @@ export default function AddDividendForm({
             min={0.01}
             step={0.01}
             placeholder="1200.00"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
+            className="min-h-[44px] w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
             required
           />
           <p className="mt-1 text-[10px] text-white/30">
@@ -155,7 +161,7 @@ export default function AddDividendForm({
               setPayDate(e.target.value);
               edited();
             }}
-            className="w-full min-w-0 appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-[16px] text-white outline-none focus:border-accent/50 md:text-sm"
+            className="min-h-[44px] w-full min-w-0 appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-[16px] text-white outline-none focus:border-accent/50 md:text-sm"
           />
         </div>
 
@@ -172,11 +178,16 @@ export default function AddDividendForm({
             }}
             min={1}
             placeholder="500"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
+            className="min-h-[44px] w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
           />
           <p className="mt-1 text-[10px] text-white/30">
             Only used to show a per-share figure
           </p>
+          {sharesRaw !== "" && !validShares && (
+            <p className="mt-1 text-[10px] text-loss">
+              Enter a whole number of shares
+            </p>
+          )}
         </div>
 
         <div className="md:col-span-2">
@@ -191,7 +202,7 @@ export default function AddDividendForm({
               edited();
             }}
             placeholder="e.g. 2025 annual dividend"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
+            className="min-h-[44px] w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
           />
         </div>
       </div>
