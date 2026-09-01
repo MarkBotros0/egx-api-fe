@@ -508,3 +508,67 @@ export interface PortfolioAnalysisResponse {
   signals: Signal[];
   disclaimer: string;
 }
+
+// ============================================================
+// Sales / Realized gains
+// ============================================================
+
+export interface Sale {
+  id: string;
+  holding_id: string;
+  symbol: string;
+  name: string;
+  sector: string;
+  quantity: number;
+  buy_price: number;
+  buy_date: string;
+  sell_price: number;
+  sell_date: string;
+  notes: string;
+  created_at: string;
+  cost: number;
+  proceeds: number;
+  realized_pnl: number;
+  /** Null when the buy price was 0 — the EGP figure is still exact. */
+  realized_pnl_pct: number | null;
+  days_held: number;
+  /** Null under 30 days held: annualizing a quick flip is nonsense. */
+  annualized_return_pct: number | null;
+  /** Null whenever annualized_return_pct is null. */
+  beat_t_bill: boolean | null;
+}
+
+export interface SymbolRealized {
+  symbol: string;
+  name: string;
+  sector: string;
+  sales_count: number;
+  quantity: number;
+  cost: number;
+  proceeds: number;
+  realized_pnl: number;
+  realized_pnl_pct: number | null;
+}
+
+export interface SalesSummary {
+  total_realized_pnl: number;
+  /** Cost-weighted, never a mean of percentages. */
+  total_realized_pnl_pct: number | null;
+  total_proceeds: number;
+  total_cost: number;
+  win_count: number;
+  loss_count: number;
+  /** Of the trades long enough to annualize, how many beat the T-bill. */
+  beat_t_bill_count: number;
+  annualizable_count: number;
+  best_trade: Sale | null;
+  worst_trade: Sale | null;
+  by_symbol: SymbolRealized[];
+}
+
+export interface SalesResponse {
+  sales: Sale[];
+  summary: SalesSummary;
+  currency: string;
+  risk_free_rate_pct: number;
+}
