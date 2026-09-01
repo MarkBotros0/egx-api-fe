@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { validateTicker } from "@/app/lib/api";
 import {
   TICKER_SEARCH_LIMIT,
@@ -61,15 +61,7 @@ export default function AddHoldingForm({
     initialValues?.buy_date || new Date().toISOString().slice(0, 10)
   );
   const [quantity, setQuantity] = useState(initialValues?.quantity?.toString() || "");
-  const [targetPrice, setTargetPrice] = useState(
-    initialValues?.target_price?.toString() || ""
-  );
-  const [stopLoss, setStopLoss] = useState(
-    initialValues?.stop_loss?.toString() || ""
-  );
-  const [notes, setNotes] = useState(initialValues?.notes || "");
   const [submitting, setSubmitting] = useState(false);
-  const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = useMemo(() => {
     if (!search) return tickers.slice(0, TICKER_SEARCH_LIMIT);
@@ -101,12 +93,21 @@ export default function AddHoldingForm({
       return;
     }
 
-    // Otherwise debounce a remote validation call
-    if (validateTimer.current) clearTimeout(validateTimer.current);
+    // Otherwise debounce a remote validation call.
+    //
+    // `cancelled` is what stops a stale answer from overwriting a fresh one.
+    // The debounce timer can fire while the user is still typing or reaching
+    // for the dropdown, so the request for a PARTIAL symbol ("ABU") is often
+    // still in flight when they pick the real one ("ABUK"). Without this
+    // guard its `valid: false` landed after the pick and flipped a resolved
+    // selection to "Symbol not found" — which cleared and retyped, matching a
+    // known ticker exactly, then appeared to work.
+    let cancelled = false;
     setValidation("validating");
-    validateTimer.current = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const data = await validateTicker(sym);
+        if (cancelled) return;
         if (data.valid === true) {
           setValidation("valid");
           setValidatedTicker({ symbol: sym, name: data.name || sym, sector: "Unknown" });
@@ -119,13 +120,15 @@ export default function AddHoldingForm({
           setValidatedTicker({ symbol: sym, name: sym, sector: "Unknown" });
         }
       } catch {
+        if (cancelled) return;
         setValidation("error");
         setValidatedTicker({ symbol: sym, name: sym, sector: "Unknown" });
       }
     }, TICKER_VALIDATION_DEBOUNCE_MS);
 
     return () => {
-      if (validateTimer.current) clearTimeout(validateTimer.current);
+      cancelled = true;
+      clearTimeout(timer);
     };
   }, [search, selectedTicker, tickers]);
 
@@ -147,9 +150,12 @@ export default function AddHoldingForm({
         buy_price: parseFloat(buyPrice),
         buy_date: buyDate,
         quantity: parseInt(quantity),
-        target_price: targetPrice ? parseFloat(targetPrice) : null,
-        stop_loss: stopLoss ? parseFloat(stopLoss) : null,
-        notes,
+        // No longer editable on this form. Carried through unchanged so an
+        // edit doesn't silently wipe a target/stop/note set before they were
+        // removed from the UI.
+        target_price: initialValues?.target_price ?? null,
+        stop_loss: initialValues?.stop_loss ?? null,
+        notes: initialValues?.notes ?? "",
       });
     } finally {
       setSubmitting(false);
@@ -292,52 +298,6 @@ export default function AddHoldingForm({
             value={buyDate}
             onChange={(e) => setBuyDate(e.target.value)}
             className="w-full min-w-0 appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-[16px] text-white outline-none focus:border-accent/50 md:text-sm"
-          />
-        </div>
-
-        {/* Target Price */}
-        <div>
-          <label className="mb-1 block text-xs text-white/40">
-            Target Price (optional)
-          </label>
-          <input
-            type="number"
-            value={targetPrice}
-            onChange={(e) => setTargetPrice(e.target.value)}
-            min={0.01}
-            step={0.01}
-            placeholder="110.00"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
-          />
-        </div>
-
-        {/* Stop Loss */}
-        <div>
-          <label className="mb-1 block text-xs text-white/40">
-            Stop Loss (optional)
-          </label>
-          <input
-            type="number"
-            value={stopLoss}
-            onChange={(e) => setStopLoss(e.target.value)}
-            min={0.01}
-            step={0.01}
-            placeholder="75.00"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
-          />
-        </div>
-
-        {/* Notes */}
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-xs text-white/40">
-            Notes (optional)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="Why did you buy this stock?"
-            className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
           />
         </div>
       </div>
