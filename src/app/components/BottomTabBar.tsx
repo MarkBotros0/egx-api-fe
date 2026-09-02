@@ -31,16 +31,6 @@ const TABS = [
     ),
   },
   {
-    href: "/compare",
-    label: "Compare",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    ),
-  },
-  {
     href: "/portfolio",
     label: "Portfolio",
     icon: (
@@ -66,20 +56,28 @@ export default function BottomTabBar() {
   const pathname = usePathname();
   const { isAdmin, isAuthenticated } = useAuth();
 
-  // Five tabs still clear the 44px touch target on a 360px screen; the
-  // min-width drops so the labels don't truncate.
+  // Three tabs, four as admin. Compare left the bar in favour of a button on
+  // the dashboard — see the Compare link in src/app/page.tsx.
   const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
-  const tabWidth = tabs.length > 4 ? "min-w-[56px]" : "min-w-[64px]";
 
   // Signed out there is nowhere to tab to, and the bar would otherwise sit
   // under the login form promising pages that all bounce back to it.
   if (!isAuthenticated) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-md md:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    // A floating capsule rather than an edge-to-edge bar. The outer element
+    // spans the screen only so the pill can centre itself; it is
+    // pointer-events-none so the transparent gutters either side stay
+    // tappable — content genuinely scrolls past the pill there.
+    //
+    // Height and offset here are what --bottom-nav-clearance encodes. Change
+    // one and change the other.
+    <nav
+      aria-label="Main"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 md:hidden"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
     >
-      <div className="flex h-[60px] items-center justify-around">
+      <div className="pointer-events-auto flex h-[58px] items-center gap-1 rounded-full border border-white/10 bg-charcoal/85 px-2 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-xl">
         {tabs.map((tab) => {
           const isActive =
             tab.href === "/"
@@ -90,12 +88,15 @@ export default function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex ${tabWidth} flex-col items-center gap-0.5 px-2 py-1 transition-colors ${
-                isActive ? "text-[#4488ff]" : "text-white/40"
+              aria-current={isActive ? "page" : undefined}
+              className={`flex h-[46px] min-w-[62px] flex-col items-center justify-center gap-0.5 rounded-full px-2 transition-colors ${
+                isActive
+                  ? "bg-accent/15 text-accent"
+                  : "text-white/40 active:bg-white/5"
               }`}
             >
               {tab.icon}
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
             </Link>
           );
         })}

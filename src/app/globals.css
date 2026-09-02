@@ -5,6 +5,27 @@
 @tailwind utilities;
 
 @layer base {
+  /* How much room the floating pill nav takes at the bottom of every mobile
+   * page: its 58px height, the 10px it floats clear of the safe area, and
+   * 10px of breathing room above it.
+   *
+   * SPELLED ONCE, deliberately. This was three hardcoded numbers — the
+   * footer's pb-[60px], the portfolio FAB and the admin FAB — and two of the
+   * three had already drifted: the admin FAB omitted the safe-area term
+   * entirely, so on a phone with a home indicator the nav painted over the
+   * bottom of the + button. Anything that must clear the nav reads this var.
+   */
+  :root {
+    --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + 78px);
+  }
+
+  /* The pill is md:hidden, so above the breakpoint nothing needs clearing. */
+  @media (min-width: 768px) {
+    :root {
+      --bottom-nav-clearance: 0px;
+    }
+  }
+
   body {
     @apply bg-charcoal-dark text-white font-sans antialiased;
     font-size: 14px;

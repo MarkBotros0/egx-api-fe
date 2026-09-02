@@ -172,11 +172,15 @@ export default function AdminPage() {
         currentUserId={user?.id}
       />
 
-      {/* Mobile FAB, matching the portfolio page */}
+      {/* Mobile FAB, matching the portfolio page. The offset comes from
+          --bottom-nav-clearance: this used to be a bare bottom-[76px] with no
+          safe-area term, so the nav painted over the bottom of the button on
+          any phone with a home indicator. */}
       <button
         onClick={() => setShowCreate(true)}
         aria-label="Add user"
-        className="fixed bottom-[76px] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl font-light text-charcoal-dark shadow-lg transition-transform active:scale-95 md:hidden"
+        className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl font-light text-charcoal-dark shadow-lg transition-transform active:scale-95 md:hidden"
+        style={{ bottom: "calc(var(--bottom-nav-clearance) + 12px)" }}
       >
         +
       </button>

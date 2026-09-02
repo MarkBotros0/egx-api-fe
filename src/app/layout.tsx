@@ -62,7 +62,10 @@ export default function RootLayout({
               <WatchlistProvider>
                 <Navbar />
                 <main className="flex-1">{children}</main>
-                <footer className="pb-[60px] md:pb-4 pt-4 text-center text-xs text-white/40">
+                <footer
+                  className="pt-4 text-center text-xs text-white/40"
+                  style={{ paddingBottom: "calc(var(--bottom-nav-clearance) + 1rem)" }}
+                >
                   By Mark Botros
                 </footer>
                 <BottomTabBar />

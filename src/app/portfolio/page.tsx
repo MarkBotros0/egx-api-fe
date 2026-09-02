@@ -420,7 +420,7 @@ export default function PortfolioPage() {
               setShowForm(true);
             }}
             className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl font-bold text-charcoal-dark shadow-lg shadow-accent/25 transition-transform active:scale-95 md:hidden"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom) + 76px)' }}
+            style={{ bottom: 'calc(var(--bottom-nav-clearance) + 12px)' }}
           >
             +
           </button>
