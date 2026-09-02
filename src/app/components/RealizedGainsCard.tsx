@@ -39,26 +39,54 @@ export default function RealizedGainsCard({
   const positive = totalWinnings >= 0;
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 md:p-6">
-      <h2 className="mb-4 text-sm font-medium text-white/70">
-        <LearnTooltip
-          term="Realized Winnings"
-          explanation="Money you have actually banked: profit from selling, plus any dividends the companies paid you. Unlike the P&L on your open holdings this cannot go back down — the trades are closed and the cash is received."
+    // Collapsed by default, showing only the total. `<details>` rather than
+    // useState: it matches ClosedPositionsTable and DividendsTable directly
+    // below it on this page, and it renders collapsed on the server, so the
+    // card never flashes open before hydration.
+    //
+    // The state is deliberately NOT persisted — every visit starts collapsed.
+    //
+    // LearnTooltip is hover-only (no click handler), so having it inside the
+    // <summary> cannot swallow the toggle: on desktop hover explains and click
+    // expands, and on a phone there is no hover at all.
+    <details className="group rounded-xl border border-white/5 bg-white/[0.02]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 md:p-6">
+        <div className="min-w-0">
+          <h2 className="text-sm font-medium text-white/70">
+            <LearnTooltip
+              term="Realized Winnings"
+              explanation="Money you have actually banked: profit from selling, plus any dividends the companies paid you. Unlike the P&L on your open holdings this cannot go back down — the trades are closed and the cash is received."
+            >
+              Realized Winnings
+            </LearnTooltip>
+          </h2>
+          <p
+            className={`mt-1 font-mono text-3xl font-bold md:text-4xl ${
+              positive ? "text-gain" : "text-loss"
+            }`}
+          >
+            {egp(totalWinnings)} EGP
+          </p>
+        </div>
+        {/* The only affordance that the card opens — the default marker is
+            removed by list-none, and a phone has no hover state to reveal one. */}
+        <svg
+          className="h-5 w-5 shrink-0 text-white/30 transition-transform group-open:rotate-180"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
         >
-          Realized Winnings
-        </LearnTooltip>
-      </h2>
+          <path d="M5 7.5 10 12.5 15 7.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </summary>
 
-      {/* Headline */}
-      <div className="mb-5">
-        <p
-          className={`font-mono text-3xl font-bold md:text-4xl ${
-            positive ? "text-gain" : "text-loss"
-          }`}
-        >
-          {egp(totalWinnings)} EGP
-        </p>
-        {totalDividends > 0 && (
+      <div className="px-4 pb-4 md:px-6 md:pb-6">
+        {/* Headline detail — the split and the percentage both describe the
+            total shown in the summary above. */}
+        <div className="mb-5">
+          {totalDividends > 0 && (
           <p className="mt-1 font-mono text-xs text-white/50">
             {egp(summary.total_realized_pnl)} from sales
             <span className="mx-1.5 text-white/20">·</span>
@@ -188,6 +216,7 @@ export default function RealizedGainsCard({
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </details>
   );
 }
