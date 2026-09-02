@@ -139,7 +139,11 @@ export default function AddDividendForm({
               edited();
             }}
             min={0.01}
-            step={0.01}
+            // See AddHoldingForm. This one is the most exposed of the three:
+            // the amount is whatever actually landed after the 5-10%
+            // withholding tax, so it is routinely not a round two-decimal
+            // figure and step=0.01 would reject the true number.
+            step="any"
             placeholder="1200.00"
             className="min-h-[44px] w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
             required

@@ -283,7 +283,14 @@ export default function AddHoldingForm({
             value={buyPrice}
             onChange={(e) => setBuyPrice(e.target.value)}
             min={0.01}
-            step={0.01}
+            // "any", not 0.01. `<input type="number">` validates the value
+            // against the step, so step=0.01 made every three-decimal price
+            // fail with the browser's own "Enter a valid value" — and EGX
+            // quotes to three decimals (CIEB at 27.697). The user could see
+            // the number they had typed and no explanation of why it was
+            // rejected. A price has no natural increment; only the floor below
+            // is a real constraint.
+            step="any"
             placeholder="85.50"
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-[16px] text-white placeholder-white/30 outline-none focus:border-accent/50 md:text-sm"
             required
