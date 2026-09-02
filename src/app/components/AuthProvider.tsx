@@ -71,11 +71,32 @@ export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+/**
+ * Wipe the service worker's Cache Storage.
+ *
+ * sw.js is network-first for /api/* and navigations, but it FALLS BACK to the
+ * cache when a request fails. Without this, a signed-out person on a shared
+ * phone could go offline (or catch a network blip) and the worker would
+ * happily re-serve the last dashboard and API responses it saw. Clearing the
+ * token alone would make "signed out" a claim rather than a fact.
+ *
+ * Fire-and-forget: the Cache API is unavailable on insecure origins and in
+ * private windows, and a failure here must never block the sign-out itself.
+ */
+function clearCachedResponses() {
+  if (typeof caches === "undefined") return;
+  caches
+    .keys()
+    .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+    .catch(() => {});
+}
+
 export function clearStoredAuth() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   setPresenceCookie(false);
+  clearCachedResponses();
 }
 
 export function notifyUnauthorized() {
@@ -154,12 +175,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setToken(null);
       setPresenceCookie(false);
-      // If the user is on a protected page when their token is rejected,
-      // kick them to /login so they can re-authenticate. On public pages
-      // we leave them where they are.
+      // Every page is protected now, so a rejected token means the current
+      // page is dead wherever the user happens to be — send them to the login
+      // form rather than leaving them on a shell that 401s on every fetch.
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (path.startsWith("/portfolio") || path.startsWith("/admin")) {
+        if (path !== "/login") {
           const next = encodeURIComponent(path);
           window.location.href = `/login?next=${next}`;
         }

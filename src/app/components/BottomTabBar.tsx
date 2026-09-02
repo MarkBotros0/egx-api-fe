@@ -64,12 +64,16 @@ const TABS = [
 
 export default function BottomTabBar() {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAuthenticated } = useAuth();
 
   // Five tabs still clear the 44px touch target on a 360px screen; the
   // min-width drops so the labels don't truncate.
   const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
   const tabWidth = tabs.length > 4 ? "min-w-[56px]" : "min-w-[64px]";
+
+  // Signed out there is nowhere to tab to, and the bar would otherwise sit
+  // under the login form promising pages that all bounce back to it.
+  if (!isAuthenticated) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-md md:hidden"
