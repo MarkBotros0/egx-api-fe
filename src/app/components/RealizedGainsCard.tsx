@@ -29,7 +29,14 @@ export default function RealizedGainsCard({
     );
   }
 
-  const positive = summary.total_winnings >= 0;
+  // Tolerate a body cached before dividends shipped (see public/sw.js
+  // network-first-falls-back-to-cache): an old response has no
+  // total_winnings/total_dividends at all, and `.toLocaleString` on
+  // `undefined` would blank the whole page rather than degrade.
+  const totalWinnings = summary.total_winnings ?? summary.total_realized_pnl;
+  const totalDividends = summary.total_dividends ?? 0;
+  const dividendCount = summary.dividend_count ?? 0;
+  const positive = totalWinnings >= 0;
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 md:p-6">
@@ -49,20 +56,20 @@ export default function RealizedGainsCard({
             positive ? "text-gain" : "text-loss"
           }`}
         >
-          {egp(summary.total_winnings)} EGP
+          {egp(totalWinnings)} EGP
         </p>
-        {summary.total_dividends > 0 && (
+        {totalDividends > 0 && (
           <p className="mt-1 font-mono text-xs text-white/50">
             {egp(summary.total_realized_pnl)} from sales
             <span className="mx-1.5 text-white/20">·</span>
             <span className="text-gain">
-              {summary.total_dividends.toLocaleString(undefined, {
+              {totalDividends.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}
             </span>{" "}
             in dividends
             <span className="ml-1 text-white/30">
-              ({summary.dividend_count})
+              ({dividendCount})
             </span>
           </p>
         )}

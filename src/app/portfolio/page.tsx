@@ -256,7 +256,7 @@ export default function PortfolioPage() {
     }
   };
 
-  const handleAddDividend = (holding: {
+  const handleAddDividend = (holding?: {
     symbol: string;
     name?: string;
     sector?: string;
@@ -265,6 +265,13 @@ export default function PortfolioPage() {
     // Reopening starts clean — a rejection from a previous attempt describes
     // values that are no longer on screen.
     setDividendError(null);
+    // No holding passed — the general "+ Dividend" entry point. AddDividendForm
+    // already defaults its select to the first entry in `symbols` when
+    // presetSymbol is empty, so an empty preset here is enough.
+    if (!holding) {
+      setDividendFor({ symbol: "", name: "", sector: "", shares: null });
+      return;
+    }
     setDividendFor({
       symbol: holding.symbol,
       name: holding.name ?? holding.symbol,
@@ -390,6 +397,18 @@ export default function PortfolioPage() {
             >
               {showForm ? "Cancel" : "+ Add Stock"}
             </button>
+            {/* General dividend entry point — does not depend on `analysis`,
+                so it is available whenever the page renders at all (including
+                while /api/portfolio_analysis is slow or timed out). Hidden
+                when there is nothing to pick a symbol from. */}
+            {dividendSymbols.length > 0 && (
+              <button
+                onClick={() => handleAddDividend()}
+                className="hidden min-h-[44px] rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:border-gain/30 hover:text-gain md:block"
+              >
+                + Dividend
+              </button>
+            )}
           </div>
         </div>
 
@@ -617,7 +636,7 @@ export default function PortfolioPage() {
           salesLoaded &&
           !salesError &&
           !sales?.sales.length &&
-          !sales?.dividends.length ? (
+          !(sales?.dividends ?? []).length ? (
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-16 text-center">
             <p className="mb-2 text-lg text-white/50">No holdings yet</p>
             <p className="mb-4 text-sm text-white/30">
@@ -649,18 +668,30 @@ export default function PortfolioPage() {
             )}
             {sales && (
               <DividendsTable
-                dividends={sales.dividends}
+                dividends={sales.dividends ?? []}
                 onDelete={handleDeleteDividend}
               />
             )}
             <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
               <p className="text-sm text-white/40">You have no open positions.</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="mt-3 rounded-lg bg-accent px-6 py-2 text-sm font-medium text-charcoal-dark"
-              >
-                Add a Stock
-              </button>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="min-h-[44px] rounded-lg bg-accent px-6 py-2 text-sm font-medium text-charcoal-dark"
+                >
+                  Add a Stock
+                </button>
+                {/* A dividend on a stock exited last month has nowhere else
+                    to be recorded — this branch renders no HoldingsTable. */}
+                {dividendSymbols.length > 0 && (
+                  <button
+                    onClick={() => handleAddDividend()}
+                    className="min-h-[44px] rounded-lg border border-white/10 px-6 py-2 text-sm font-medium text-white/70 transition-colors hover:border-gain/30 hover:text-gain"
+                  >
+                    Record a Dividend
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -673,7 +704,7 @@ export default function PortfolioPage() {
               <PortfolioSummary metrics={analysis.portfolio_metrics} />
             ) : null}
 
-            {sales && (sales.sales.length > 0 || sales.dividends.length > 0) && (
+            {sales && (sales.sales.length > 0 || (sales.dividends ?? []).length > 0) && (
               <RealizedGainsCard
                 summary={sales.summary}
                 riskFreeRatePct={sales.risk_free_rate_pct}
@@ -688,7 +719,7 @@ export default function PortfolioPage() {
             )}
             {sales && (
               <DividendsTable
-                dividends={sales.dividends}
+                dividends={sales.dividends ?? []}
                 onDelete={handleDeleteDividend}
               />
             )}

@@ -149,6 +149,7 @@ export default function HoldingsTable({
             return (
               <div key={rowKey} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
                 <span className="font-mono text-xs font-medium text-white">{h.symbol}</span>
+                <DividendPill holding={h} />
                 <p className="mt-1 text-xs text-loss">{h.error}</p>
                 {h.id && (
                   <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
@@ -416,6 +417,7 @@ export default function HoldingsTable({
                     <tr key={rowKey} className="border-b border-white/5">
                       <td className="px-4 py-3 font-mono text-xs font-medium text-white">
                         {h.symbol}
+                        <DividendPill holding={h} />
                       </td>
                       <td colSpan={10} className="px-4 py-3 text-xs text-loss">
                         {h.error}
