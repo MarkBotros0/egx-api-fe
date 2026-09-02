@@ -1305,6 +1305,38 @@ export const CURRICULUM: Module[] = [
     hue: V.coral,
     concepts: [
       {
+        id: "why_no_price_prediction",
+        title: "Why this app will not predict tomorrow's price",
+        definition:
+          "Every forecast here is a RANGE of how far a price might travel, " +
+          "never a guess at which way it goes. That is a deliberate limit, " +
+          "and it comes from testing this app's own numbers against twenty " +
+          "years of Egyptian market history.",
+        whyItMatters:
+          "The app used to label stocks Buy and Sell. Then those labels were " +
+          "tested across 36,818 stock-days: the score could not tell a " +
+          "winner from a loser. Nine of ten score groups had a median " +
+          "one-month return of exactly 0.00%, and among the stocks you can " +
+          "actually trade, the ones labelled Sell did slightly BETTER than " +
+          "the ones labelled Buy. So the labels were removed. An instruction " +
+          "the evidence contradicts is worse than no instruction, and on the " +
+          "sell side it was pointing the wrong way.",
+        howToUse:
+          "Expect the app to tell you how much a stock moves, how deep a " +
+          "hole it has historically dug, and how wide the range of outcomes " +
+          "is. Do not expect it to tell you what a share will be worth next " +
+          "month, because nobody can and the ones who say they can are " +
+          "selling something. Check the accuracy page to see how often the " +
+          "ranges actually held.",
+        example:
+          "What IS predictable: how much a stock moves. Past three-month " +
+          "volatility ranks the next six months' volatility at a correlation " +
+          "of 0.56, and future drawdown at 0.43. What is NOT: direction. The " +
+          "best return signal found anywhere in this app is about 0.08, and " +
+          "most are indistinguishable from zero.",
+        level: "core",
+      },
+      {
         id: "stop_loss",
         title: "Stop-Loss",
         level: "start",

@@ -414,6 +414,48 @@ export interface MarketRegime {
   n_symbols_now?: number;
 }
 
+// ---- Calibration: the app's own accuracy record ----
+
+export interface CalibrationBand {
+  claim: string;
+  promised_pct: number;
+  delivered_pct: number;
+  note: string | null;
+}
+
+export interface CalibrationResponse {
+  forecast: {
+    fitted_at: string;
+    n_observations: number;
+    universe: string;
+    bands: CalibrationBand[];
+    /** Coverage alone is gameable — a band from 0 to infinity covers 100%. */
+    sharpness: {
+      median_width_pct_of_spot: number;
+      p25: number;
+      p75: number;
+      note: string;
+    };
+    z_table: Record<string, number>;
+  };
+  risk_grade: {
+    fitted_at: string;
+    n_observations: number;
+    claims: {
+      claim: string;
+      ic: number;
+      t_non_overlapping: number;
+      verdict: string;
+    }[];
+  };
+  /** Reported beside the successes on purpose. */
+  what_failed: { claim: string; measured: string; outcome: string }[];
+}
+
+export async function fetchCalibration(): Promise<CalibrationResponse> {
+  return fetchJSON<CalibrationResponse>(`${BASE}/calibration`);
+}
+
 // ---- Per-stock risk grade ----
 
 /**

@@ -103,7 +103,10 @@ export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
           ? ` — ${outcome_band.calibration.n_observations.toLocaleString()} past checks, last fitted ${outcome_band.calibration.fitted_at}`
           : ""}
         . A range can still be wrong: news, a devaluation or a suspension can put
-        the price outside it.
+        the price outside it.{" "}
+        <Link href="/calibration" className="text-accent/60 hover:text-accent">
+          See how often these ranges held →
+        </Link>
       </p>
     </div>
   );
