@@ -48,12 +48,31 @@ interface CardData {
   measuredAt?: string | null;
 }
 
-/** "2026-09-02T15:00:00+00:00" -> "2 Sep". Undated input yields null. */
+/**
+ * "2026-09-02T15:32:57+00:00" -> "2 Sep 15:32:57". Undated input yields null.
+ *
+ * Down to the second, because "2 Sep" cannot answer the question the label
+ * exists for. The snapshot is written after the close and the cron walks the
+ * universe in chunks, so two cards dated the same day can be two hours apart —
+ * and during a trading session the reader needs to know whether a figure is
+ * twenty minutes old or since yesterday's close.
+ *
+ * Rendered in the VIEWER's timezone (the stored value is UTC), which for this
+ * app's audience is Cairo. 24-hour, so the stamp stays narrow enough for a
+ * card and cannot be misread by twelve hours.
+ */
 function shortDate(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return d.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 export default function Dashboard() {
@@ -486,8 +505,14 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Search — sticky on mobile */}
-            <div className="sticky top-[56px] z-30 -mx-4 mb-3 bg-charcoal-dark/95 px-4 py-2 backdrop-blur-md md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+            {/* Search — sticky on mobile. The offset reads the nav's own
+                footprint rather than a hardcoded 56px, which was 5px short of
+                the real 61px and ignored the safe-area inset entirely, so the
+                top of this bar sat under the nav on a notched phone. */}
+            <div
+              className="sticky z-30 -mx-4 mb-3 bg-charcoal-dark/95 px-4 py-2 backdrop-blur-md md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none"
+              style={{ top: "var(--top-nav-clearance)" }}
+            >
               <input
                 type="text"
                 value={search}

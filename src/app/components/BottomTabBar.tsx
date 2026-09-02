@@ -8,7 +8,7 @@ const ADMIN_TAB = {
   href: "/admin",
   label: "Users",
   icon: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -22,7 +22,7 @@ const TABS = [
     href: "/",
     label: "Dashboard",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" />
         <rect x="14" y="3" width="7" height="7" />
         <rect x="14" y="14" width="7" height="7" />
@@ -34,7 +34,7 @@ const TABS = [
     href: "/portfolio",
     label: "Portfolio",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
         <path d="M16 7V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3" />
       </svg>
@@ -44,7 +44,7 @@ const TABS = [
     href: "/learn",
     label: "Learn",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
       </svg>
@@ -77,7 +77,13 @@ export default function BottomTabBar() {
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 md:hidden"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
     >
-      <div className="pointer-events-auto flex h-[58px] items-center gap-1 rounded-full border border-white/10 bg-charcoal/85 px-2 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+      {/* Fluid, not content-sized. It used to be exactly as wide as its tabs
+          (~276px), which on a 440px iPhone 16 Pro Max left a third of the bar
+          as empty gutter and made the whole control read as undersized on the
+          biggest phones — the devices with the most room. It now fills the
+          available width up to a cap, so the tabs grow with the screen instead
+          of the gutters doing it. */}
+      <div className="pointer-events-auto flex h-[64px] w-full max-w-[430px] items-center gap-1 rounded-full border border-white/10 bg-charcoal/85 px-2 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-xl">
         {tabs.map((tab) => {
           const isActive =
             tab.href === "/"
@@ -89,14 +95,16 @@ export default function BottomTabBar() {
               key={tab.href}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex h-[46px] min-w-[62px] flex-col items-center justify-center gap-0.5 rounded-full px-2 transition-colors ${
+              // flex-1 so the tabs share the pill's width evenly; the min-w
+              // is the floor for a narrow phone, not the target.
+              className={`flex h-[52px] min-w-[62px] flex-1 flex-col items-center justify-center gap-1 rounded-full px-2 transition-colors ${
                 isActive
                   ? "bg-accent/15 text-accent"
                   : "text-white/40 active:bg-white/5"
               }`}
             >
               {tab.icon}
-              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+              <span className="text-[11px] font-medium leading-none">{tab.label}</span>
             </Link>
           );
         })}

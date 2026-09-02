@@ -6,7 +6,7 @@
 
 @layer base {
   /* How much room the floating pill nav takes at the bottom of every mobile
-   * page: its 58px height, the 10px it floats clear of the safe area, and
+   * page: its 64px height, the 10px it floats clear of the safe area, and
    * 10px of breathing room above it.
    *
    * SPELLED ONCE, deliberately. This was three hardcoded numbers — the
@@ -16,7 +16,7 @@
    * bottom of the + button. Anything that must clear the nav reads this var.
    */
   :root {
-    --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + 78px);
+    --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + 84px);
   }
 
   /* The pill is md:hidden, so above the breakpoint nothing needs clearing. */
@@ -24,6 +24,25 @@
     :root {
       --bottom-nav-clearance: 0px;
     }
+  }
+
+  /*
+   * The top nav's footprint, for anything that sticks beneath it.
+   *
+   * `Navbar` is `sticky top-0 z-50` and carries NO md: visibility class, so it
+   * covers the top of the viewport at every screen size. A sticky element at
+   * `top-0` therefore parks itself underneath it and vanishes — which is what
+   * happened to the Learn page's search bar: it was sticking correctly the
+   * whole time, just behind an opaque nav at a higher z-index.
+   *
+   * Measured 61px (py-3 plus content) on top of the safe-area inset, which is
+   * 0 in a desktop browser and non-zero on a notched phone — so the inset must
+   * be part of the value, not assumed away. Same lesson as the bottom nav
+   * above, where three hardcoded copies drifted and one omitted the inset
+   * entirely. Change the nav's padding and change this in the same breath.
+   */
+  :root {
+    --top-nav-clearance: calc(env(safe-area-inset-top) + 61px);
   }
 
   body {
