@@ -52,7 +52,7 @@ export default function PortfolioPage() {
   // "No holdings yet" over a real trading history.
   const [salesLoaded, setSalesLoaded] = useState(false);
   const [salesError, setSalesError] = useState<string | null>(null);
-  const [sellingId, setSellingId] = useState<string | null>(null);
+  const [sellingSymbol, setSellingSymbol] = useState<string | null>(null);
   const [sellError, setSellError] = useState<string | null>(null);
   const [dividendFor, setDividendFor] = useState<{
     symbol: string;
@@ -65,16 +65,33 @@ export default function PortfolioPage() {
   const { version: weightsVersion } = useScoreWeights();
 
   // Derived above the scroll-lock effect on purpose: the lock and the sell
-  // modal's render condition MUST be the same expression. `sellingId` alone is
-  // not it — the Sell button comes from `analysis.holdings` while this lookup
-  // reads `portfolio.portfolio`, two separate fetches that can disagree (delete
-  // a holding while its sell form is open and the form vanishes with the id
-  // still set). Locking on the id alone left the body unscrollable with no
-  // modal on screen and no Cancel button to escape it.
-  const sellingHolding = sellingId
-    ? portfolio?.portfolio.find((h) => h.id === sellingId)
-    : null;
-  const sellModalOpen = Boolean(sellingHolding);
+  // modal's render condition MUST be the same expression. `sellingSymbol`
+  // alone is not it — the Sell button comes from `analysis.holdings` while
+  // this lookup reads `portfolio.portfolio`, two separate fetches that can
+  // disagree (delete a holding while its sell form is open and the form
+  // vanishes with the symbol still set). Locking on the symbol alone left the
+  // body unscrollable with no modal on screen and no Cancel button to escape
+  // it.
+  //
+  // A sale comes out of the POSITION, so this collects every open lot of the
+  // symbol — someone who bought 200 then 100 can sell any number up to 300,
+  // and the backend consumes the lots oldest-first.
+  const sellingPosition = useMemo(() => {
+    if (!sellingSymbol) return null;
+    const lots = (portfolio?.portfolio ?? [])
+      .filter((h) => h.symbol === sellingSymbol && h.quantity > 0 && h.id)
+      .map((h) => ({
+        id: h.id as string,
+        quantity: h.quantity,
+        buy_price: h.buy_price,
+        buy_date: h.buy_date,
+      }))
+      .sort((a, b) => (a.buy_date || "").localeCompare(b.buy_date || ""));
+    if (!lots.length) return null;
+    const first = portfolio?.portfolio.find((h) => h.symbol === sellingSymbol);
+    return { symbol: sellingSymbol, name: first?.name ?? sellingSymbol, lots };
+  }, [sellingSymbol, portfolio]);
+  const sellModalOpen = Boolean(sellingPosition);
 
   // Lock body scroll when mobile modal is open (iOS needs position:fixed, not just overflow:hidden)
   //
@@ -215,16 +232,16 @@ export default function PortfolioPage() {
     }
   };
 
-  const handleSell = (id: string) => {
+  const handleSell = (symbol: string) => {
     // Reopening starts clean — a rejection from a previous attempt describes
     // values that are no longer on screen.
     setSellError(null);
-    setSellingId(id);
+    setSellingSymbol(symbol);
   };
 
   const closeSellForm = () => {
     setSellError(null);
-    setSellingId(null);
+    setSellingSymbol(null);
   };
 
   const handleSellSubmit = async (data: {
@@ -233,11 +250,14 @@ export default function PortfolioPage() {
     sell_date: string;
     notes: string;
   }) => {
-    if (!sellingId) return;
+    if (!sellingPosition) return;
     try {
       setSellError(null);
-      await recordSale({ holding_id: sellingId, ...data });
-      setSellingId(null);
+      // `holding_id` names the POSITION — the backend reads its symbol and
+      // consumes the lots oldest-first, so the oldest lot is the honest
+      // anchor for a sale that starts there.
+      await recordSale({ holding_id: sellingPosition.lots[0].id, ...data });
+      setSellingSymbol(null);
       await Promise.all([refreshAfterMutation(), loadSales()]);
     } catch (e: any) {
       // Into the form, not the page banner: on mobile the form covers the
@@ -322,7 +342,7 @@ export default function PortfolioPage() {
   const editingHolding = editingId
     ? portfolio?.portfolio.find((h) => h.id === editingId)
     : null;
-  // `sellingHolding` is derived near the top, beside the scroll-lock effect.
+  // `sellingPosition` is derived near the top, beside the scroll-lock effect.
 
   // Open holdings AND symbols with a trading history, so a dividend can be
   // recorded against a position that has already been sold.
@@ -503,9 +523,9 @@ export default function PortfolioPage() {
         )}
 
         {/* Sell form — full screen on mobile, inline on desktop.
-            Gated on `sellingHolding`, the same value `sellModalOpen` is derived
+            Gated on `sellingPosition`, the same value `sellModalOpen` is derived
             from, so the body-scroll lock can never outlive what is on screen. */}
-        {sellingHolding && (
+        {sellingPosition && (
           <>
             <div className="fixed inset-0 z-[60] flex flex-col bg-charcoal-dark md:hidden">
               <div
@@ -525,7 +545,7 @@ export default function PortfolioPage() {
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <SellHoldingForm
-                  holding={sellingHolding}
+                  position={sellingPosition}
                   onSubmit={handleSellSubmit}
                   onCancel={closeSellForm}
                   error={sellError}
@@ -536,7 +556,7 @@ export default function PortfolioPage() {
 
             <div className="mb-6 hidden md:block">
               <SellHoldingForm
-                holding={sellingHolding}
+                position={sellingPosition}
                 onSubmit={handleSellSubmit}
                 onCancel={closeSellForm}
                 error={sellError}

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { HoldingAnalysis, EntryExit } from "@/app/lib/types";
 import LearnTooltip from "./LearnTooltip";
 import CompositeGauge from "./CompositeGauge";
 import { peColor as peBandColor } from "@/app/lib/constants";
+import { groupHoldings, type Position } from "@/app/lib/positions";
 
 /** Same bands as StatsPanel and the backend; falls back to a visible neutral. */
 function peColor(pe: number): string {
@@ -118,9 +119,9 @@ function ZoneDetail({ entryExit }: { entryExit: EntryExit | null | undefined }) 
   );
 }
 
-/** Dividends are anchored to the SYMBOL, not to one purchase lot. When the user
- *  holds the same symbol in more than one row, this figure is that symbol's
- *  total — so it says so, rather than pretending to be this row's own. */
+/** Dividends are anchored to the SYMBOL, not to one purchase lot — which is
+ *  exactly what a position is, so at this level the figure needs no caveat.
+ *  (It used to read "(all lots)" because the row was one lot of several.) */
 function DividendPill({ holding }: { holding: HoldingAnalysis }) {
   const amount = holding.dividends_collected ?? 0;
   if (amount <= 0) return null;
@@ -132,11 +133,114 @@ function DividendPill({ holding }: { holding: HoldingAnalysis }) {
   );
 }
 
+/** How many purchases are behind the average price on the card. Only shown
+ *  when there is more than one, so a single-lot position reads as it always
+ *  has — the pill is what tells you the price above it is an average. */
+function LotCountPill({ position }: { position: Position }) {
+  if (position.lots.length < 2) return null;
+  return (
+    <span className="ml-2 inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/50">
+      {position.lots.length} lots
+    </span>
+  );
+}
+
+/**
+ * The individual purchases behind one position.
+ *
+ * Each lot keeps its own P&L and annualized return, because those are the
+ * figures the position cannot honestly merge: a lot bought in January and one
+ * bought in June have different holding periods, and an average of returns
+ * over different windows describes neither. Edit and Delete stay per lot for
+ * the same reason — a purchase is a fact about one day.
+ */
+function LotList({
+  position,
+  onEdit,
+  onConfirmDelete,
+}: {
+  position: Position;
+  onEdit: (id: string) => void;
+  onConfirmDelete: (target: { id: string; symbol: string }) => void;
+}) {
+  if (position.lots.length < 2) return null;
+
+  return (
+    <div className="mt-3 border-t border-white/5 pt-3">
+      <p className="text-[10px] uppercase tracking-wide text-white/30">
+        {position.lots.length} purchases · average{" "}
+        <span className="font-mono text-white/50">
+          {position.avg_buy_price.toFixed(2)}
+        </span>{" "}
+        EGP
+      </p>
+      <div className="mt-2 space-y-2">
+        {position.lots.map((lot) => {
+          const up = lot.pnl >= 0;
+          return (
+            <div
+              key={lot.id ?? lot.buy_date}
+              className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="font-mono text-xs text-white/80">
+                  {lot.quantity} × {lot.buy_price.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-white/30">
+                  {lot.buy_date}
+                  {lot.error ? " · no price data" : ` · ${lot.days_held}d`}
+                </p>
+              </div>
+              {!lot.error && (
+                <div className="shrink-0 text-right">
+                  <p
+                    className={`font-mono text-xs ${up ? "text-gain" : "text-loss"}`}
+                  >
+                    {up ? "+" : ""}
+                    {lot.pnl.toFixed(0)}
+                    <span className="ml-1 text-[10px]">
+                      ({up ? "+" : ""}
+                      {lot.pnl_pct.toFixed(1)}%)
+                    </span>
+                  </p>
+                  {lot.annualized_return != null && (
+                    <p className="text-[10px] text-white/30">
+                      {lot.annualized_return.toFixed(0)}% annualized
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={() => lot.id && onEdit(lot.id)}
+                  className="min-h-[44px] px-1 text-xs text-accent/70 hover:text-accent"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() =>
+                    lot.id && onConfirmDelete({ id: lot.id, symbol: lot.symbol })
+                  }
+                  className="min-h-[44px] px-1 text-xs text-loss/70 hover:text-loss"
+                >
+                  Del
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface HoldingsTableProps {
   holdings: HoldingAnalysis[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  onSell: (id: string) => void;
+  /** By SYMBOL, not by lot id: a sell comes out of the whole position and may
+   *  span several purchases. The page resolves the lots. */
+  onSell: (symbol: string) => void;
   onAddDividend: (holding: HoldingAnalysis) => void;
 }
 
@@ -147,9 +251,11 @@ export default function HoldingsTable({
   onSell,
   onAddDividend,
 }: HoldingsTableProps) {
+  // Keyed by SYMBOL now — one card per stock, however many lots it holds.
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; symbol: string } | null>(null);
+
+  const positions = useMemo(() => groupHoldings(holdings), [holdings]);
 
   if (!holdings.length) {
     return (
@@ -165,37 +271,35 @@ export default function HoldingsTable({
     <>
       {/* Mobile card layout */}
       <div className="space-y-3 md:hidden">
-        {holdings.map((h) => {
-          const rowKey = h.id ?? h.symbol;
-          const isExpanded = expanded === h.id;
+        {positions.map((h) => {
+          const rowKey = h.symbol;
+          const isExpanded = expanded === h.symbol;
           const isPnlPositive = h.pnl >= 0;
-          const isMenuOpen = menuOpen === h.id;
 
-          // A holding whose price feed is down still has to be sellable —
+          // A position whose price feed is down still has to be sellable —
           // recording a sale never fetches a price. The error stays visible;
           // the action is added beside it, not instead of it.
           if (h.error) {
             return (
               <div key={rowKey} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
                 <span className="font-mono text-xs font-medium text-white">{h.symbol}</span>
+                <LotCountPill position={h} />
                 <DividendPill holding={h} />
                 <p className="mt-1 text-xs text-loss">{h.error}</p>
-                {h.id && (
-                  <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
-                    <button
-                      onClick={() => onSell(h.id!)}
-                      className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
-                    >
-                      Sell
-                    </button>
-                    <button
-                      onClick={() => onAddDividend(h)}
-                      className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-white/40 hover:text-gain"
-                    >
-                      Dividend
-                    </button>
-                  </div>
-                )}
+                <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
+                  <button
+                    onClick={() => onSell(h.symbol)}
+                    className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
+                  >
+                    Sell
+                  </button>
+                  <button
+                    onClick={() => onAddDividend(h)}
+                    className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-white/40 hover:text-gain"
+                  >
+                    Dividend
+                  </button>
+                </div>
               </div>
             );
           }
@@ -208,7 +312,7 @@ export default function HoldingsTable({
               {/* Card header — tappable */}
               <button
                 className="flex w-full items-center justify-between gap-3 p-4 text-left"
-                onClick={() => setExpanded(isExpanded ? null : h.id ?? null)}
+                onClick={() => setExpanded(isExpanded ? null : h.symbol)}
               >
                 {h.composite_score != null && (
                   <CompositeGauge
@@ -220,17 +324,23 @@ export default function HoldingsTable({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium text-white">{h.symbol}</span>
+                    <LotCountPill position={h} />
                     <DividendPill holding={h} />
                     <span className="text-xs text-white/30 truncate">{h.name}</span>
                   </div>
                   <div className="mt-1.5 flex items-baseline gap-3 text-xs">
-                    <span className="text-white/50">{h.quantity} x {h.buy_price.toFixed(2)}</span>
+                    <span className="text-white/50">
+                      {h.quantity} x {h.avg_buy_price.toFixed(2)}
+                      {h.lots.length > 1 && <span className="text-white/30"> avg</span>}
+                    </span>
                     <span className="text-white/30">=</span>
                     <span className="font-mono text-white">{h.current_value.toFixed(0)} EGP</span>
                   </div>
                   {h.buy_date && (
                     <div className="mt-0.5 text-[10px] text-white/30">
-                      Lot from {h.buy_date}
+                      {h.lots.length > 1
+                        ? `First bought ${h.buy_date}`
+                        : `Lot from ${h.buy_date}`}
                     </div>
                   )}
                   {zonePill(h.entry_exit) && (
@@ -354,19 +464,30 @@ export default function HoldingsTable({
                     )}
                   </div>
 
+                  {/* The purchases behind the average — multi-lot only */}
+                  <LotList
+                    position={h}
+                    onEdit={onEdit}
+                    onConfirmDelete={setConfirmDelete}
+                  />
+
                   {/* Entry/exit zone detail — mobile */}
                   <ZoneDetail entryExit={h.entry_exit} />
 
-                  {/* Actions */}
+                  {/* Actions. Sell and Dividend belong to the POSITION; Edit
+                      and Delete belong to a purchase, so on a multi-lot
+                      position they live on each lot above instead. */}
                   <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
+                    {h.lots.length === 1 && (
+                      <button
+                        onClick={() => h.id && onEdit(h.id)}
+                        className="min-h-[44px] flex-1 rounded-lg border border-accent/20 py-2 text-sm font-medium text-accent"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
-                      onClick={() => h.id && onEdit(h.id)}
-                      className="min-h-[44px] flex-1 rounded-lg border border-accent/20 py-2 text-sm font-medium text-accent"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => h.id && onSell(h.id)}
+                      onClick={() => onSell(h.symbol)}
                       className="min-h-[44px] flex-1 rounded-lg border border-gain/20 py-2 text-sm font-medium text-gain"
                     >
                       Sell
@@ -377,14 +498,16 @@ export default function HoldingsTable({
                     >
                       Dividend
                     </button>
-                    <button
-                      onClick={() => {
-                        if (h.id) setConfirmDelete({ id: h.id, symbol: h.symbol });
-                      }}
-                      className="min-h-[44px] flex-1 rounded-lg border border-loss/20 py-2 text-sm font-medium text-loss"
-                    >
-                      Delete
-                    </button>
+                    {h.lots.length === 1 && (
+                      <button
+                        onClick={() => {
+                          if (h.id) setConfirmDelete({ id: h.id, symbol: h.symbol });
+                        }}
+                        className="min-h-[44px] flex-1 rounded-lg border border-loss/20 py-2 text-sm font-medium text-loss"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -433,9 +556,9 @@ export default function HoldingsTable({
               </tr>
             </thead>
             <tbody>
-              {holdings.map((h) => {
-                const rowKey = h.id ?? h.symbol;
-                const isExpanded = expanded === h.id;
+              {positions.map((h) => {
+                const rowKey = h.symbol;
+                const isExpanded = expanded === h.symbol;
                 const isPnlPositive = h.pnl >= 0;
 
                 // Sellable despite the error — see the mobile branch above.
@@ -446,28 +569,27 @@ export default function HoldingsTable({
                     <tr key={rowKey} className="border-b border-white/5">
                       <td className="px-4 py-3 font-mono text-xs font-medium text-white">
                         {h.symbol}
+                        <LotCountPill position={h} />
                         <DividendPill holding={h} />
                       </td>
                       <td colSpan={10} className="px-4 py-3 text-xs text-loss">
                         {h.error}
                       </td>
                       <td className="px-4 py-3">
-                        {h.id && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => onSell(h.id!)}
-                              className="text-xs text-gain/70 hover:text-gain"
-                            >
-                              Sell
-                            </button>
-                            <button
-                              onClick={() => onAddDividend(h)}
-                              className="min-h-[44px] text-xs text-white/40 hover:text-gain"
-                            >
-                              Dividend
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => onSell(h.symbol)}
+                            className="text-xs text-gain/70 hover:text-gain"
+                          >
+                            Sell
+                          </button>
+                          <button
+                            onClick={() => onAddDividend(h)}
+                            className="min-h-[44px] text-xs text-white/40 hover:text-gain"
+                          >
+                            Dividend
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -477,16 +599,19 @@ export default function HoldingsTable({
                   <React.Fragment key={rowKey}>
                     <tr
                       className="cursor-pointer border-b border-white/5 transition-colors hover:bg-white/[0.03]"
-                      onClick={() => setExpanded(isExpanded ? null : h.id ?? null)}
+                      onClick={() => setExpanded(isExpanded ? null : h.symbol)}
                     >
                       <td className="px-4 py-3">
                         <span className="font-mono text-xs font-medium text-white">
                           {h.symbol}
                         </span>
+                        <LotCountPill position={h} />
                         <DividendPill holding={h} />
                         <p className="text-[10px] text-white/30">
                           {h.name}
-                          {h.buy_date ? ` · ${h.buy_date}` : ""}
+                          {h.buy_date
+                            ? ` · ${h.lots.length > 1 ? "from " : ""}${h.buy_date}`
+                            : ""}
                         </p>
                         {zonePill(h.entry_exit) && (
                           <div className="mt-1">
@@ -514,7 +639,12 @@ export default function HoldingsTable({
                         {h.quantity}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-white/70">
-                        {h.buy_price.toFixed(2)}
+                        {h.avg_buy_price.toFixed(2)}
+                        {h.lots.length > 1 && (
+                          <span className="ml-1 font-sans text-[10px] text-white/30">
+                            avg
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs font-medium text-white">
                         {h.current_price.toFixed(2)}
@@ -561,16 +691,21 @@ export default function HoldingsTable({
                           <span className="text-white/30">--</span>
                         )}
                       </td>
+                      {/* Sell and Dividend act on the POSITION. Edit and Del
+                          act on a purchase, so once there are several they
+                          move into the lot list in the expanded row. */}
                       <td className="px-4 py-3">
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          {h.lots.length === 1 && (
+                            <button
+                              onClick={() => h.id && onEdit(h.id)}
+                              className="text-xs text-accent/70 hover:text-accent"
+                            >
+                              Edit
+                            </button>
+                          )}
                           <button
-                            onClick={() => h.id && onEdit(h.id)}
-                            className="text-xs text-accent/70 hover:text-accent"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => h.id && onSell(h.id)}
+                            onClick={() => onSell(h.symbol)}
                             className="text-xs text-gain/70 hover:text-gain"
                           >
                             Sell
@@ -581,14 +716,16 @@ export default function HoldingsTable({
                           >
                             Dividend
                           </button>
-                          <button
-                            onClick={() => {
-                              if (h.id) setConfirmDelete({ id: h.id, symbol: h.symbol });
-                            }}
-                            className="text-xs text-loss/70 hover:text-loss"
-                          >
-                            Del
-                          </button>
+                          {h.lots.length === 1 && (
+                            <button
+                              onClick={() => {
+                                if (h.id) setConfirmDelete({ id: h.id, symbol: h.symbol });
+                              }}
+                              className="text-xs text-loss/70 hover:text-loss"
+                            >
+                              Del
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -614,6 +751,14 @@ export default function HoldingsTable({
                               {h.annualized_return != null ? (
                                 <p className={`font-mono ${h.annualized_return >= 0 ? "text-gain" : "text-loss"}`}>
                                   {h.annualized_return.toFixed(1)}%
+                                </p>
+                              ) : h.lots.length > 1 ? (
+                                /* Not aggregated on purpose: the lots have
+                                   different holding periods, and averaging
+                                   returns over different windows describes
+                                   neither. It is stated per lot below. */
+                                <p className="font-mono text-xs text-white/40" title="Each purchase has its own holding period, so there is no single honest figure for the position. Shown per lot below.">
+                                  per lot
                                 </p>
                               ) : (
                                 <p className="font-mono text-white/30" title="Needs at least 30 days held before annualizing means anything.">
@@ -694,7 +839,9 @@ export default function HoldingsTable({
                               </div>
                             )}
                             <div>
-                              <p className="text-white/40">Buy Date</p>
+                              <p className="text-white/40">
+                                {h.lots.length > 1 ? "First Bought" : "Buy Date"}
+                              </p>
                               <p className="font-mono text-white/70">{h.buy_date}</p>
                             </div>
                             {(h.dividends_collected ?? 0) > 0 && (
@@ -711,6 +858,13 @@ export default function HoldingsTable({
                               </div>
                             )}
                           </div>
+
+                          {/* The purchases behind the average — multi-lot only */}
+                          <LotList
+                            position={h}
+                            onEdit={onEdit}
+                            onConfirmDelete={setConfirmDelete}
+                          />
 
                           {/* Entry/exit zone detail — desktop */}
                           <ZoneDetail entryExit={h.entry_exit} />

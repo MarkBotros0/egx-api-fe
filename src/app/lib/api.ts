@@ -184,14 +184,22 @@ export async function fetchSales(): Promise<SalesResponse> {
   return fetchJSON<SalesResponse>(`${BASE}/sales`);
 }
 
+/**
+ * Record a sell against a POSITION.
+ *
+ * `holding_id` names the position — the backend reads its symbol and consumes
+ * the open lots oldest-first — so `quantity` may exceed what that one row
+ * holds. A sale spanning two purchases comes back as two `sales`, one per lot
+ * consumed, each keeping its own cost basis and holding period.
+ */
 export async function recordSale(body: {
   holding_id: string;
   quantity: number;
   sell_price: number;
   sell_date: string;
   notes?: string;
-}): Promise<{ sale: Sale; holding: PortfolioHolding }> {
-  return fetchJSON<{ sale: Sale; holding: PortfolioHolding }>(`${BASE}/sales`, {
+}): Promise<{ sales: Sale[]; holdings: PortfolioHolding[] }> {
+  return fetchJSON<{ sales: Sale[]; holdings: PortfolioHolding[] }>(`${BASE}/sales`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
