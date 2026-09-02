@@ -412,6 +412,44 @@ export interface MarketRegime {
   stale?: boolean;
   observed_at?: string;
   n_symbols_now?: number;
+  /**
+   * Market breadth, from the nightly risk snapshot rather than the score cache.
+   *
+   * It answers the same question as `mean_score` from an independent and always
+   * fresh source: the snapshot cron refreshes it every trading day, while the
+   * score average only stays warm while someone browses the dashboard on
+   * default weights.
+   *
+   * NOT a second forecast. Its strongest leg (`pct_oversold`) reaches
+   * Newey-West t −2.44, below this project's |t| > 3.0 bar, and the others do
+   * not clear even 2. Present it as context exactly as the regime reading is.
+   *
+   * THE SIGN OF `pct_oversold` IS COUNTERINTUITIVE and must never be rendered
+   * as an opportunity: more stocks oversold measured WORSE forward returns,
+   * not a contrarian bounce.
+   */
+  breadth?: MarketBreadth;
+}
+
+export interface MarketBreadth {
+  /** Tradeable stocks in the snapshot. Below 15 nothing is computed. */
+  n_symbols: number;
+  enough_data: boolean;
+  /** Share above their 200-day average — a real direction, safe to colour. */
+  pct_above_sma200?: number | null;
+  /** Share with RSI under 30. See the sign warning above — never colour green. */
+  pct_oversold?: number | null;
+  mean_rsi?: number | null;
+  /** One plain sentence from the backend, so wording cannot drift from data. */
+  summary?: string;
+  evidence?: {
+    horizon_days: number;
+    strongest_leg: string;
+    strongest_rho: number;
+    strongest_t: number;
+    significant_at_project_bar: boolean;
+    note: string;
+  };
 }
 
 // ---- Calibration: the app's own accuracy record ----
