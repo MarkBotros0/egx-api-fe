@@ -11,6 +11,7 @@ import ScoreBreakdown from "../../components/ScoreBreakdown";
 import KeyLevelsCard from "../../components/KeyLevelsCard";
 import EntryExitCard from "../../components/EntryExitCard";
 import ForecastCard from "../../components/ForecastCard";
+import RiskGradeCard from "../../components/RiskGradeCard";
 import PEFreshnessBanner from "../../components/PEFreshnessBanner";
 import { useWatchlist } from "../../components/Watchlist";
 import { useScoreWeights } from "../../components/ScoreWeightsProvider";
@@ -443,6 +444,7 @@ export default function StockDetailPage() {
                 <IndicatorPanel data={indicatorData} />
               </div>
 
+              <RiskGradeCard symbol={symbol} />
               <ForecastCard forecast={data.forecast} symbol={symbol} />
             </div>
 

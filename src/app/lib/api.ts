@@ -414,6 +414,69 @@ export interface MarketRegime {
   n_symbols_now?: number;
 }
 
+// ---- Per-stock risk grade ----
+
+/**
+ * What a volatility quintile HISTORICALLY went on to do over the next ~6 months.
+ * Medians, not means: EGX forward outcomes are heavily right-skewed and a mean
+ * describes a distribution nobody experiences.
+ *
+ * Note what is absent and must stay absent — any return figure. Volatility
+ * predicts volatility and drawdown with real skill; it does not tell you which
+ * way the price goes.
+ */
+export interface RiskHistorical {
+  future_vol_ann_pct: number;
+  median_max_drawdown_pct: number;
+  p90_max_drawdown_pct: number;
+}
+
+export interface RiskRow {
+  symbol: string;
+  measured_at: string;
+  /** Trailing 63-day sigma, annualized. The input the quintiles were fitted on. */
+  sigma_63_ann_pct: number | null;
+  /** EWMA(0.94). Forecasts better, but is NOT what the ranking uses. */
+  sigma_ewma_ann_pct: number | null;
+  beta: number | null;
+  turnover_egp: number | null;
+  traded_share: number | null;
+  last_price: number | null;
+  tradeable: boolean | null;
+  /** Null for untradeable symbols — a rank they have not earned. */
+  pct_rank: number | null;
+  quintile: number | null;
+  band: "calm" | "steady" | "average" | "jumpy" | "wild" | null;
+  band_label?: string;
+  historical?: RiskHistorical;
+}
+
+export interface RiskResponse {
+  data: RiskRow[];
+  n_symbols: number;
+  n_ranked?: number;
+  /** The STALEST row, not the freshest — a snapshot is only as current as that. */
+  oldest_measurement?: string | null;
+  newest_measurement?: string | null;
+  liquidity_floor_egp?: number;
+  calibration?: {
+    fitted_at: string;
+    n_observations: number;
+    n_symbols: number;
+    lookback_days: number;
+    forward_days: number;
+    vol_predicts_vol_ic: number;
+    vol_predicts_drawdown_ic: number;
+  };
+  symbol?: string;
+  note?: string;
+}
+
+export async function fetchRisk(symbol?: string): Promise<RiskResponse> {
+  const q = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  return fetchJSON<RiskResponse>(`${BASE}/risk${q}`);
+}
+
 export async function fetchMarketRegime(): Promise<MarketRegime> {
   return fetchJSON<MarketRegime>(`${BASE}/market_regime`);
 }
