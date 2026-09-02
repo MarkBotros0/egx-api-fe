@@ -26,10 +26,23 @@ function zonePill(entryExit: EntryExit | null | undefined) {
 
 function ZoneBadge({ pill }: { pill: ReturnType<typeof zonePill> }) {
   if (!pill) return null;
-  const tone =
-    pill.tone === "gain"
-      ? "border-gain/30 bg-gain/10 text-gain"
-      : "border-loss/30 bg-loss/10 text-loss";
+
+  // A `low` zone renders NEUTRAL, not in gain-green or loss-red.
+  //
+  // `low` is the leftover bucket: nothing disqualified the zone and nothing
+  // confirmed it — typically an untested support with unremarkable momentum.
+  // The house colour rule is that gain/loss mean a real direction in the data
+  // and never decoration, and a zone that has not earned a direction must not
+  // borrow one. Same refusal the breadth strip makes inside its neutral band,
+  // and it matches the backend, where a low-confidence zone is an `info`
+  // signal rather than an `opportunity`.
+  const strong = pill.conf === "high" || pill.conf === "medium";
+  const tone = !strong
+    ? "border-white/12 bg-white/[0.04] text-white/50"
+    : pill.tone === "gain"
+    ? "border-gain/30 bg-gain/10 text-gain"
+    : "border-loss/30 bg-loss/10 text-loss";
+
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${tone}`}
@@ -45,15 +58,31 @@ function ZoneDetail({ entryExit }: { entryExit: EntryExit | null | undefined }) 
   const { entry_zone, exit_zone } = entryExit;
   if (!entry_zone.active && !exit_zone.active) return null;
 
+  // See ZoneBadge: a low-confidence zone is stated, not celebrated. The band
+  // and its border go neutral so the panel does not read as encouragement the
+  // reading has not earned.
+  const entryStrong =
+    entry_zone.confidence === "high" || entry_zone.confidence === "medium";
+
   return (
     <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
       {entry_zone.active && entry_zone.price_range && (
-        <div className="rounded-lg border border-gain/20 bg-gain/[0.04] px-3 py-2">
+        <div
+          className={`rounded-lg border px-3 py-2 ${
+            entryStrong
+              ? "border-gain/20 bg-gain/[0.04]"
+              : "border-white/10 bg-white/[0.02]"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-white/50">
               Entry zone ({entry_zone.confidence})
             </span>
-            <span className="font-mono text-xs font-semibold text-gain">
+            <span
+              className={`font-mono text-xs font-semibold ${
+                entryStrong ? "text-gain" : "text-white/70"
+              }`}
+            >
               {entry_zone.price_range.low.toFixed(2)} – {entry_zone.price_range.high.toFixed(2)}
             </span>
           </div>

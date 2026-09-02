@@ -104,8 +104,21 @@ function ZoneBlock({
   const isEntry = kind === "entry";
   const title = isEntry ? "Entry Zone" : "Exit Zone";
   const icon = isEntry ? "$" : "!";
-  const baseColor = isEntry ? "text-gain" : "text-loss";
-  const bgTint = isEntry
+  // The confidence BADGE already went neutral at `low`; the box around it and
+  // the price text did not, so a zone the app grades as a bare hint still
+  // arrived wrapped in gain-green. `low` is the leftover bucket — nothing
+  // disqualified the zone and nothing confirmed it — and the house rule is
+  // that gain/loss carry a real direction rather than decoration. The backend
+  // agrees: a low-confidence zone is an `info` signal, not an `opportunity`.
+  const strong = confidence === "high" || confidence === "medium";
+  const baseColor = !strong
+    ? "text-white/70"
+    : isEntry
+    ? "text-gain"
+    : "text-loss";
+  const bgTint = !strong
+    ? "border-white/10 bg-white/[0.02]"
+    : isEntry
     ? "border-gain/20 bg-gain/[0.04]"
     : "border-loss/20 bg-loss/[0.04]";
   const confStyle = confidence ? CONFIDENCE_STYLES[kind][confidence] : null;
