@@ -495,10 +495,23 @@ export interface MacroIndicator {
   monthly_change_pct?: number | null;
 }
 
+/**
+ * The twenty-year EGP-versus-USD fact, shipped as context beside the live rate.
+ * Both multiples are true; they answer different questions. See
+ * egx-api-be/app/core/currency.py.
+ */
+export interface CurrencyContext {
+  egp_multiple: number;
+  usd_multiple: number;
+  years: number;
+  note: string;
+}
+
 export interface MacroData {
   egx30: MacroIndicator;
   usd_egp: MacroIndicator;
   interest_rate: MacroIndicator;
+  currency_context?: CurrencyContext;
 }
 
 export interface PortfolioMetrics {

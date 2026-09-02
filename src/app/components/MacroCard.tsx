@@ -139,6 +139,21 @@ export default function MacroCard({ data }: MacroCardProps) {
           positiveIsGood
         />
       </div>
+
+      {data.currency_context && (
+        <p className="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-white/35">
+          Every figure in this app is in Egyptian pounds. Over the last{" "}
+          {data.currency_context.years} years the EGX30 rose{" "}
+          <span className="font-mono text-white/55">
+            {data.currency_context.egp_multiple}&times;
+          </span>{" "}
+          in pounds and{" "}
+          <span className="font-mono text-white/55">
+            {data.currency_context.usd_multiple}&times;
+          </span>{" "}
+          in dollars. Both are true &mdash; they answer different questions.
+        </p>
+      )}
     </div>
   );
 }
