@@ -138,6 +138,21 @@ export const DY_EGX_MEDIAN = 3.1;
 /** At or above this, a yield is usually a special dividend or a collapsed price. */
 export const DY_SUSPICIOUS_MIN = 15;
 
+// === Stop-loss convention ===
+
+/**
+ * The house stop-loss rule: this many ATRs BELOW the nearest support — not
+ * below your entry price, so the number is objective and computable before
+ * you buy. Keep in sync with `STOP_LOSS_ATR_MULTIPLIER` in
+ * egx-api-be/app/core/constants.py, which is what the Entry Zone card and
+ * the `atr_stop` signal actually compute with. This copy exists only so the
+ * Learn page's stop-loss calculator teaches the same formula the app applies.
+ */
+export const STOP_LOSS_ATR_MULTIPLIER = 1.5;
+
+/** Egypt's ~25% T-bill rate — the hurdle every Learn-page comparison uses. */
+export const T_BILL_RATE_PCT = 25;
+
 // === Risk dashboard thresholds ===
 
 /** Sharpe ≥ this is "good" given Egypt's ~25% risk-free rate. */

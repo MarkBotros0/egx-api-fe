@@ -43,3 +43,58 @@
     scrollbar-width: none;
   }
 }
+
+/* ---------------------------------------------------------------- Learn page
+ *
+ * Concept cards rest VISIBLE and animate in on reveal, rather than starting
+ * hidden and waiting for JS to show them. If the IntersectionObserver never
+ * runs — old browser, script blocked, an error upstream — the page is still
+ * a fully readable document. A reveal effect is not worth risking that.
+ */
+
+@keyframes learn-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.learn-card.is-revealed {
+  animation: learn-rise 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Deep links from in-app "Learn more" links land here — flash the target so
+   the reader can see which of sixty-odd cards they were sent to. */
+@keyframes learn-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(68, 136, 255, 0);
+  }
+  18% {
+    box-shadow:
+      0 0 0 2px rgba(68, 136, 255, 0.6),
+      0 0 28px rgba(68, 136, 255, 0.22);
+  }
+}
+
+.learn-flash {
+  animation: learn-flash 2.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learn-card.is-revealed,
+  .learn-flash {
+    animation: none;
+  }
+}
+
+/* The Learn search field supplies its own clear button. */
+.learn-search::-webkit-search-cancel-button,
+.learn-search::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
