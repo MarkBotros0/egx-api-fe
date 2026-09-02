@@ -393,8 +393,21 @@ export interface MarketRegime {
   hist_median_3m_pct?: number;
   hist_positive_rate?: number;
   observations?: number;
+  /**
+   * Strength of the association behind the bands, on the OVERLAPPING sample.
+   * Was 0.318 until 2026-09-02 — that figure was one of three de-overlapped
+   * phases (the others gave 0.180 and 0.004) and must not come back. See the
+   * correction note in egx-api-be/app/core/regime.py.
+   */
   association_rho?: number;
+  /** Newey-West t, corrected for the overlap. Below 1.96 = not significant. */
+  association_t?: number;
+  /** Readings behind association_rho. These OVERLAP — they are not independent. */
   association_n?: number;
+  /** False today. When false the UI must present this card as context only. */
+  association_significant?: boolean;
+  /** All three de-overlapped phases, so no single one can be quoted as "the" number. */
+  association_phase_rhos?: number[];
   universe_size?: number;
   stale?: boolean;
   observed_at?: string;

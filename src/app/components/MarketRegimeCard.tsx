@@ -67,7 +67,7 @@ export default function MarketRegimeCard() {
           <div className="text-[10px] uppercase tracking-wider text-white/40">
             <LearnTooltip
               term="Market Condition"
-              explanation="The average composite score across EGX30 and EGX70 constituents — a reading of how broadly healthy the market is, NOT a call on any single stock. This is the only measure in the app with a tested association to future returns, and it applies to the market as a whole over roughly three months."
+              explanation="The average composite score across EGX30 and EGX70 constituents — a reading of how broadly healthy the market is right now, NOT a call on any single stock. Its link to the market's next three months was measured and is weak enough that it does not pass a significance test, so read it as context about today, not as a forecast."
             >
               <span>Market Condition</span>
             </LearnTooltip>
@@ -112,15 +112,27 @@ export default function MarketRegimeCard() {
             {data.hist_median_3m_pct != null && data.hist_median_3m_pct > 0 ? "+" : ""}
             {data.hist_median_3m_pct}%
           </span>{" "}
-          and were positive {Math.round(data.hist_positive_rate * 100)}% of the time
+          and were positive {Math.round(data.hist_positive_rate * 100)}% of the
+          time &mdash; and negative or flat the other{" "}
+          {100 - Math.round(data.hist_positive_rate * 100)}%
           {data.observations ? ` (${data.observations} readings)` : ""}.
           {data.association_rho != null && (
             <>
               {" "}
-              The association is modest &mdash; rank correlation{" "}
-              <span className="font-mono">+{data.association_rho}</span> across{" "}
-              {data.association_n} independent periods &mdash; so treat it as
-              context, not a prediction.
+              The link behind this is weak: rank correlation{" "}
+              <span className="font-mono">
+                +{data.association_rho.toFixed(2)}
+              </span>
+              {data.association_t != null && (
+                <>
+                  , t <span className="font-mono">{data.association_t.toFixed(2)}</span>
+                </>
+              )}{" "}
+              across {data.association_n} overlapping readings
+              {data.association_significant === false
+                ? ", which does not clear the usual significance bar"
+                : ""}
+              . Treat it as context, never a prediction.
             </>
           )}
         </p>

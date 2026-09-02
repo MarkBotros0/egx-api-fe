@@ -183,28 +183,62 @@ export interface EntryExit {
 // Both are descriptive (range of plausible outcomes), NOT predictions.
 // ============================================================
 
+/** Provenance of the fitted EGX calibration. Rendered, never assumed. */
+export interface ForecastCalibration {
+  fitted_at: string;
+  n_observations: number;
+  universe: string;
+  sigma_window: number;
+  fit_horizon_days: number;
+}
+
 export interface ExpectedMove {
   daily_pct: number;
   weekly_pct: number;
   monthly_pct: number;
+  /**
+   * MEASURED coverage of the ±1σ band on EGX, per horizon — 79.0 / 76.2 / 72.9,
+   * not the 68% Gaussian theory predicts. Always render these; a hardcoded
+   * percentage in JSX is a bug and a test fails on it.
+   */
+  daily_coverage_pct: number;
+  weekly_coverage_pct: number;
+  monthly_coverage_pct: number;
   method: string;
+  calibration: ForecastCalibration;
 }
 
-export interface StockMonteCarlo {
+/** One nested coverage band of the outcome cone. */
+export interface OutcomeBandLevel {
+  /** Nominal AND measured coverage — they agree to a tenth of a point. */
+  coverage_pct: number;
+  z: number;
+  lo: number[];
+  hi: number[];
+  /** How often the price lands OUTSIDE. Render this; the complement is the
+   *  single best-evidenced fix in the forecast-communication literature. */
+  outside_pct: number;
+}
+
+/**
+ * Replaces the old `StockMonteCarlo`. Quantiles come from EGX's measured return
+ * distribution instead of Gaussian draws, and there is deliberately **no median
+ * series** — the old p50 was the trailing mean return compounded forward, which
+ * is a price target with a direction attached.
+ */
+export interface StockOutcomeBand {
   days: number;
   current_price: number;
-  percentiles: {
-    p5: number[];
-    p25: number[];
-    p50: number[];
-    p75: number[];
-    p95: number[];
-  };
+  method: string;
+  calibration: ForecastCalibration;
+  bands: OutcomeBandLevel[];
+  /** Day-`days` values — the only ones the coverage claim actually applies to. */
+  endpoint: { coverage_pct: number; lo: number; hi: number };
 }
 
 export interface StockForecast {
   expected_move: ExpectedMove | null;
-  monte_carlo: StockMonteCarlo | null;
+  outcome_band: StockOutcomeBand | null;
 }
 
 // ============================================================

@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   AreaChart,
   Area,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,19 +13,43 @@ import {
 } from "recharts";
 
 import LearnTooltip from "./LearnTooltip";
-import type { StockForecast } from "@/app/lib/types";
+import type { StockForecast, StockOutcomeBand } from "@/app/lib/types";
+
+/**
+ * WHAT THIS CARD MUST NEVER DO, AND WHY
+ * -------------------------------------
+ * It used to render three prices — `finalP5.toFixed(2)`, `finalP50.toFixed(2)`,
+ * `finalP95.toFixed(2)` — with the median tile coloured green when it sat above
+ * spot. That median was the trailing 400-day mean return compounded forward: a
+ * mechanical extrapolation dressed as a call. A price to two decimals asserts a
+ * precision this app measured itself not to have, and a colour on it asserts a
+ * direction. Both are gone, and `tests/test_forecast_presentation.py` fails if
+ * either comes back.
+ *
+ * Coverage percentages are read from the payload, never typed in here. The old
+ * "68% of days" was hardcoded and wrong by eleven points.
+ */
 
 interface ForecastCardProps {
   forecast: StockForecast | null | undefined;
   symbol: string;
 }
 
+/** Round to the precision the measurement supports — never more. */
+function coarse(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  if (abs >= 100) return value.toFixed(0);
+  if (abs >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
 export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
-  if (!forecast || (!forecast.expected_move && !forecast.monte_carlo)) {
+  if (!forecast || (!forecast.expected_move && !forecast.outcome_band)) {
     return null;
   }
 
-  const { expected_move, monte_carlo } = forecast;
+  const { expected_move, outcome_band } = forecast;
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5">
@@ -34,14 +57,14 @@ export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
         <div>
           <h3 className="text-sm font-semibold text-white">
             <LearnTooltip
-              term="Expected Move & Monte Carlo"
-              explanation="A statistical range of plausible outcomes based on how this stock has historically behaved. NOT a prediction of direction."
+              term="Outcome range"
+              explanation="How far this stock has typically travelled over a given stretch of time, fitted to the Egyptian market's own history. It says nothing about direction — the range is deliberately centred on today's price."
             >
-              <span>Expected Move & Forecast</span>
+              <span>Typical moves &amp; outcome range</span>
             </LearnTooltip>
           </h3>
           <p className="mt-0.5 text-[11px] text-white/40">
-            Statistical ranges — not predictions.
+            Ranges, not predictions. No direction is implied.
           </p>
         </div>
         <Link
@@ -52,34 +75,35 @@ export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
         </Link>
       </div>
 
-      {/* Expected-move band */}
       {expected_move && (
         <div className="mb-4 grid grid-cols-3 gap-2">
           <MoveTile
             label="Typical day"
             value={expected_move.daily_pct}
-            confidenceNote="68% of days"
+            coverage={expected_move.daily_coverage_pct}
           />
           <MoveTile
             label="Typical week"
             value={expected_move.weekly_pct}
-            confidenceNote="~5 trading days"
+            coverage={expected_move.weekly_coverage_pct}
           />
           <MoveTile
             label="Typical month"
             value={expected_move.monthly_pct}
-            confidenceNote="~22 trading days"
+            coverage={expected_move.monthly_coverage_pct}
           />
         </div>
       )}
 
-      {/* Monte Carlo cone */}
-      {monte_carlo && <MonteCarloCone data={monte_carlo} symbol={symbol} />}
+      {outcome_band && <OutcomeCone data={outcome_band} symbol={symbol} />}
 
       <p className="mt-3 text-[10px] leading-relaxed text-white/30">
-        Calculated from this stock&apos;s historical daily returns. Assumes
-        volatility stays similar — a regime shift (news, crisis, earnings
-        surprise) can push prices outside the cone.
+        Fitted to how Egyptian stocks have actually moved
+        {outcome_band
+          ? ` — ${outcome_band.calibration.n_observations.toLocaleString()} past checks, last fitted ${outcome_band.calibration.fitted_at}`
+          : ""}
+        . A range can still be wrong: news, a devaluation or a suspension can put
+        the price outside it.
       </p>
     </div>
   );
@@ -88,11 +112,11 @@ export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
 function MoveTile({
   label,
   value,
-  confidenceNote,
+  coverage,
 }: {
   label: string;
   value: number;
-  confidenceNote: string;
+  coverage: number;
 }) {
   return (
     <div className="rounded-lg bg-white/[0.03] px-3 py-2">
@@ -100,54 +124,66 @@ function MoveTile({
       <p className="mt-0.5 font-mono text-sm font-bold text-white">
         ±{value.toFixed(1)}%
       </p>
-      <p className="mt-0.5 text-[9px] text-white/30">{confidenceNote}</p>
+      {/* Measured coverage, and its complement. Readers systematically misjudge
+          which event a probability refers to unless the other side is stated. */}
+      <p className="mt-0.5 text-[9px] leading-tight text-white/30">
+        {Math.round(coverage)}% land inside
+        <br />
+        {100 - Math.round(coverage)}% are bigger
+      </p>
     </div>
   );
 }
 
-function MonteCarloCone({
+function OutcomeCone({
   data,
   symbol,
 }: {
-  data: NonNullable<StockForecast["monte_carlo"]>;
+  data: StockOutcomeBand;
   symbol: string;
 }) {
-  const { percentiles, current_price, days } = data;
+  const { bands, current_price, days, endpoint } = data;
+  if (!bands.length) return null;
 
-  // Prepend day 0 = current price so the cone anchors at today
+  const inner = bands[0];
+  const outer = bands[bands.length - 1];
+
+  // Recharts draws stacked areas, so each band is expressed as a base plus a
+  // height rather than as absolute lo/hi pairs.
   const chartData = [
     {
       day: 0,
-      p5: current_price,
-      p25: current_price,
-      p50: current_price,
-      p75: current_price,
-      p95: current_price,
+      outerLo: current_price,
+      outerBand: 0,
+      innerLo: current_price,
+      innerBand: 0,
     },
     ...Array.from({ length: days }, (_, i) => ({
       day: i + 1,
-      p5: percentiles.p5[i],
-      p25: percentiles.p25[i],
-      p50: percentiles.p50[i],
-      p75: percentiles.p75[i],
-      p95: percentiles.p95[i],
+      outerLo: outer.lo[i],
+      outerBand: outer.hi[i] - outer.lo[i],
+      innerLo: inner.lo[i],
+      innerBand: inner.hi[i] - inner.lo[i],
     })),
   ];
 
-  const finalP5 = percentiles.p5[days - 1];
-  const finalP50 = percentiles.p50[days - 1];
-  const finalP95 = percentiles.p95[days - 1];
-
   const formatPrice = (v: number) =>
-    v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : v.toFixed(2);
+    v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : v.toFixed(0);
 
   return (
     <div>
-      <p className="mb-2 text-[11px] text-white/50">
-        {symbol} over the next {days} trading days — 1,000 simulated paths
+      <p className="mb-2 text-[11px] leading-relaxed text-white/50">
+        Over the next {days} trading days, {symbol} has historically ended
+        between{" "}
+        <span className="font-mono text-white/70">{coarse(endpoint.lo)}</span>{" "}
+        and{" "}
+        <span className="font-mono text-white/70">{coarse(endpoint.hi)}</span>{" "}
+        EGP about {endpoint.coverage_pct}% of the time — so roughly{" "}
+        {100 - endpoint.coverage_pct}% of the time it ended outside, about as
+        often below as above.
       </p>
 
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={190}>
         <AreaChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <XAxis
@@ -160,7 +196,7 @@ function MonteCarloCone({
             tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)" }}
             tickLine={false}
             axisLine={false}
-            width={50}
+            width={44}
             tickFormatter={formatPrice}
             domain={["auto", "auto"]}
           />
@@ -171,103 +207,69 @@ function MonteCarloCone({
               borderRadius: 8,
               fontSize: 11,
             }}
-            formatter={(v: number, name: string) => {
-              const labels: Record<string, string> = {
-                p5: "Worst 5%",
-                p25: "25th pctl",
-                p50: "Median",
-                p75: "75th pctl",
-                p95: "Best 5%",
-              };
-              return [`${v.toFixed(2)} EGP`, labels[name] || name];
+            formatter={(value: number, name: string) => {
+              if (name === "outerLo")
+                return [`${coarse(value)} EGP`, `${outer.coverage_pct}% band, low`];
+              if (name === "innerLo")
+                return [`${coarse(value)} EGP`, `${inner.coverage_pct}% band, low`];
+              return null;
             }}
             labelFormatter={(day) => (day === 0 ? "Today" : `Day +${day}`)}
           />
 
           <ReferenceLine
             y={current_price}
-            stroke="rgba(255,255,255,0.25)"
+            stroke="rgba(255,255,255,0.3)"
             strokeDasharray="3 3"
           />
 
+          {/* Outer band */}
           <Area
             type="monotone"
-            dataKey="p95"
+            dataKey="outerLo"
+            stackId="outer"
             stroke="none"
-            fill="rgba(68,136,255,0.08)"
-            name="p95"
+            fill="transparent"
+            name="outerLo"
           />
           <Area
             type="monotone"
-            dataKey="p5"
+            dataKey="outerBand"
+            stackId="outer"
             stroke="none"
-            fill="rgba(10,10,15,1)"
-            name="p5"
+            fill="rgba(68,136,255,0.10)"
+            name="outerBand"
+          />
+          {/* Inner band, drawn over it */}
+          <Area
+            type="monotone"
+            dataKey="innerLo"
+            stackId="inner"
+            stroke="none"
+            fill="transparent"
+            name="innerLo"
           />
           <Area
             type="monotone"
-            dataKey="p75"
+            dataKey="innerBand"
+            stackId="inner"
             stroke="none"
-            fill="rgba(68,136,255,0.15)"
-            name="p75"
-          />
-          <Area
-            type="monotone"
-            dataKey="p25"
-            stroke="none"
-            fill="rgba(10,10,15,1)"
-            name="p25"
-          />
-          <Line
-            type="monotone"
-            dataKey="p50"
-            stroke="#4488ff"
-            strokeWidth={2}
-            dot={false}
-            name="p50"
+            fill="rgba(68,136,255,0.18)"
+            name="innerBand"
           />
         </AreaChart>
       </ResponsiveContainer>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg bg-loss/[0.06] px-2 py-2">
-          <p className="text-[10px] text-white/40">Bearish 5%</p>
-          <p className="mt-0.5 font-mono text-xs font-bold text-loss">
-            {finalP5.toFixed(2)}
-          </p>
-          <p className="text-[9px] text-white/30">
-            {pctChange(finalP5, current_price)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-accent/[0.06] px-2 py-2">
-          <p className="text-[10px] text-white/40">Median</p>
-          <p
-            className={`mt-0.5 font-mono text-xs font-bold ${
-              finalP50 >= current_price ? "text-gain" : "text-loss"
-            }`}
-          >
-            {finalP50.toFixed(2)}
-          </p>
-          <p className="text-[9px] text-white/30">
-            {pctChange(finalP50, current_price)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-gain/[0.06] px-2 py-2">
-          <p className="text-[10px] text-white/40">Bullish 5%</p>
-          <p className="mt-0.5 font-mono text-xs font-bold text-gain">
-            {finalP95.toFixed(2)}
-          </p>
-          <p className="text-[9px] text-white/30">
-            {pctChange(finalP95, current_price)}
-          </p>
-        </div>
+      <div className="mt-2 flex items-center justify-center gap-4 text-[9px] text-white/35">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-3 rounded-sm bg-[rgba(68,136,255,0.28)]" />
+          {inner.coverage_pct}% of outcomes
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-3 rounded-sm bg-[rgba(68,136,255,0.12)]" />
+          {outer.coverage_pct}% of outcomes
+        </span>
       </div>
     </div>
   );
-}
-
-function pctChange(future: number, current: number): string {
-  if (current <= 0) return "";
-  const pct = (future / current - 1) * 100;
-  return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
 }
