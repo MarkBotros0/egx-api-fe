@@ -16,7 +16,7 @@
    * bottom of the + button. Anything that must clear the nav reads this var.
    */
   :root {
-    --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + 84px);
+    --bottom-nav-clearance: calc(env(safe-area-inset-bottom) + 70px);
   }
 
   /* The pill is md:hidden, so above the breakpoint nothing needs clearing. */
