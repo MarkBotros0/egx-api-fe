@@ -38,6 +38,14 @@ interface CardData {
   state: CardState;
   /** Past 63-day volatility, for the Risk sort. Snapshot only. */
   sigma?: number | null;
+  /**
+   * When THIS symbol's bars were measured. Per card, never the table-wide
+   * figure: `oldest_measurement` is the stalest row in the whole snapshot, and
+   * `scripts/seed_symbol_health.py` back-dates never-fetched symbols to the
+   * epoch, so using it here labelled every card "as of 1 Jan" — including ones
+   * measured minutes earlier.
+   */
+  measuredAt?: string | null;
 }
 
 /** "2026-09-02T15:00:00+00:00" -> "2 Sep". Undated input yields null. */
@@ -80,7 +88,6 @@ export default function Dashboard() {
   // two separate maps filled by two different code paths, which is part of how
   // a card could end up holding a price with no score, or the reverse.
   const [cards, setCards] = useState<Record<string, CardData>>({});
-  const [snapshotAsOf, setSnapshotAsOf] = useState<string | null>(null);
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
   /** Symbols the snapshot says the feed does not serve. Never requested live. */
   const [noFeed, setNoFeed] = useState<Set<string>>(new Set());
@@ -118,6 +125,7 @@ export default function Dashboard() {
             score: row.score,
             signal: row.signal,
             sigma: row.sigma_63_ann_pct,
+            measuredAt: row.measured_at,
             state: row.available ? "stale" : "unavailable",
           };
         }
@@ -131,7 +139,10 @@ export default function Dashboard() {
           return merged;
         });
         setNoFeed(dead);
-        setSnapshotAsOf(res.oldest_measurement ?? null);
+        // `res.oldest_measurement` is deliberately NOT surfaced. It is the
+        // stalest row in the whole table and seed_symbol_health back-dates
+        // never-fetched symbols to the epoch, so it is a diagnostic for the
+        // scheduler, not a date to show a reader. Each card states its own.
       })
       .catch(() => {
         // The snapshot is an accelerator, not a dependency. If it fails — or
@@ -283,6 +294,7 @@ export default function Dashboard() {
                 changePct: entry.change_pct ?? next[key]?.changePct,
                 sparkline: entry.sparkline ?? next[key]?.sparkline,
                 sigma: next[key]?.sigma,
+                measuredAt: next[key]?.measuredAt,
                 state: "live",
               };
             }
@@ -365,8 +377,6 @@ export default function Dashboard() {
     snapshotLoaded,
   ]);
 
-  const asOfLabel = shortDate(snapshotAsOf);
-
   // Price data the watchlist sidebar draws, in the shape it already expects.
   const priceData = useMemo(() => {
     const out: Record<
@@ -406,7 +416,7 @@ export default function Dashboard() {
         // changed what its percentage meant.
         changeInterval={showComposite ? compositeInterval : "Daily"}
         state={c?.state ?? "loading"}
-        asOf={asOfLabel}
+        asOf={shortDate(c?.measuredAt)}
         onRetry={() => upgrade([t.symbol])}
       />
     );
@@ -523,7 +533,7 @@ export default function Dashboard() {
                       ? "Highest composite first. The score describes present condition; it does not predict price."
                       : undefined
                   }
-                  className={`min-h-[32px] whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`min-h-[36px] whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                     sort === s
                       ? "bg-accent/20 text-accent"
                       : "text-white/40 hover:text-white/60"

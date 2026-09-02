@@ -199,7 +199,7 @@ export default function StockCard({
                   e.stopPropagation();
                   onRetry();
                 }}
-                className="min-h-[32px] rounded-md border border-white/10 px-2 py-1 text-[11px] text-white/50 transition-colors hover:border-accent/40 hover:text-accent"
+                className="min-h-[36px] rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-white/50 transition-colors hover:border-accent/40 hover:text-accent"
               >
                 Couldn&apos;t load — retry
               </button>
