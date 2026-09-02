@@ -1,4 +1,8 @@
-import { COMPOSITE_BATCH_MAX_SYMBOLS } from "./constants";
+import {
+  COMPOSITE_BATCH_CONCURRENCY,
+  COMPOSITE_BATCH_MAX_SYMBOLS,
+  COMPOSITE_REQUEST_TIMEOUT_MS,
+} from "./constants";
 import {
   getStoredToken,
   notifyUnauthorized,
@@ -29,19 +33,43 @@ export interface ScoreWeightsResponse {
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
-async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
+async function fetchJSON<T>(
+  url: string,
+  options?: RequestInit & { timeoutMs?: number }
+): Promise<T> {
   const token = getStoredToken();
   const headers = new Headers(options?.headers || {});
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    notifyUnauthorized();
+
+  // A request with no ceiling never settles, and callers that track in-flight
+  // symbols to avoid duplicate work then hold them for ever — which is how a
+  // dashboard card could sit blank until the user changed a filter. AbortController
+  // rather than AbortSignal.timeout, because this ships as a PWA to phones and
+  // the latter is not universally available on older mobile Safari.
+  const { timeoutMs, ...init } = options ?? {};
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer =
+    controller && timeoutMs
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+
+  try {
+    const res = await fetch(url, {
+      ...init,
+      headers,
+      signal: controller?.signal ?? init.signal,
+    });
+    if (res.status === 401) {
+      notifyUnauthorized();
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || data.detail || `Request failed: ${res.status}`);
+    }
+    return data as T;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || data.detail || `Request failed: ${res.status}`);
-  }
-  return data as T;
 }
 
 // ---- Tickers ----
@@ -263,9 +291,30 @@ export interface CompositeBatchResponse {
   errors: Array<{ symbol: string; error: string }>;
 }
 
+/**
+ * Live-score a set of symbols.
+ *
+ * Chunks run at BOUNDED CONCURRENCY, and that bound is the point rather than a
+ * politeness measure. The backend's cache is a module-level dict inside one
+ * warm serverless container, so firing every chunk at once had Vercel answer
+ * them from a dozen SEPARATE containers: a dozen cold starts, a dozen
+ * duplicate 400-bar EGX30 benchmark fetches, and a dozen private caches none
+ * of which the next request could reuse. Near-sequential requests land on the
+ * same warm container instead, so the benchmark and the 15-minute score cache
+ * are paid for once.
+ *
+ * `onChunk` streams each chunk's results as they land, so cards fill
+ * progressively rather than waiting on the slowest one.
+ */
 export async function fetchCompositeBatch(
   symbols: string[],
-  interval = "Daily"
+  interval = "Daily",
+  opts?: {
+    concurrency?: number;
+    timeoutMs?: number;
+    onChunk?: (partial: CompositeBatchResponse) => void;
+    isCancelled?: () => boolean;
+  }
 ): Promise<CompositeBatchResponse> {
   if (!symbols.length) return { scores: {}, errors: [] };
 
@@ -274,29 +323,86 @@ export async function fetchCompositeBatch(
     chunks.push(symbols.slice(i, i + COMPOSITE_BATCH_MAX_SYMBOLS));
   }
 
-  const results = await Promise.all(
-    chunks.map((chunk) => {
-      const params = new URLSearchParams({
-        mode: "batch",
-        symbols: chunk.join(","),
-        interval,
-      });
-      return fetchJSON<CompositeBatchResponse>(
-        `${BASE}/analysis?${params}`
-      ).catch((): CompositeBatchResponse => ({
+  const concurrency = Math.max(1, opts?.concurrency ?? COMPOSITE_BATCH_CONCURRENCY);
+  const merged: CompositeBatchResponse = { scores: {}, errors: [] };
+  let next = 0;
+
+  const runOne = async (chunk: string[]): Promise<CompositeBatchResponse> => {
+    const params = new URLSearchParams({
+      mode: "batch",
+      symbols: chunk.join(","),
+      interval,
+    });
+    try {
+      return await fetchJSON<CompositeBatchResponse>(
+        `${BASE}/analysis?${params}`,
+        { timeoutMs: opts?.timeoutMs ?? COMPOSITE_REQUEST_TIMEOUT_MS }
+      );
+    } catch {
+      return {
         scores: {},
         errors: chunk.map((s) => ({ symbol: s, error: "request failed" })),
-      }));
-    })
+      };
+    }
+  };
+
+  const worker = async () => {
+    for (;;) {
+      if (opts?.isCancelled?.()) return;
+      const i = next++;
+      if (i >= chunks.length) return;
+      const partial = await runOne(chunks[i]);
+      Object.assign(merged.scores, partial.scores);
+      merged.errors.push(...partial.errors);
+      if (!opts?.isCancelled?.()) opts?.onChunk?.(partial);
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, chunks.length) }, worker)
   );
 
-  return results.reduce<CompositeBatchResponse>(
-    (acc, r) => ({
-      scores: { ...acc.scores, ...r.scores },
-      errors: [...acc.errors, ...r.errors],
-    }),
-    { scores: {}, errors: [] }
-  );
+  return merged;
+}
+
+// ---- Dashboard snapshot ----
+// ONE request for the whole universe, served from the nightly snapshot with no
+// upstream fetch. This replaced a dozen concurrent /api/analysis?mode=batch
+// calls that Vercel answered from a dozen separate containers — each with its
+// own empty cache, each re-fetching the EGX30 benchmark, each discarding its
+// work. Whether a card painted came down to which container answered.
+
+export interface DashboardRow {
+  symbol: string;
+  /** False when the feed has refused this symbol enough times to be demoted. */
+  available: boolean;
+  score: number | null;
+  signal: CompositeSignal | null;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
+  sparkline: number[];
+  /** When the bars behind this row were fetched. Post-close, so intraday-stale. */
+  measured_at: string | null;
+  scored_at: string | null;
+  tradeable: boolean | null;
+  sigma_63_ann_pct: number | null;
+}
+
+export interface DashboardResponse {
+  rows: DashboardRow[];
+  n_symbols: number;
+  n_available: number;
+  /** The STALEST row, not the freshest — a snapshot is only as current as that. */
+  oldest_measurement: string | null;
+  newest_measurement: string | null;
+  newest_scored_at?: string | null;
+  macro_context?: string | null;
+  note?: string;
+}
+
+export async function fetchDashboard(): Promise<DashboardResponse> {
+  return fetchJSON<DashboardResponse>(`${BASE}/dashboard`);
 }
 
 // ---- P/E feed freshness ----

@@ -9,6 +9,26 @@ import {
 import { scoreColor } from "./CompositeGauge";
 import type { CompositeSignal } from "../lib/types";
 
+/**
+ * What the card knows about its own data.
+ *
+ * These exist because "--" used to mean three different things at once — still
+ * loading, the feed refused this symbol, and no data has ever existed for it —
+ * and the reader could not tell which. So a card that would never fill looked
+ * exactly like one that was about to, and the only available response was to
+ * reload a page that was never going to change.
+ */
+export type CardState =
+  | "loading"
+  /** Live figures, fetched just now. */
+  | "live"
+  /** Real figures from the last snapshot; the price is a previous close. */
+  | "stale"
+  /** The exchange feed has no data for this symbol. Retrying will not help. */
+  | "unavailable"
+  /** The request failed. Retrying might help, so the card offers it. */
+  | "failed";
+
 interface StockCardProps {
   symbol: string;
   name: string;
@@ -27,6 +47,10 @@ interface StockCardProps {
    * percentage is month-over-month, not today's move.
    */
   changeInterval?: string;
+  state?: CardState;
+  /** Human date the snapshot figures were measured, e.g. "2 Sep". */
+  asOf?: string | null;
+  onRetry?: () => void;
 }
 
 export default function StockCard({
@@ -41,6 +65,9 @@ export default function StockCard({
   compositeScore,
   interval,
   changeInterval,
+  state = "live",
+  asOf,
+  onRetry,
 }: StockCardProps) {
   const isPositive = (changePct ?? 0) >= 0;
   const color = isPositive ? "#00ff88" : "#ff3355";
@@ -62,9 +89,21 @@ export default function StockCard({
     ? `/stock/${symbol}?interval=${encodeURIComponent(interval)}`
     : `/stock/${symbol}`;
 
+  // A symbol the exchange feed does not serve is still a real listed company,
+  // so it keeps its card and its link — it just says plainly that there is no
+  // price rather than pretending to load one. Muted, not alarming: this is
+  // information about the feed, not a fault the reader can act on.
+  const muted = state === "unavailable";
+
   return (
     <Link href={href}>
-      <div className="group rounded-xl border border-white/5 bg-white/[0.03] p-4 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:-translate-y-0.5">
+      <div
+        className={`group rounded-xl border p-4 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:-translate-y-0.5 ${
+          muted
+            ? "border-white/5 bg-white/[0.01] opacity-60"
+            : "border-white/5 bg-white/[0.03]"
+        }`}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="font-mono text-sm font-semibold text-white">
@@ -128,7 +167,42 @@ export default function StockCard({
                     {changeInterval === "Weekly" ? "vs last week" : "vs last month"}
                   </p>
                 )}
+                {/* Say WHEN, whenever the figure is not from just now. The
+                    snapshot is written after the close, so during trading
+                    hours this price is a previous close and presenting it as
+                    the current one would be a quiet lie. */}
+                {state === "stale" && asOf && (
+                  <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/25">
+                    as of {asOf}
+                  </p>
+                )}
               </>
+            ) : state === "loading" ? (
+              <div className="animate-pulse space-y-1.5 py-1">
+                <div className="h-5 w-16 rounded bg-white/10" />
+                <div className="h-3 w-12 rounded bg-white/5" />
+              </div>
+            ) : state === "unavailable" ? (
+              <p className="text-xs leading-tight text-white/35">
+                No price feed
+                <span className="mt-0.5 block text-[9px] text-white/25">
+                  Not quoted by the data source
+                </span>
+              </p>
+            ) : state === "failed" && onRetry ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  // The card is wrapped in a Link; without this, retrying
+                  // navigates to the stock page instead.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRetry();
+                }}
+                className="min-h-[32px] rounded-md border border-white/10 px-2 py-1 text-[11px] text-white/50 transition-colors hover:border-accent/40 hover:text-accent"
+              >
+                Couldn&apos;t load — retry
+              </button>
             ) : (
               <p className="font-mono text-sm text-white/30">--</p>
             )}

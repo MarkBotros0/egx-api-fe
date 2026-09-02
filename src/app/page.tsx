@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import StockCard from "./components/StockCard";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import Link from "next/link";
+import StockCard, { type CardState } from "./components/StockCard";
 import IndexFilter from "./components/IndexFilter";
 import MarketRegimeCard from "./components/MarketRegimeCard";
 import SectorFilter from "./components/SectorFilter";
@@ -10,11 +11,11 @@ import { useTickers } from "./components/TickersProvider";
 import { CardSkeleton } from "./components/LoadingSkeleton";
 import LearnTooltip from "./components/LearnTooltip";
 import { useScoreWeights } from "./components/ScoreWeightsProvider";
-import { fetchCompositeBatch } from "./lib/api";
+import { fetchCompositeBatch, fetchDashboard } from "./lib/api";
 import {
   CARDS_PER_PAGE,
+  COMPOSITE_MAX_ATTEMPTS,
   COMPOSITE_RETRY_DELAY_MS,
-  DASHBOARD_FETCH_CHUNK_SIZE,
 } from "./lib/constants";
 import type { Ticker, CompositeSignal } from "./lib/types";
 
@@ -24,16 +25,41 @@ type CompositeInterval = (typeof COMPOSITE_INTERVALS)[number];
 const LS_COMPOSITE_ENABLED = "egx-dashboard-composite-enabled";
 const LS_COMPOSITE_INTERVAL = "egx-dashboard-composite-interval";
 
+const SORTS = ["Default", "Score", "Change", "Risk"] as const;
+type SortKey = (typeof SORTS)[number];
+
+interface CardData {
+  price?: number;
+  change?: number;
+  changePct?: number;
+  sparkline?: number[];
+  score?: number | null;
+  signal?: CompositeSignal | null;
+  state: CardState;
+  /** Past 63-day volatility, for the Risk sort. Snapshot only. */
+  sigma?: number | null;
+}
+
+/** "2026-09-02T15:00:00+00:00" -> "2 Sep". Undated input yields null. */
+function shortDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 export default function Dashboard() {
   const { tickers, loading } = useTickers();
   const [index, setIndex] = useState("EGX30");
   const [sector, setSector] = useState("All Sectors");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortKey>("Default");
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showComposite, setShowComposite] = useState(true);
   const [compositeInterval, setCompositeInterval] =
     useState<CompositeInterval>("Daily");
+  const [showNoFeed, setShowNoFeed] = useState(false);
 
   // Hydrate the on/off toggle from localStorage (client-only).
   //
@@ -49,16 +75,76 @@ export default function Dashboard() {
     // Clear the old preference so it stops lingering in existing browsers.
     window.localStorage.removeItem(LS_COMPOSITE_INTERVAL);
   }, []);
-  const [priceData, setPriceData] = useState<
-    Record<string, { price: number; change: number; changePct: number; sparkline: number[] }>
-  >({});
-  const [compositeData, setCompositeData] = useState<
-    Record<string, { score: number; signal: CompositeSignal }>
-  >({});
+
+  // ONE map, symbol -> everything a card draws. Price and score used to live in
+  // two separate maps filled by two different code paths, which is part of how
+  // a card could end up holding a price with no score, or the reverse.
+  const [cards, setCards] = useState<Record<string, CardData>>({});
+  const [snapshotAsOf, setSnapshotAsOf] = useState<string | null>(null);
+  const [snapshotLoaded, setSnapshotLoaded] = useState(false);
+  /** Symbols the snapshot says the feed does not serve. Never requested live. */
+  const [noFeed, setNoFeed] = useState<Set<string>>(new Set());
+
   const inFlightRef = useRef<Set<string>>(new Set());
-  const retriedRef = useRef<Set<string>>(new Set());
+  const attemptsRef = useRef<Map<string, number>>(new Map());
+  const runIdRef = useRef(0);
   const { version: weightsVersion } = useScoreWeights();
   const { symbols: watchlistSymbols } = useWatchlist();
+
+  // ---------------------------------------------------------------------
+  // Step 1 — the snapshot. One request, whole universe, no upstream fetch.
+  //
+  // This replaced a dozen concurrent /api/analysis?mode=batch calls. Those
+  // needed a live 400-bar pull per symbol through a client that retries hard
+  // on socket timeouts, and Vercel answered them from a dozen separate
+  // containers with a dozen empty caches, each re-fetching the same benchmark.
+  // Whether a card painted came down to which container answered.
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+    fetchDashboard()
+      .then((res) => {
+        if (cancelled) return;
+        const next: Record<string, CardData> = {};
+        const dead = new Set<string>();
+        for (const row of res.rows) {
+          const sym = row.symbol.toUpperCase();
+          if (!row.available) dead.add(sym);
+          next[sym] = {
+            price: row.price ?? undefined,
+            change: row.change ?? undefined,
+            changePct: row.change_pct ?? undefined,
+            sparkline: row.sparkline,
+            score: row.score,
+            signal: row.signal,
+            sigma: row.sigma_63_ann_pct,
+            state: row.available ? "stale" : "unavailable",
+          };
+        }
+        // Merge rather than replace: a live upgrade may already have landed
+        // for a symbol, and it must not be pushed back to a stale value.
+        setCards((prev) => {
+          const merged = { ...next };
+          for (const [sym, existing] of Object.entries(prev)) {
+            if (existing.state === "live") merged[sym] = existing;
+          }
+          return merged;
+        });
+        setNoFeed(dead);
+        setSnapshotAsOf(res.oldest_measurement ?? null);
+      })
+      .catch(() => {
+        // The snapshot is an accelerator, not a dependency. If it fails — or
+        // the scheduled job has never run — the live path below still fills
+        // the grid exactly as it did before this existed.
+      })
+      .finally(() => {
+        if (!cancelled) setSnapshotLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [weightsVersion, refreshKey]);
 
   // Filter & search
   const filtered = useMemo(() => {
@@ -81,13 +167,51 @@ export default function Dashboard() {
     return result;
   }, [tickers, index, sector, search]);
 
+  // Stocks the feed does not serve are moved out of the grid, not hidden. They
+  // are real listings and the count stays truthful; they simply stop occupying
+  // the top of the page with cards that were never going to fill.
+  const { quoted, unquoted } = useMemo(() => {
+    const q: Ticker[] = [];
+    const u: Ticker[] = [];
+    for (const t of filtered) {
+      (noFeed.has(t.symbol.toUpperCase()) ? u : q).push(t);
+    }
+    return { quoted: q, unquoted: u };
+  }, [filtered, noFeed]);
+
+  // Sorting is possible only because the snapshot delivers the WHOLE universe
+  // in one payload. While cards were fetched a page at a time, off-screen
+  // stocks had no score to sort by, so this control could not exist.
+  const sorted = useMemo(() => {
+    if (sort === "Default") return quoted;
+    const val = (t: Ticker) => {
+      const c = cards[t.symbol.toUpperCase()];
+      if (!c) return null;
+      if (sort === "Score") return c.score ?? null;
+      if (sort === "Change") return c.changePct ?? null;
+      return c.sigma ?? null; // Risk: calmest first.
+    };
+    const dir = sort === "Risk" ? 1 : -1;
+    return [...quoted].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      // Unmeasured stocks sink, whichever direction the sort runs. Treating a
+      // missing value as zero would rank them as the worst stocks on the
+      // exchange rather than as ones we have no reading for.
+      if (av === null && bv === null) return a.symbol.localeCompare(b.symbol);
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      return (av - bv) * dir;
+    });
+  }, [quoted, cards, sort]);
+
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [index, sector, search]);
+  }, [index, sector, search, sort]);
 
-  const visible = filtered.slice(0, page * CARDS_PER_PAGE);
-  const hasMore = visible.length < filtered.length;
+  const visible = sorted.slice(0, page * CARDS_PER_PAGE);
+  const hasMore = visible.length < sorted.length;
 
   const toggleComposite = () => {
     setShowComposite((prev) => {
@@ -102,106 +226,191 @@ export default function Dashboard() {
     setCompositeInterval(iv);
   };
 
-  // Reset caches when user saves new weights, hits refresh, toggles score, or changes interval
+  // Weights and interval change what a score MEANS, so live values are demoted
+  // back to stale rather than dropped. The grid is never emptied: the snapshot
+  // effect re-runs on weightsVersion and repaints with re-blended scores.
   useEffect(() => {
-    setCompositeData({});
-    setPriceData({});
+    runIdRef.current += 1;
     inFlightRef.current = new Set();
-    retriedRef.current = new Set();
-  }, [weightsVersion, refreshKey, showComposite, compositeInterval]);
-
-  // Batch-fetch composite + price + sparkline for visible cards + watchlist
-  useEffect(() => {
-    if (!showComposite) return;
-
-    const tickerBySym = new Map(tickers.map((t) => [t.symbol.toUpperCase(), t]));
-    const watchlistTickers = watchlistSymbols
-      .map((s) => tickerBySym.get(s.toUpperCase()))
-      .filter((t): t is Ticker => !!t);
-
-    const seen = new Set<string>();
-    const candidates = [...visible, ...watchlistTickers].filter((t) => {
-      if (seen.has(t.symbol)) return false;
-      seen.add(t.symbol);
-      return true;
+    attemptsRef.current = new Map();
+    setCards((prev) => {
+      const next: Record<string, CardData> = {};
+      for (const [sym, c] of Object.entries(prev)) {
+        next[sym] = c.state === "live" ? { ...c, state: "stale" } : c;
+      }
+      return next;
     });
+  }, [weightsVersion, refreshKey, compositeInterval]);
 
-    const toFetch = candidates
-      .filter(
-        (t) =>
-          !compositeData[t.symbol] &&
-          !priceData[t.symbol] &&
-          !inFlightRef.current.has(t.symbol)
-      )
-      .map((t) => t.symbol);
+  // ---------------------------------------------------------------------
+  // Step 2 — upgrade the VISIBLE page to live prices, in the background.
+  //
+  // Bounded concurrency, and never for symbols the feed refuses. A card that
+  // fails to upgrade keeps its snapshot value; nothing here can send one back
+  // to "--".
+  // ---------------------------------------------------------------------
+  const upgrade = useCallback(
+    (symbols: string[]) => {
+      const runId = runIdRef.current;
+      const toFetch = symbols.filter((s) => {
+        const sym = s.toUpperCase();
+        if (noFeed.has(sym)) return false;
+        if (inFlightRef.current.has(sym)) return false;
+        if (cards[sym]?.state === "live") return false;
+        return (attemptsRef.current.get(sym) ?? 0) < COMPOSITE_MAX_ATTEMPTS;
+      });
+      if (!toFetch.length) return;
 
-    if (!toFetch.length) return;
+      toFetch.forEach((s) => {
+        const sym = s.toUpperCase();
+        inFlightRef.current.add(sym);
+        attemptsRef.current.set(sym, (attemptsRef.current.get(sym) ?? 0) + 1);
+      });
 
-    toFetch.forEach((s) => inFlightRef.current.add(s));
-
-    const mergeBatch = (res: Awaited<ReturnType<typeof fetchCompositeBatch>>) => {
-      const nextComposite: Record<string, { score: number; signal: CompositeSignal }> = {};
-      const nextPrice: typeof priceData = {};
-      for (const [sym, entry] of Object.entries(res.scores)) {
-        nextComposite[sym] = { score: entry.score, signal: entry.signal };
-        if (entry.price != null && entry.sparkline) {
-          nextPrice[sym] = {
-            price: entry.price,
-            change: entry.change ?? 0,
-            changePct: entry.change_pct ?? 0,
-            sparkline: entry.sparkline,
-          };
-        }
-      }
-      if (Object.keys(nextComposite).length) {
-        setCompositeData((prev) => ({ ...prev, ...nextComposite }));
-      }
-      if (Object.keys(nextPrice).length) {
-        setPriceData((prev) => ({ ...prev, ...nextPrice }));
-      }
-    };
-
-    // Fire each chunk independently so state updates stream in as chunks
-    // complete — cards populate progressively instead of all at once once
-    // the slowest chunk is done.
-    const chunks: string[][] = [];
-    for (let i = 0; i < toFetch.length; i += DASHBOARD_FETCH_CHUNK_SIZE) {
-      chunks.push(toFetch.slice(i, i + DASHBOARD_FETCH_CHUNK_SIZE));
-    }
-
-    chunks.forEach((chunk) => {
-      fetchCompositeBatch(chunk, compositeInterval)
+      fetchCompositeBatch(toFetch, compositeInterval, {
+        isCancelled: () => runIdRef.current !== runId,
+        onChunk: (partial) => {
+          setCards((prev) => {
+            const next = { ...prev };
+            for (const [sym, entry] of Object.entries(partial.scores)) {
+              const key = sym.toUpperCase();
+              next[key] = {
+                ...next[key],
+                score: entry.score,
+                signal: entry.signal,
+                price: entry.price ?? next[key]?.price,
+                change: entry.change ?? next[key]?.change,
+                changePct: entry.change_pct ?? next[key]?.changePct,
+                sparkline: entry.sparkline ?? next[key]?.sparkline,
+                sigma: next[key]?.sigma,
+                state: "live",
+              };
+            }
+            for (const { symbol: sym } of partial.errors) {
+              const key = sym.toUpperCase();
+              const existing = next[key];
+              // Only a card with NOTHING to show reports a failure. One that
+              // already holds snapshot figures keeps them and stays "stale" —
+              // a real previous close beats an error message.
+              if (!existing || existing.price === undefined) {
+                next[key] = { ...existing, state: "failed" };
+              }
+            }
+            return next;
+          });
+        },
+      })
         .then((res) => {
-          mergeBatch(res);
-
-          // Symbols the backend reported as upstream timeouts likely finished
-          // their fetch in background threads moments after we returned — retry
-          // once after a short delay to pick up the now-cached values.
-          const retryables = res.errors
-            .map((e) => e.symbol)
-            .filter((s) => !retriedRef.current.has(s));
-          if (retryables.length) {
-            retryables.forEach((s) => retriedRef.current.add(s));
+          if (runIdRef.current !== runId) return;
+          // Symbols the backend reported as upstream timeouts often finish in
+          // background threads moments later and self-cache, so one delayed
+          // retry usually lands. Bounded by COMPOSITE_MAX_ATTEMPTS rather than
+          // blocked outright after the first, which is how a card used to be
+          // able to give up permanently and sit blank until a filter changed.
+          const retryable = res.errors
+            .map((e) => e.symbol.toUpperCase())
+            .filter(
+              (s) =>
+                !noFeed.has(s) &&
+                (attemptsRef.current.get(s) ?? 0) < COMPOSITE_MAX_ATTEMPTS
+            );
+          if (retryable.length) {
             setTimeout(() => {
-              fetchCompositeBatch(retryables, compositeInterval)
-                .then(mergeBatch)
-                .catch(() => {});
+              if (runIdRef.current === runId) upgrade(retryable);
             }, COMPOSITE_RETRY_DELAY_MS);
           }
         })
-        .catch(() => {})
         .finally(() => {
-          chunk.forEach((s) => inFlightRef.current.delete(s));
+          toFetch.forEach((s) => inFlightRef.current.delete(s.toUpperCase()));
         });
-    });
+    },
+    [cards, compositeInterval, noFeed]
+  );
+
+  const visibleKey = visible.map((v) => v.symbol).join(",");
+  const watchlistKey = watchlistSymbols.join(",");
+
+  useEffect(() => {
+    if (!showComposite) return;
+    // Wait for the snapshot so `noFeed` is known — otherwise the first upgrade
+    // pass would spend its budget on the ~half of the universe the feed never
+    // answers, at roughly six seconds a symbol.
+    if (!snapshotLoaded) return;
+
+    const bySym = new Map(tickers.map((t) => [t.symbol.toUpperCase(), t]));
+    const watched = watchlistSymbols
+      .map((s) => bySym.get(s.toUpperCase()))
+      .filter((t): t is Ticker => !!t);
+
+    const seen = new Set<string>();
+    const symbols: string[] = [];
+    for (const t of [...visible, ...watched]) {
+      const sym = t.symbol.toUpperCase();
+      if (seen.has(sym)) continue;
+      seen.add(sym);
+      symbols.push(t.symbol);
+    }
+    upgrade(symbols);
+    // `upgrade` is intentionally out of the dependency list: it closes over
+    // `cards`, which this effect's own results change, and including it would
+    // re-run the effect on every arriving chunk.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    visible.map((v) => v.symbol).join(","),
-    watchlistSymbols.join(","),
+    visibleKey,
+    watchlistKey,
     weightsVersion,
     refreshKey,
     showComposite,
     compositeInterval,
+    snapshotLoaded,
   ]);
+
+  const asOfLabel = shortDate(snapshotAsOf);
+
+  // Price data the watchlist sidebar draws, in the shape it already expects.
+  const priceData = useMemo(() => {
+    const out: Record<
+      string,
+      { price: number; change: number; changePct: number; sparkline: number[] }
+    > = {};
+    for (const [sym, c] of Object.entries(cards)) {
+      if (c.price === undefined) continue;
+      out[sym] = {
+        price: c.price,
+        change: c.change ?? 0,
+        changePct: c.changePct ?? 0,
+        sparkline: c.sparkline ?? [],
+      };
+    }
+    return out;
+  }, [cards]);
+
+  const renderCard = (t: Ticker) => {
+    const c = cards[t.symbol.toUpperCase()];
+    return (
+      <StockCard
+        key={t.symbol}
+        symbol={t.symbol}
+        name={t.name}
+        sector={t.sector}
+        price={c?.price}
+        change={c?.change}
+        changePct={c?.changePct}
+        sparklineData={c?.sparkline}
+        compositeScore={showComposite ? c?.score ?? null : null}
+        compositeSignal={showComposite ? c?.signal ?? null : null}
+        interval={showComposite ? compositeInterval : undefined}
+        // The price change comes from the same batch call as the signal, so it
+        // is a change over ONE BAR of the selected interval — a
+        // month-over-month move on "Monthly". Without this the card silently
+        // changed what its percentage meant.
+        changeInterval={showComposite ? compositeInterval : "Daily"}
+        state={c?.state ?? "loading"}
+        asOf={asOfLabel}
+        onRetry={() => upgrade([t.symbol])}
+      />
+    );
+  };
 
   return (
     <div>
@@ -219,26 +428,52 @@ export default function Dashboard() {
                   detailed analysis.
                 </p>
               </div>
-              <button
-                onClick={() => setRefreshKey((k) => k + 1)}
-                aria-label="Refresh prices"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/60 transition-colors hover:border-accent/30 hover:text-accent"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              <div className="flex shrink-0 items-center gap-2">
+                {/* Compare's way in. It left the mobile tab bar for this
+                    button; the desktop top nav still links to it too. */}
+                <Link
+                  href="/compare"
+                  aria-label="Compare stocks"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-white/10 px-0 text-white/60 transition-colors hover:border-accent/30 hover:text-accent md:px-3"
                 >
-                  <polyline points="23 4 23 10 17 10" />
-                  <polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                </svg>
-              </button>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M8 3 4 7l4 4" />
+                    <path d="M4 7h16" />
+                    <path d="m16 21 4-4-4-4" />
+                    <path d="M20 17H4" />
+                  </svg>
+                  <span className="hidden text-sm md:inline">Compare</span>
+                </Link>
+                <button
+                  onClick={() => setRefreshKey((k) => k + 1)}
+                  aria-label="Refresh prices"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/10 text-white/60 transition-colors hover:border-accent/30 hover:text-accent"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Search — sticky on mobile */}
@@ -258,9 +493,45 @@ export default function Dashboard() {
             </div>
             <div className="mb-3 flex items-center gap-3 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
               <SectorFilter selected={sector} onChange={setSector} />
+              {/* The count stays truthful about what the feed covers rather
+                  than quietly shrinking when unquoted names move below. */}
               <span className="whitespace-nowrap text-xs text-white/30">
-                {filtered.length} stocks
+                {quoted.length} stocks
+                {unquoted.length > 0 && (
+                  <span className="text-white/20">
+                    {" · "}
+                    {unquoted.length} without a price feed
+                  </span>
+                )}
               </span>
+            </div>
+
+            {/* Sort — only possible because the snapshot delivers every
+                stock's score at once. */}
+            <div className="mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
+              <span className="whitespace-nowrap text-[10px] uppercase tracking-wider text-white/25">
+                Sort
+              </span>
+              {SORTS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSort(s)}
+                  title={
+                    s === "Risk"
+                      ? "Calmest first, by past 63-day volatility — the app's strongest measured signal. It predicts how much a stock moves and how deep a hole to expect, never which way it goes."
+                      : s === "Score"
+                      ? "Highest composite first. The score describes present condition; it does not predict price."
+                      : undefined
+                  }
+                  className={`min-h-[32px] whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    sort === s
+                      ? "bg-accent/20 text-accent"
+                      : "text-white/40 hover:text-white/60"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
 
             {/* Composite score toggle + interval — lets users sync card scores with the stock detail page */}
@@ -329,31 +600,7 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {visible.map((t) => {
-                    const pd = priceData[t.symbol];
-                    const cd = compositeData[t.symbol];
-                    return (
-                      <StockCard
-                        key={t.symbol}
-                        symbol={t.symbol}
-                        name={t.name}
-                        sector={t.sector}
-                        price={pd?.price}
-                        change={pd?.change}
-                        changePct={pd?.changePct}
-                        sparklineData={pd?.sparkline}
-                        compositeScore={cd?.score ?? null}
-                        compositeSignal={cd?.signal ?? null}
-                        interval={showComposite ? compositeInterval : undefined}
-                        // The price change comes from the same batch call as
-                        // the signal, so it is a change over ONE BAR of the
-                        // selected interval — a month-over-month move on
-                        // "Monthly". Without this the card silently changed
-                        // what its percentage meant.
-                        changeInterval={showComposite ? compositeInterval : "Daily"}
-                      />
-                    );
-                  })}
+                  {visible.map(renderCard)}
                 </div>
 
                 {hasMore && (
@@ -362,8 +609,35 @@ export default function Dashboard() {
                       onClick={() => setPage((p) => p + 1)}
                       className="rounded-lg border border-white/10 px-6 py-2 text-sm text-white/50 transition-colors hover:border-accent/30 hover:text-accent"
                     >
-                      Load More ({filtered.length - visible.length} remaining)
+                      Load More ({sorted.length - visible.length} remaining)
                     </button>
+                  </div>
+                )}
+
+                {/* Stocks the data source does not quote. Collapsed rather than
+                    removed: they are real listings, and a reader searching for
+                    one needs to find it and be told why it has no price —
+                    which is exactly what the indefinite "--" never said. */}
+                {unquoted.length > 0 && (
+                  <div className="mt-8 border-t border-white/5 pt-4">
+                    <button
+                      onClick={() => setShowNoFeed((v) => !v)}
+                      aria-expanded={showNoFeed}
+                      className="flex min-h-[44px] w-full items-center justify-between gap-2 text-left text-sm text-white/40 transition-colors hover:text-white/60"
+                    >
+                      <span>
+                        No feed data ({unquoted.length})
+                        <span className="ml-2 text-xs text-white/25">
+                          listed, but not quoted by the data source
+                        </span>
+                      </span>
+                      <span className="text-xs">{showNoFeed ? "Hide" : "Show"}</span>
+                    </button>
+                    {showNoFeed && (
+                      <div className="mt-3 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                        {unquoted.map(renderCard)}
+                      </div>
+                    )}
                   </div>
                 )}
               </>

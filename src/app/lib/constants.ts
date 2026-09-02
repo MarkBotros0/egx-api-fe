@@ -15,16 +15,43 @@ import type { ScoreWeights } from "./types";
 /** Cards shown per page on the dashboard; "Load More" reveals the next batch. */
 export const CARDS_PER_PAGE = 24;
 
-/** Symbols fetched per progressive composite/price chunk so the UI streams in. */
-export const DASHBOARD_FETCH_CHUNK_SIZE = 2;
-
 /** Delay (ms) before retrying symbols the backend reported as upstream-timeout. */
 export const COMPOSITE_RETRY_DELAY_MS = 4000;
+
+/**
+ * How many times a symbol may be re-requested before the card settles on
+ * whatever it has. It used to be exactly one, after which a permanent ref
+ * blocked any further attempt — so a card that missed twice stayed "--" until
+ * the user changed a filter. Bounded rather than unlimited: past this, the
+ * snapshot value is the honest answer and hammering the feed will not improve it.
+ */
+export const COMPOSITE_MAX_ATTEMPTS = 3;
 
 // === API ===
 
 /** Max symbols sent in one batched composite request to the backend. */
 export const COMPOSITE_BATCH_MAX_SYMBOLS = 6;
+
+/**
+ * How many batch requests may be in flight at once.
+ *
+ * TWO, not twelve, and the number is load-bearing. The backend's score cache
+ * is a module-level dict inside one warm serverless container. Firing every
+ * chunk simultaneously had Vercel answer from a dozen separate containers —
+ * each cold-starting, each independently re-fetching the EGX30 benchmark's 400
+ * bars, each writing into a private cache nothing else could read. Keeping a
+ * small number in flight lands them on the same warm container, so that
+ * benchmark and the 15-minute cache are paid for once.
+ */
+export const COMPOSITE_BATCH_CONCURRENCY = 2;
+
+/**
+ * Ceiling on one batch request (ms). The backend gives up on stragglers at 20s
+ * and returns partial results, so anything past this is a request that will
+ * never settle — and an unsettled request holds its symbols in the in-flight
+ * set for ever, which is one way cards used to stay blank.
+ */
+export const COMPOSITE_REQUEST_TIMEOUT_MS = 25000;
 
 // === Forms ===
 
@@ -189,4 +216,4 @@ export const DEFAULT_WEIGHTS: ScoreWeights = FALLBACK_WEIGHT_PRESETS.beginner_sa
 /** Bump this version string to invalidate the cached app shell on next load.
  *  IMPORTANT: keep in sync with `CACHE_NAME` literal in public/sw.js
  *  (sw.js is served raw and cannot import this module). */
-export const SW_CACHE_NAME = "egx-v3";
+export const SW_CACHE_NAME = "egx-v4";
