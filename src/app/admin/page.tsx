@@ -144,9 +144,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">Users</h1>
           <p className="mt-1 text-sm text-white/50">
-            {users.length} account{users.length === 1 ? "" : "s"}. Admin access is
-            set by the <code className="font-mono text-white/70">AUTH_ADMINS</code>{" "}
-            environment variable, not from here.
+            {users.length} account{users.length === 1 ? "" : "s"}.
           </p>
         </div>
         <button
