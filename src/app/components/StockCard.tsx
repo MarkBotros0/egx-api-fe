@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { scoreColor } from "./CompositeGauge";
+import { RISK_BAND_COLOR } from "../lib/riskBands";
 import type { CompositeSignal } from "../lib/types";
 
 /**
@@ -40,6 +41,14 @@ interface StockCardProps {
   compositeSignal?: CompositeSignal | null;
   /** 0-100 composite. Shown as the number rather than a Buy/Hold word. */
   compositeScore?: number | null;
+  /**
+   * The Calm..Wild volatility band from the risk grade — how much this moves,
+   * never which way. A tiny coloured dot + label under the score. Null/absent
+   * for a stock too thin to grade, which draws no dot. Independent of the
+   * composite score toggle: it is a different axis (movement, not condition).
+   */
+  riskBand?: string | null;
+  riskBandLabel?: string | null;
   interval?: string;
   /**
    * Interval the price change covers. The dashboard's batch endpoint returns
@@ -67,6 +76,8 @@ export default function StockCard({
   sector,
   compositeSignal,
   compositeScore,
+  riskBand,
+  riskBandLabel,
   interval,
   changeInterval,
   state = "live",
@@ -119,30 +130,56 @@ export default function StockCard({
               {name}
             </p>
           </div>
-          {/* The score itself, not a Buy/Hold word. The number carries how
-              strong the reading is - 61 and 79 are both "Buy" but they are
-              not the same setup - and it matches the gauge on the detail
-              page, so the two surfaces cannot appear to disagree. */}
-          {compositeScore != null ? (
-            <span
-              className="flex shrink-0 flex-col items-center leading-none"
-              title={compositeSignal ? `${compositeScore.toFixed(0)} / 100 — ${compositeSignal}` : undefined}
-            >
+          {/* Right column: the composite score (or sector), and beneath it the
+              risk grade. They are two different axes — the score reads
+              CONDITION, the risk band reads how much the stock MOVES — so they
+              stack rather than compete. */}
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {/* The score itself, not a Buy/Hold word. The number carries how
+                strong the reading is - 61 and 79 are both "Buy" but they are
+                not the same setup - and it matches the gauge on the detail
+                page, so the two surfaces cannot appear to disagree. */}
+            {compositeScore != null ? (
               <span
-                className="font-mono text-lg font-bold"
-                style={{ color: scoreColor(compositeScore) }}
+                className="flex flex-col items-center leading-none"
+                title={compositeSignal ? `${compositeScore.toFixed(0)} / 100 — ${compositeSignal}` : undefined}
               >
-                {compositeScore.toFixed(0)}
+                <span
+                  className="font-mono text-lg font-bold"
+                  style={{ color: scoreColor(compositeScore) }}
+                >
+                  {compositeScore.toFixed(0)}
+                </span>
+                <span className="mt-0.5 text-[8px] uppercase tracking-wider text-white/30">
+                  score
+                </span>
               </span>
-              <span className="mt-0.5 text-[8px] uppercase tracking-wider text-white/30">
-                score
+            ) : sector ? (
+              <span className="whitespace-nowrap rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent/70">
+                {sector}
               </span>
-            </span>
-          ) : sector ? (
-            <span className="whitespace-nowrap rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent/70">
-              {sector}
-            </span>
-          ) : null}
+            ) : null}
+
+            {/* Risk grade — how much this moves, NOT which way. Colour is the
+                shared cool→hot ramp, never gain/loss. A dot for the band, the
+                word for the meaning, so colour is reinforcement and not the
+                only signal. Suppressed on a no-feed card, whose only band would
+                be a stale measurement from before it went dark. */}
+            {riskBand && state !== "unavailable" && (
+              <span
+                className="flex items-center gap-1 leading-none"
+                title={`Risk: ${riskBandLabel ?? riskBand} — how much it moves, not which way`}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: RISK_BAND_COLOR[riskBand] ?? "#4488ff" }}
+                />
+                <span className="text-[9px] uppercase tracking-wider text-white/40">
+                  {riskBandLabel ?? riskBand}
+                </span>
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 flex items-end justify-between">

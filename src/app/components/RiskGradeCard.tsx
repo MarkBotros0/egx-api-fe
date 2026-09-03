@@ -5,6 +5,11 @@ import Link from "next/link";
 
 import LearnTooltip from "./LearnTooltip";
 import { fetchRisk, type RiskRow, type RiskResponse } from "@/app/lib/api";
+import {
+  RISK_BAND_BLURB as BAND_BLURB,
+  RISK_BAND_COLOR as BAND_COLOR,
+  RISK_BAND_ORDER as BAND_ORDER,
+} from "@/app/lib/riskBands";
 
 /**
  * The per-stock risk grade — the strongest measured surface in this app.
@@ -24,31 +29,11 @@ import { fetchRisk, type RiskRow, type RiskResponse } from "@/app/lib/api";
  * out loud. `tests/test_risk_grade.py::test_risk_grade_makes_no_return_claim`
  * guards the backend half.
  *
- * COLOUR
- * ------
- * Deliberately NOT the app's `gain`/`loss` pair. Those mean a real direction in
- * the data (see the Learn-page colour rule), and a risk band has no direction —
- * it is intensity. This uses a cool-to-hot ramp instead, so "Wild" reads as
- * "moves a lot, digs deep holes" rather than "this loses money".
+ * COLOUR is the shared cool-to-hot ramp in `lib/riskBands` — deliberately NOT
+ * the app's `gain`/`loss` pair, because a risk band is intensity, not
+ * direction. The dashboard card's risk dot reads from the same module, so the
+ * two surfaces cannot drift.
  */
-
-const BAND_COLOR: Record<string, string> = {
-  calm: "#4488ff",
-  steady: "#5fa8d3",
-  average: "#e8c468",
-  jumpy: "#f0913f",
-  wild: "#ff3355",
-};
-
-const BAND_ORDER = ["calm", "steady", "average", "jumpy", "wild"] as const;
-
-const BAND_BLURB: Record<string, string> = {
-  calm: "moves least of the tradeable EGX names",
-  steady: "moves less than most",
-  average: "moves about as much as the typical EGX stock",
-  jumpy: "moves more than most",
-  wild: "moves most of the tradeable EGX names",
-};
 
 function agoLabel(iso?: string | null): string | null {
   if (!iso) return null;

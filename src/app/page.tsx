@@ -39,6 +39,13 @@ interface CardData {
   /** Past 63-day volatility, for the Risk sort. Snapshot only. */
   sigma?: number | null;
   /**
+   * The Calm..Wild risk band and its label. Snapshot only — the live upgrade
+   * rescores the composite but not the cross-sectional risk rank, so these are
+   * carried through an upgrade unchanged rather than blanked.
+   */
+  riskBand?: string | null;
+  riskBandLabel?: string | null;
+  /**
    * The SESSION this price came from, e.g. "2026-09-02" — per card, never a
    * table-wide figure. Two earlier versions of this label were wrong in
    * different ways: `oldest_measurement` is the stalest row in the WHOLE
@@ -221,6 +228,8 @@ export default function Dashboard() {
             score: row.score,
             signal: row.signal,
             sigma: row.sigma_63_ann_pct,
+            riskBand: row.risk_band,
+            riskBandLabel: row.risk_band_label,
             barDate: row.last_bar_date,
             fetchedAt: row.measured_at ? Date.parse(row.measured_at) : undefined,
             state: row.available ? "stale" : "unavailable",
@@ -395,6 +404,10 @@ export default function Dashboard() {
                 changePct: entry.change_pct ?? next[key]?.changePct,
                 sparkline: entry.sparkline ?? next[key]?.sparkline,
                 sigma: next[key]?.sigma,
+                // The upgrade rescores the composite, not the cross-sectional
+                // risk rank, so the snapshot's band rides through untouched.
+                riskBand: next[key]?.riskBand,
+                riskBandLabel: next[key]?.riskBandLabel,
                 barDate: entry.last_bar_date ?? next[key]?.barDate,
                 // The moment it landed here, not a server timestamp: this is
                 // the age of what is on screen.
@@ -516,6 +529,10 @@ export default function Dashboard() {
         sparklineData={c?.sparkline}
         compositeScore={showComposite ? c?.score ?? null : null}
         compositeSignal={showComposite ? c?.signal ?? null : null}
+        // Independent of the score toggle — the risk band is a different axis
+        // (how much it moves, not its condition), so it shows either way.
+        riskBand={c?.riskBand}
+        riskBandLabel={c?.riskBandLabel}
         interval={showComposite ? compositeInterval : undefined}
         // The price change comes from the same batch call as the signal, so it
         // is a change over ONE BAR of the selected interval — a

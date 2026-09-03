@@ -409,6 +409,13 @@ export interface DashboardRow {
   last_bar_date: string | null;
   tradeable: boolean | null;
   sigma_63_ann_pct: number | null;
+  /**
+   * The Calm..Wild volatility band, ranked cross-sectionally over the tradeable
+   * universe — the same grade `/api/risk` and `RiskGradeCard` show. Null for a
+   * symbol too thinly traded to earn a rank; the card then draws no dot.
+   */
+  risk_band: string | null;
+  risk_band_label: string | null;
 }
 
 export interface DashboardResponse {
