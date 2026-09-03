@@ -22,24 +22,93 @@ export function relativeAge(iso: string, now: Date = new Date()): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function NewsItemRow({ item }: { item: NewsItem }) {
+/** Under a day old — the feed's freshness signal. Client-only, same as relativeAge. */
+function isFresh(iso: string, now: Date = new Date()): boolean {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return false;
+  return now.getTime() - then < 24 * 3_600_000;
+}
+
+// A handful of sources come through the feed as lowercase slugs. These render
+// as an acronym rather than a title-cased word, because that IS how the source
+// is known ("LSE", not "Lse"). Everything else is title-cased from its slug.
+const _ACRONYMS = new Set(["lse", "sec", "imf", "gdr", "pr"]);
+
+/** "dow-jones" -> "Dow Jones", "lse" -> "LSE", "reuters" -> "Reuters". */
+function sourceName(provider: string | null): string {
+  if (!provider) return "Wire";
+  return provider
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((w) => (_ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+/**
+ * A small monogram anchors each story to its source without a logo asset
+ * (external images are CSP/CORS-blocked here). It is deliberately monochrome —
+ * a rainbow of per-source colours would read as decoration, and any green/red
+ * would collide with the one meaning colour carries in this app. The letter
+ * does the distinguishing.
+ */
+function SourceMark({ provider }: { provider: string | null }) {
+  const initial = sourceName(provider).charAt(0).toUpperCase();
   return (
-    // Deliberately no gain/loss colour anywhere in here. Those mean a real
-    // direction in the data; a headline carries none, and tinting one green
-    // would claim a sentiment the app has not computed.
-    <li className="rounded-lg border border-white/5 bg-charcoal p-3">
+    <span
+      aria-hidden
+      className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-white/[0.06] font-mono text-[11px] font-semibold text-white/70 ring-1 ring-inset ring-white/10"
+    >
+      {initial}
+    </span>
+  );
+}
+
+function NewsCard({ item }: { item: NewsItem }) {
+  const fresh = isFresh(item.published_at);
+
+  return (
+    // Matches the dashboard StockCard's quality tier — real surface, a border
+    // that answers hover, a lift on interaction — rather than the flat panel
+    // this used to be. No gain/loss colour anywhere: those mean a direction in
+    // the data, and a headline carries none.
+    <li className="group rounded-xl border border-white/5 bg-white/[0.03] p-4 transition-all hover:border-white/10 hover:bg-white/[0.06]">
+      {/* Source line: who said it, and how fresh. The organizing facts of a
+          news feed, so they lead. */}
+      <div className="flex items-center gap-2.5">
+        <SourceMark provider={item.provider} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-white/70">
+          {sourceName(item.provider)}
+        </span>
+        <span className="flex flex-none items-center gap-1.5">
+          {fresh && (
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-accent"
+              title="Published in the last 24 hours"
+            />
+          )}
+          <time
+            dateTime={item.published_at}
+            className="font-mono text-[11px] text-white/40"
+          >
+            {relativeAge(item.published_at)}
+          </time>
+        </span>
+      </div>
+
+      {/* The headline is the hero of the card and the link to the story. The
+          story lives on TradingView, so it opens off-app with a marker rather
+          than leaving silently. */}
       <a
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex min-h-[44px] items-start gap-2 text-sm leading-snug text-white/90 hover:text-white"
+        className="mt-2.5 flex min-h-[44px] items-start gap-2 text-[15px] font-semibold leading-snug text-white/95 transition-colors hover:text-white"
       >
         <span className="flex-1">{item.title}</span>
-        {/* The story lives on TradingView, not here. Say so rather than
-            letting a tap silently leave the app. */}
         <svg
-          className="mt-0.5 h-3.5 w-3.5 flex-none text-white/30"
+          className="mt-1 h-3.5 w-3.5 flex-none text-white/25 transition-colors group-hover:text-white/50"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"
           aria-label="Opens on tradingview.com"
         >
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -48,20 +117,23 @@ function NewsItemRow({ item }: { item: NewsItem }) {
         </svg>
       </a>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11px] text-white/40">
-        {item.provider && <span className="uppercase tracking-wide">{item.provider}</span>}
-        <span aria-hidden>·</span>
-        <time dateTime={item.published_at}>{relativeAge(item.published_at)}</time>
-        {item.symbols.map((s) => (
-          <Link
-            key={s}
-            href={`/stock/${s}`}
-            className="inline-flex min-h-[44px] items-center rounded bg-white/5 px-3 font-mono text-xs text-white/60 hover:text-white"
-          >
-            {s}
-          </Link>
-        ))}
-      </div>
+      {/* Tickers this story touches, each a route to that stock. Accent-tinted
+          because they are the interactive, in-app element on an otherwise
+          neutral card. Sized to a comfortable tap target with clear separation;
+          the headline above is the 44px primary target. */}
+      {item.symbols.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {item.symbols.map((s) => (
+            <Link
+              key={s}
+              href={`/stock/${s}`}
+              className="inline-flex h-9 items-center rounded-lg bg-accent/10 px-2.5 font-mono text-xs font-medium text-accent/90 transition-colors hover:bg-accent/20 hover:text-accent"
+            >
+              {s}
+            </Link>
+          ))}
+        </div>
+      )}
     </li>
   );
 }
@@ -77,21 +149,21 @@ export default function NewsList({
 }) {
   return (
     <section className="mb-8">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-semibold text-white">{title}</h2>
-        <span className="text-xs text-white/40">
-          {items.length} {items.length === 1 ? "story" : "stories"}
+      <div className="mb-3 flex items-baseline gap-2.5">
+        <h2 className="text-lg font-semibold tracking-tight text-white">{title}</h2>
+        <span className="font-mono text-xs text-white/35">
+          {items.length}
         </span>
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-lg border border-white/5 bg-charcoal p-4 text-sm text-white/50">
+        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm leading-relaxed text-white/50">
           {emptyNote}
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {items.map((item) => (
-            <NewsItemRow key={item.id} item={item} />
+            <NewsCard key={item.id} item={item} />
           ))}
         </ul>
       )}
