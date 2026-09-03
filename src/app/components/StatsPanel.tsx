@@ -1,7 +1,7 @@
 "use client";
 
 import LearnTooltip from "./LearnTooltip";
-import { DY_SUSPICIOUS_MIN, peColor } from "@/app/lib/constants";
+import { DY_SUSPICIOUS_MIN, T_BILL_RATE_PCT, peColor } from "@/app/lib/constants";
 import type { AnalysisStats, CrossoverInfo, PEData } from "@/app/lib/types";
 
 interface StatsPanelProps {
@@ -219,7 +219,7 @@ export default function StatsPanel({
             tooltip={{
               term: "Dividend Yield",
               explanation:
-                "Annual dividends as a percentage of the current share price. The EGX median is about 3%. Read a healthy yield as evidence the company generates real cash, not as income — even 8% loses to the ~25% T-bill. Above 15% is a red flag: usually a one-off special dividend or a share price that has collapsed.",
+                `Annual dividends as a percentage of the current share price. The EGX median is about 3%. Read a healthy yield as evidence the company generates real cash, not as income — even 8% loses to the ~${T_BILL_RATE_PCT}% policy rate. Above 15% is a red flag: usually a one-off special dividend or a share price that has collapsed.`,
             }}
             color={
               pe.dividend_yield >= DY_SUSPICIOUS_MIN ? "text-loss" : undefined

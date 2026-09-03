@@ -8,6 +8,7 @@ import {
   DD_GOOD,
   SHARPE_GOOD,
   SHARPE_OKAY,
+  T_BILL_RATE_PCT,
 } from "@/app/lib/constants";
 import type { PortfolioMetrics } from "@/app/lib/types";
 
@@ -75,7 +76,7 @@ export default function RiskDashboard({ metrics }: RiskDashboardProps) {
           color={sharpeColor}
           tooltip={{
             term: "Sharpe Ratio",
-            explanation: "Measures risk-adjusted return. Higher = better. A ratio > 1 means your returns strongly justify the risk. Below 0 means you'd earn more in Egyptian T-bills (~25% risk-free).",
+            explanation: `Measures risk-adjusted return. Higher = better. A ratio > 1 means your returns strongly justify the risk. Below 0 means you would earn more in risk-free Egyptian cash (~${T_BILL_RATE_PCT}%).`,
           }}
         />
         <RiskMetric
@@ -131,7 +132,7 @@ export default function RiskDashboard({ metrics }: RiskDashboardProps) {
       </div>
 
       <p className="mt-4 text-[10px] text-white/25">
-        Note: Egypt&apos;s risk-free rate (T-bills) is ~25%, which is very high globally. This makes it harder for stocks to have a positive Sharpe ratio compared to other markets.
+        Note: Egypt&apos;s risk-free rate is ~{T_BILL_RATE_PCT}%, which is very high globally. This makes it harder for stocks to have a positive Sharpe ratio compared to other markets.
       </p>
     </div>
   );

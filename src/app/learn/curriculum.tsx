@@ -34,7 +34,7 @@ import {
   ScoreBandExplorer,
 } from "../components/learn/widgets";
 import LiveChart from "../components/learn/LiveChart";
-import { DEFAULT_WEIGHTS } from "../lib/constants";
+import { DEFAULT_WEIGHTS, T_BILL_RATE_PCT } from "../lib/constants";
 
 // ---------------------------------------------------------------- types
 
@@ -991,7 +991,7 @@ export const CURRICULUM: Module[] = [
         title: "The Eight Score Categories",
         level: "core",
         definition:
-          "Trend: price vs SMAs, ADX, golden/death cross. Momentum: RSI, MACD, Stochastic. Volume: OBV, MFI, volume-price confirmation, and tradeable liquidity. Volatility: Bollinger Bands position and squeeze. Divergence: RSI/MACD divergence vs price. Quality: trend consistency + multi-timeframe alignment + distance from the 52-week high + P/E and dividend yield vs the EGX median. Risk-Adjusted: annualized return vs the 25% T-bill + ATR context. Relative Strength: alpha vs the EGX30 over 30 days.",
+          `Trend: price vs SMAs, ADX, golden/death cross. Momentum: RSI, MACD, Stochastic. Volume: OBV, MFI, volume-price confirmation, and tradeable liquidity. Volatility: Bollinger Bands position and squeeze. Divergence: RSI/MACD divergence vs price. Quality: trend consistency + multi-timeframe alignment + distance from the 52-week high + P/E and dividend yield vs the EGX median. Risk-Adjusted: annualized return vs the ${T_BILL_RATE_PCT}% policy rate + ATR context. Relative Strength: alpha vs the EGX30 over 30 days.`,
         whyItMatters:
           "The three newer categories — Quality, Risk-Adjusted, and Relative Strength — address the three most expensive beginner mistakes: (1) chasing choppy stocks whose trends flip weekly, (2) holding stocks that underperform cash, and (3) holding market laggards. Each category captures a different dimension; the score is only as confident as the agreement across them.",
         howToUse:
@@ -1019,7 +1019,7 @@ export const CURRICULUM: Module[] = [
         title: "Risk-Adjusted Return — Beating the T-Bill",
         level: "core",
         definition:
-          "This category compares a stock's annualized return to the Egyptian T-bill rate (~25%). A stock returning 20% annualized is losing you money vs holding risk-free cash. The category also penalises extreme volatility and wide ATR relative to price, both of which eat into real returns.",
+          `This category compares a stock's annualized return to the Egyptian policy rate (~${T_BILL_RATE_PCT}%). A stock returning 12% annualized is losing you money vs holding risk-free cash. The category also penalises extreme volatility and wide ATR relative to price, both of which eat into real returns.`,
         whyItMatters:
           "Egypt's T-bill rate is the HIGHEST risk-free rate of any major market. In the US, stocks returning 10% easily beat a 4% T-bill. In Egypt, a 20% stock return is actually a LOSS vs cash. Without this category, the composite would happily give 'Buy' signals to mediocre performers that aren't worth the risk.",
         howToUse:
@@ -1027,7 +1027,7 @@ export const CURRICULUM: Module[] = [
         visual: (
           <BarCompare
             caption="In Egypt the bar is unusually high. A rising stock can still be a losing decision."
-            baseline={{ value: 25, label: "T-bill hurdle — 25%, zero risk", color: V.violet }}
+            baseline={{ value: T_BILL_RATE_PCT, label: `Cash hurdle — ${T_BILL_RATE_PCT}%, zero risk`, color: V.violet }}
             bars={[
               { label: "Stock returning 34%", value: 34, color: V.up, note: "Clears the hurdle. It is paying for its risk." },
               { label: "Stock returning 20%", value: 20, color: V.down, note: "Up on the year — and still behind cash." },
@@ -1166,7 +1166,7 @@ export const CURRICULUM: Module[] = [
         steps={[
           { title: "Check the macro", text: "In a bearish market, raise your bar from 60 to 70." },
           { title: "Read the breakdown", text: "The category reasons are facts. The blended number is not a forecast." },
-          { title: "Does it beat T-bills?", text: "Below ~25% annualized, cash was the better trade." },
+          { title: "Does it beat cash?", text: `Below ~${T_BILL_RATE_PCT}% annualized, cash was the better trade.` },
           { title: "Leader or laggard?", text: "Buying a laggard needs a specific reason, not a low price." },
           { title: "Set the stop first", text: "Before you buy. After you buy, hope takes over." },
           { title: "Size it at 5–10%", text: "2–3% for thin or NILEX names." },
@@ -1227,7 +1227,7 @@ export const CURRICULUM: Module[] = [
         title: "Step 3 — Does It Beat T-Bills?",
         level: "start",
         definition:
-          "Look at the Risk-Adjusted category specifically. Is the annualized return comfortably above the ~25% T-bill rate? The reasons list will tell you the exact numbers.",
+          `Look at the Risk-Adjusted category specifically. Is the annualized return comfortably above the ~${T_BILL_RATE_PCT}% policy rate? The reasons list will tell you the exact numbers.`,
         whyItMatters:
           "Egypt's risk-free rate is unusually high. A stock returning 22% annualized is LOSING real money vs cash. This single filter eliminates a huge class of low-quality opportunities.",
         howToUse:
@@ -1457,7 +1457,7 @@ export const CURRICULUM: Module[] = [
         title: "The Cash Underperformer Trap",
         level: "core",
         definition:
-          "A 'cash underperformer' is a stock you've held for 90+ days whose annualized return is below the T-bill rate (~25%). You're literally earning less than risk-free cash — while taking stock-market risk.",
+          `A 'cash underperformer' is a stock you've held for 90+ days whose annualized return is below the policy rate (~${T_BILL_RATE_PCT}%). You're literally earning less than risk-free cash — while taking stock-market risk.`,
         whyItMatters:
           "This is THE #1 invisible loss in Egyptian retail portfolios. A stock that gained 10% in a year feels like a win, but if T-bills paid 25%, you're 15% behind where you could have been with zero risk. Over years, this compounds into life-changing differences.",
         howToUse:
@@ -1500,9 +1500,9 @@ export const CURRICULUM: Module[] = [
             caption="Two 'wins' of identical size. Only one of them beat leaving the money alone."
             rows={[
               { left: "+10% earned in 2 months", right: "≈ 77% annualized", tone: "up" },
-              { left: "Beat the 25% T-bill?", right: "yes", tone: "up" },
+              { left: `Beat the ${T_BILL_RATE_PCT}% cash rate?`, right: "yes", tone: "up" },
               { left: "+10% earned over 3 years", right: "≈ 3% annualized", tone: "down" },
-              { left: "Beat the 25% T-bill?", right: "no — badly", tone: "down" },
+              { left: `Beat the ${T_BILL_RATE_PCT}% cash rate?`, right: "no — badly", tone: "down" },
             ]}
           />
         ),
@@ -1564,7 +1564,7 @@ export const CURRICULUM: Module[] = [
         definition:
           "The Sharpe ratio measures risk-adjusted return: how much excess return you earn per unit of risk. Formula: (portfolio return - risk-free rate) / portfolio volatility.",
         whyItMatters:
-          "A positive Sharpe means your portfolio beats the risk-free rate (Egyptian T-bills at ~25%). Below 0 means you'd literally earn more with zero risk in T-bills. Above 1.0 is excellent. Note: Egypt's high T-bill rate makes it harder for stocks to have a positive Sharpe.",
+          `A positive Sharpe means your portfolio beats the risk-free rate (Egyptian cash at ~${T_BILL_RATE_PCT}%). Below 0 means you'd literally earn more taking no risk at all. Above 1.0 is excellent. Note: Egypt's high policy rate makes it harder for stocks to have a positive Sharpe.`,
         howToUse:
           "Check your portfolio's Sharpe ratio on the Risk Dashboard. If it's negative, your stock picks are underperforming guaranteed T-bill returns — consider whether your positions still make sense. A Sharpe of 0.5 in Egypt is actually quite respectable given the high risk-free rate.",
         visual: (
@@ -1705,7 +1705,7 @@ export const CURRICULUM: Module[] = [
         title: "Egypt's T-Bill Rate & Stocks",
         level: "start",
         definition:
-          "Egyptian Treasury bills (T-bills) currently offer ~25% annual returns with zero risk. This is the 'risk-free rate' — the guaranteed return you could earn without any stock market risk.",
+          `The CBE policy rate is ~${T_BILL_RATE_PCT}%, and Egyptian Treasury bills track it closely — a near-guaranteed return with no stock-market risk. That is the 'risk-free rate' every comparison in this app is made against.`,
         whyItMatters:
           "When T-bill rates are high, stocks must offer even higher returns to justify their risk. A stock returning 15% per year sounds good, but if T-bills offer 25% risk-free, you're actually losing value by holding stocks. This is why the Sharpe ratio matters.",
         howToUse:
@@ -1714,7 +1714,7 @@ export const CURRICULUM: Module[] = [
           <BarCompare
             caption="This single number is why analysis written for other markets does not transfer here."
             bars={[
-              { label: "Egyptian T-bill", value: 25, color: V.violet, note: "Zero risk. This is the bar." },
+              { label: "Egyptian cash rate", value: T_BILL_RATE_PCT, color: V.violet, note: "Zero risk. This is the bar." },
               { label: "A typical US T-bill", value: 4, color: "#4a5568", note: "Where most investing advice was written." },
               { label: "A 15% stock return", value: 15, color: V.down, note: "Excellent in the US. A loss against cash here." },
             ]}
