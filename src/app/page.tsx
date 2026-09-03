@@ -114,6 +114,17 @@ export default function Dashboard() {
   const inFlightRef = useRef<Set<string>>(new Set());
   const attemptsRef = useRef<Map<string, number>>(new Map());
   const runIdRef = useRef(0);
+  /**
+   * Symbols already upgraded to live figures in the CURRENT run.
+   *
+   * A ref, not `cards[sym].state === "live"`, and that is the whole fix for a
+   * dead Refresh button. Refs mutate synchronously; state does not. The reset
+   * effect below only SCHEDULES the demotion of live cards back to stale, so
+   * the upgrade effect — which runs in the same commit, right after it — still
+   * saw every symbol as "live", filtered them all out, and returned having
+   * done nothing. Its deps had already changed, so it never ran again.
+   */
+  const upgradedRef = useRef<Set<string>>(new Set());
   const { version: weightsVersion } = useScoreWeights();
   const { symbols: watchlistSymbols } = useWatchlist();
 
@@ -128,7 +139,9 @@ export default function Dashboard() {
   // ---------------------------------------------------------------------
   useEffect(() => {
     let cancelled = false;
-    fetchDashboard()
+    // refreshKey > 0 means the user pressed Refresh, so bypass the service
+    // worker's stale-while-revalidate copy and go to the network.
+    fetchDashboard({ fresh: refreshKey > 0 })
       .then((res) => {
         if (cancelled) return;
         const next: Record<string, CardData> = {};
@@ -263,6 +276,9 @@ export default function Dashboard() {
     runIdRef.current += 1;
     inFlightRef.current = new Set();
     attemptsRef.current = new Map();
+    // Synchronous, so the upgrade effect below sees the cleared set in this
+    // same commit. The setCards demotion under it is not — see upgradedRef.
+    upgradedRef.current = new Set();
     setCards((prev) => {
       const next: Record<string, CardData> = {};
       for (const [sym, c] of Object.entries(prev)) {
@@ -286,7 +302,7 @@ export default function Dashboard() {
         const sym = s.toUpperCase();
         if (noFeed.has(sym)) return false;
         if (inFlightRef.current.has(sym)) return false;
-        if (cards[sym]?.state === "live") return false;
+        if (upgradedRef.current.has(sym)) return false;
         return (attemptsRef.current.get(sym) ?? 0) < COMPOSITE_MAX_ATTEMPTS;
       });
       if (!toFetch.length) return;
@@ -304,6 +320,7 @@ export default function Dashboard() {
             const next = { ...prev };
             for (const [sym, entry] of Object.entries(partial.scores)) {
               const key = sym.toUpperCase();
+              upgradedRef.current.add(key);
               next[key] = {
                 ...next[key],
                 score: entry.score,
@@ -355,7 +372,10 @@ export default function Dashboard() {
           toFetch.forEach((s) => inFlightRef.current.delete(s.toUpperCase()));
         });
     },
-    [cards, compositeInterval, noFeed]
+    // `cards` is deliberately absent: this closure no longer reads it (the
+    // "already upgraded" check moved to upgradedRef), so keeping it here would
+    // rebuild `upgrade` on every arriving chunk for no behaviour.
+    [compositeInterval, noFeed]
   );
 
   const visibleKey = visible.map((v) => v.symbol).join(",");

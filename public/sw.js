@@ -1,7 +1,7 @@
 // Bump this version to invalidate the cached app shell on next load.
 // Keep in sync with SW_CACHE_NAME in src/app/lib/constants.ts
 // (sw.js is served raw and cannot import the TypeScript module).
-const CACHE_NAME = "egx-v4";
+const CACHE_NAME = "egx-v5";
 const SHELL_ASSETS = ["/", "/icons/egx-logo-192.png", "/icons/egx-logo-512.png"];
 
 // Endpoints served STALE-WHILE-REVALIDATE rather than network-first.
@@ -44,11 +44,21 @@ self.addEventListener("fetch", (event) => {
   // https://backend.example.com/api/analysis. If the prefix ever changes,
   // update this check to match on the backend origin instead.
   if (request.url.includes("/api/") || request.mode === "navigate") {
+    // An explicit user refresh carries `fresh=` (see fetchDashboard). Such a
+    // request must reach the network and must NOT be cached — otherwise every
+    // refresh leaves another one-shot entry behind.
+    const isExplicitRefresh = request.url.includes("fresh=");
+
     const revalidate = fetch(request)
       .then((response) => {
         // Only cache what we could serve back. Caching a 401 or a 500 would
         // leave the worker replaying an error page offline.
-        if (response && response.ok && request.method === "GET") {
+        if (
+          response &&
+          response.ok &&
+          request.method === "GET" &&
+          !isExplicitRefresh
+        ) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
@@ -58,6 +68,7 @@ self.addEventListener("fetch", (event) => {
 
     if (
       request.method === "GET" &&
+      !isExplicitRefresh &&
       SWR_PATHS.some((p) => request.url.includes(p))
     ) {
       // Stale-while-revalidate: answer from cache NOW and refresh behind it.

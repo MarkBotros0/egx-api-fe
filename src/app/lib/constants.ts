@@ -177,12 +177,25 @@ export const DY_SUSPICIOUS_MIN = 15;
  */
 export const STOP_LOSS_ATR_MULTIPLIER = 1.5;
 
-/** Egypt's ~25% T-bill rate — the hurdle every Learn-page comparison uses. */
-export const T_BILL_RATE_PCT = 25;
+/**
+ * The CBE policy rate — the hurdle every Learn-page comparison uses.
+ *
+ * 19, not 25. The backend corrected this on 2026-09-02 (825bp of cuts since
+ * April 2025, held at the 20 Aug meeting) in `DEFAULT_RISK_FREE_RATE_PCT`, and
+ * this copy was left behind — so the T-bill race widget was teaching a 25%
+ * hurdle while `score_risk_adjusted` graded every stock against 19%. That is
+ * precisely the failure the Learn page's own rule names: a widget that teaches
+ * a different number from the one the app computes is worse than no widget.
+ *
+ * Keep in sync with `DEFAULT_RISK_FREE_RATE_PCT` in
+ * egx-api-be/app/core/constants.py. Note it is the POLICY rate, not a 91-day
+ * auction yield — there is no free machine-readable Egyptian bill series.
+ */
+export const T_BILL_RATE_PCT = 19;
 
 // === Risk dashboard thresholds ===
 
-/** Sharpe ≥ this is "good" given Egypt's ~25% risk-free rate. */
+/** Sharpe ≥ this is "good" given Egypt's ~19% risk-free rate. */
 export const SHARPE_GOOD = 1;
 /** Sharpe between 0 and this is marginal. */
 export const SHARPE_OKAY = 0.5;
@@ -216,4 +229,4 @@ export const DEFAULT_WEIGHTS: ScoreWeights = FALLBACK_WEIGHT_PRESETS.beginner_sa
 /** Bump this version string to invalidate the cached app shell on next load.
  *  IMPORTANT: keep in sync with `CACHE_NAME` literal in public/sw.js
  *  (sw.js is served raw and cannot import this module). */
-export const SW_CACHE_NAME = "egx-v4";
+export const SW_CACHE_NAME = "egx-v5";

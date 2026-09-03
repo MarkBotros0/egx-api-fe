@@ -409,8 +409,21 @@ export interface DashboardResponse {
   note?: string;
 }
 
-export async function fetchDashboard(): Promise<DashboardResponse> {
-  return fetchJSON<DashboardResponse>(`${BASE}/dashboard`);
+/**
+ * `fresh` is for an explicit user refresh, and it is not optional politeness.
+ *
+ * The service worker serves `/api/dashboard` stale-while-revalidate, so a plain
+ * re-fetch answers instantly FROM CACHE — which is correct on a normal visit
+ * and completely wrong when the user has just pressed Refresh asking for new
+ * numbers. The cache-buster gives the request a URL the worker has never seen,
+ * so it goes to the network; `sw.js` in turn refuses to cache or SWR-serve any
+ * URL carrying it, so this cannot pile up entries.
+ */
+export async function fetchDashboard(opts?: {
+  fresh?: boolean;
+}): Promise<DashboardResponse> {
+  const q = opts?.fresh ? `?fresh=${Date.now()}` : "";
+  return fetchJSON<DashboardResponse>(`${BASE}/dashboard${q}`);
 }
 
 // ---- P/E feed freshness ----
