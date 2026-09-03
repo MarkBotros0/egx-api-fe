@@ -22,6 +22,7 @@ import type {
   Sale,
   SalesResponse,
   Dividend,
+  NewsResponse,
 } from "./types";
 
 export interface ScoreWeightsResponse {
@@ -699,4 +700,10 @@ export async function fetchRisk(symbol?: string): Promise<RiskResponse> {
 
 export async function fetchMarketRegime(): Promise<MarketRegime> {
   return fetchJSON<MarketRegime>(`${BASE}/market_regime`);
+}
+
+// ---- News ----
+
+export async function fetchNews(): Promise<NewsResponse> {
+  return fetchJSON<NewsResponse>(`${BASE}/news`, { timeoutMs: 20000 });
 }
