@@ -309,10 +309,19 @@ export default function RealizedSection({
                   <div key={o.id} className="rounded-lg bg-white/[0.03] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-mono text-sm font-medium text-white">
-                          {o.symbol}
+                        <p className="flex items-center gap-2 font-mono text-sm font-medium text-white">
+                          <span className="shrink-0">{o.symbol}</span>
+                          {/* The ticker is four opaque letters; the company
+                              name is what the reader recognises. It truncates
+                              rather than wrapping — the figure on the right is
+                              what the row is for. */}
+                          {o.name && o.name !== o.symbol && (
+                            <span className="min-w-0 truncate font-sans text-xs font-normal text-white/40">
+                              {o.name}
+                            </span>
+                          )}
                           {o.lots_count > 1 && (
-                            <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-white/50">
+                            <span className="shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-white/50">
                               {o.lots_count} lots
                             </span>
                           )}
@@ -401,8 +410,13 @@ export default function RealizedSection({
                 <div key={d.id} className="rounded-lg bg-white/[0.03] p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-mono text-sm font-medium text-white">
-                        {d.symbol}
+                      <p className="flex items-center gap-2 font-mono text-sm font-medium text-white">
+                        <span className="shrink-0">{d.symbol}</span>
+                        {d.name && d.name !== d.symbol && (
+                          <span className="min-w-0 truncate font-sans text-xs font-normal text-white/40">
+                            {d.name}
+                          </span>
+                        )}
                       </p>
                       <p className="mt-0.5 text-[10px] text-white/30">
                         Paid {d.pay_date}
@@ -446,8 +460,13 @@ export default function RealizedSection({
                   className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.03] px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-medium text-white">
-                      {s.symbol}
+                    <p className="flex items-center gap-2 font-mono text-sm font-medium text-white">
+                      <span className="shrink-0">{s.symbol}</span>
+                      {s.name && s.name !== s.symbol && (
+                        <span className="min-w-0 truncate font-sans text-xs font-normal text-white/40">
+                          {s.name}
+                        </span>
+                      )}
                     </p>
                     <p className="truncate text-[10px] text-white/30">
                       {s.sales_count === 0
