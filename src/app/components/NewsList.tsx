@@ -9,6 +9,9 @@ import type { NewsItem } from "../lib/types";
  * A headline with no time context is not acceptable on this surface: the feed
  * is filtered to 30 days, but 3 days old and 29 days old are different facts
  * and the reader is entitled to both.
+ *
+ * Call this on the client only — it reads `new Date()`, so server-rendering an
+ * item and hydrating across an hour boundary would mismatch.
  */
 export function relativeAge(iso: string, now: Date = new Date()): string {
   const then = new Date(iso).getTime();
@@ -45,7 +48,7 @@ function NewsItemRow({ item }: { item: NewsItem }) {
         </svg>
       </a>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/40">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11px] text-white/40">
         {item.provider && <span className="uppercase tracking-wide">{item.provider}</span>}
         <span aria-hidden>·</span>
         <time dateTime={item.published_at}>{relativeAge(item.published_at)}</time>
@@ -53,7 +56,7 @@ function NewsItemRow({ item }: { item: NewsItem }) {
           <Link
             key={s}
             href={`/stock/${s}`}
-            className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60 hover:text-white"
+            className="inline-flex min-h-[44px] items-center rounded bg-white/5 px-3 font-mono text-xs text-white/60 hover:text-white"
           >
             {s}
           </Link>
