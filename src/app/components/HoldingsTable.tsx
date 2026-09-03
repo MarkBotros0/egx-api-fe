@@ -119,31 +119,13 @@ function ZoneDetail({ entryExit }: { entryExit: EntryExit | null | undefined }) 
   );
 }
 
-/** Dividends are anchored to the SYMBOL, not to one purchase lot — which is
- *  exactly what a position is, so at this level the figure needs no caveat.
- *  (It used to read "(all lots)" because the row was one lot of several.) */
-function DividendPill({ holding }: { holding: HoldingAnalysis }) {
-  const amount = holding.dividends_collected ?? 0;
-  if (amount <= 0) return null;
-  return (
-    <span className="ml-2 inline-flex items-center rounded-full bg-gain/10 px-2 py-0.5 text-[10px] font-medium text-gain">
-      +{amount.toLocaleString(undefined, { maximumFractionDigits: 0 })} div
-      {holding.dividends_symbol_shared ? " (all lots)" : ""}
-    </span>
-  );
-}
-
-/** How many purchases are behind the average price on the card. Only shown
- *  when there is more than one, so a single-lot position reads as it always
- *  has — the pill is what tells you the price above it is an average. */
-function LotCountPill({ position }: { position: Position }) {
-  if (position.lots.length < 2) return null;
-  return (
-    <span className="ml-2 inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/50">
-      {position.lots.length} lots
-    </span>
-  );
-}
+/* The symbol line carries NO badges — no lot count, no dividend total.
+ *
+ * Both facts are still on the card, in the places that were already saying
+ * them: the price reads "42.40 avg" when more than one purchase is behind it
+ * and the date line reads "First bought …", while the dividend total and the
+ * purchases themselves are in the expanded detail. Two pills crowding the
+ * title bought a second spelling of each, not a second fact. */
 
 /**
  * The individual purchases behind one position.
@@ -283,8 +265,6 @@ export default function HoldingsTable({
             return (
               <div key={rowKey} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
                 <span className="font-mono text-xs font-medium text-white">{h.symbol}</span>
-                <LotCountPill position={h} />
-                <DividendPill holding={h} />
                 <p className="mt-1 text-xs text-loss">{h.error}</p>
                 <div className="mt-3 flex gap-3 border-t border-white/5 pt-3">
                   <button
@@ -324,8 +304,6 @@ export default function HoldingsTable({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium text-white">{h.symbol}</span>
-                    <LotCountPill position={h} />
-                    <DividendPill holding={h} />
                     <span className="text-xs text-white/30 truncate">{h.name}</span>
                   </div>
                   <div className="mt-1.5 flex items-baseline gap-3 text-xs">
@@ -569,8 +547,6 @@ export default function HoldingsTable({
                     <tr key={rowKey} className="border-b border-white/5">
                       <td className="px-4 py-3 font-mono text-xs font-medium text-white">
                         {h.symbol}
-                        <LotCountPill position={h} />
-                        <DividendPill holding={h} />
                       </td>
                       <td colSpan={10} className="px-4 py-3 text-xs text-loss">
                         {h.error}
@@ -605,8 +581,6 @@ export default function HoldingsTable({
                         <span className="font-mono text-xs font-medium text-white">
                           {h.symbol}
                         </span>
-                        <LotCountPill position={h} />
-                        <DividendPill holding={h} />
                         <p className="text-[10px] text-white/30">
                           {h.name}
                           {h.buy_date
