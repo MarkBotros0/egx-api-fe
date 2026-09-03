@@ -39,40 +39,30 @@ interface CardData {
   /** Past 63-day volatility, for the Risk sort. Snapshot only. */
   sigma?: number | null;
   /**
-   * When THIS symbol's bars were measured. Per card, never the table-wide
-   * figure: `oldest_measurement` is the stalest row in the whole snapshot, and
-   * `scripts/seed_symbol_health.py` back-dates never-fetched symbols to the
-   * epoch, so using it here labelled every card "as of 1 Jan" — including ones
-   * measured minutes earlier.
+   * The SESSION this price came from, e.g. "2026-09-02" — per card, never a
+   * table-wide figure. Two earlier versions of this label were wrong in
+   * different ways: `oldest_measurement` is the stalest row in the WHOLE
+   * snapshot (and seed_symbol_health back-dates never-fetched symbols to the
+   * epoch, so every card read "as of 1 Jan"), and `measured_at` is our cron's
+   * clock rather than the price's, which put "22:33:28" on a 14:30 close.
    */
-  measuredAt?: string | null;
+  barDate?: string | null;
 }
 
 /**
- * "2026-09-02T15:32:57+00:00" -> "2 Sep 15:32:57". Undated input yields null.
+ * "2026-09-02" -> "2 Sep". The SESSION the price came from, not a clock time.
  *
- * Down to the second, because "2 Sep" cannot answer the question the label
- * exists for. The snapshot is written after the close and the cron walks the
- * universe in chunks, so two cards dated the same day can be two hours apart —
- * and during a trading session the reader needs to know whether a figure is
- * twenty minutes old or since yesterday's close.
- *
- * Rendered in the VIEWER's timezone (the stored value is UTC), which for this
- * app's audience is Cairo. 24-hour, so the stamp stays narrow enough for a
- * card and cannot be misread by twelve hours.
+ * Deliberately date-only. The snapshot's price is a daily CLOSE, struck at the
+ * 14:30 Cairo bell; the cron happens to fetch it hours later. Showing that
+ * fetch time — "as of 2 Sep, 22:33:28" — read as though the price itself were
+ * from 22:33, which is both wrong and precise to the second about a number
+ * that only moves once a day.
  */
-function shortDate(iso: string | null | undefined): string | null {
+function sessionLabel(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 export default function Dashboard() {
@@ -157,7 +147,7 @@ export default function Dashboard() {
             score: row.score,
             signal: row.signal,
             sigma: row.sigma_63_ann_pct,
-            measuredAt: row.measured_at,
+            barDate: row.last_bar_date,
             state: row.available ? "stale" : "unavailable",
           };
         }
@@ -330,7 +320,7 @@ export default function Dashboard() {
                 changePct: entry.change_pct ?? next[key]?.changePct,
                 sparkline: entry.sparkline ?? next[key]?.sparkline,
                 sigma: next[key]?.sigma,
-                measuredAt: next[key]?.measuredAt,
+                barDate: next[key]?.barDate,
                 state: "live",
               };
             }
@@ -455,7 +445,7 @@ export default function Dashboard() {
         // changed what its percentage meant.
         changeInterval={showComposite ? compositeInterval : "Daily"}
         state={c?.state ?? "loading"}
-        asOf={shortDate(c?.measuredAt)}
+        asOf={sessionLabel(c?.barDate)}
         onRetry={() => upgrade([t.symbol])}
       />
     );

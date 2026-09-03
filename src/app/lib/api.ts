@@ -390,9 +390,16 @@ export interface DashboardRow {
   change: number | null;
   change_pct: number | null;
   sparkline: number[];
-  /** When the bars behind this row were fetched. Post-close, so intraday-stale. */
+  /** When the bars behind this row were fetched. Our clock, not the price's. */
   measured_at: string | null;
   scored_at: string | null;
+  /**
+   * The SESSION this close belongs to — what the card shows.
+   * Distinct from `measured_at`: the cron runs after the 14:30 Cairo close, so
+   * a row fetched at 22:33 carries that day's CLOSE. Labelling a daily bar
+   * with the fetch time claimed a precision it never had.
+   */
+  last_bar_date: string | null;
   tradeable: boolean | null;
   sigma_63_ann_pct: number | null;
 }

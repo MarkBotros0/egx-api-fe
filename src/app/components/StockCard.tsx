@@ -167,13 +167,14 @@ export default function StockCard({
                     {changeInterval === "Weekly" ? "vs last week" : "vs last month"}
                   </p>
                 )}
-                {/* Say WHEN, whenever the figure is not from just now. The
-                    snapshot is written after the close, so during trading
-                    hours this price is a previous close and presenting it as
-                    the current one would be a quiet lie. */}
+                {/* Name the SESSION, not a clock time. This price is a daily
+                    CLOSE; the cron that fetched it ran hours after the 14:30
+                    Cairo bell, so "as of 2 Sep, 22:33:28" read as though the
+                    price were struck at 22:33 — wrong, and precise to the
+                    second about a number that moves once a day. */}
                 {state === "stale" && asOf && (
                   <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/25">
-                    as of {asOf}
+                    {asOf} close
                   </p>
                 )}
               </>
