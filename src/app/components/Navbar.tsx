@@ -12,15 +12,18 @@ const NAV_LINKS = [
   { href: "/learn", label: "Learn" },
 ];
 
-const ADMIN_LINK = { href: "/admin", label: "Users" };
-
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
-  const links = isAdmin ? [...NAV_LINKS, ADMIN_LINK] : NAV_LINKS;
+  // Users is NOT one of these. It is an account action rather than a
+  // destination in the app — it sits with Log out at the right-hand end, on
+  // both sizes, so the nav and the bottom pill carry the same four places
+  // every user has.
+  const links = NAV_LINKS;
+  const onAdmin = pathname.startsWith("/admin");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +78,42 @@ export default function Navbar() {
               className="w-40 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-[16px] text-white placeholder-white/30 outline-none transition-all focus:w-56 focus:border-accent/50 focus:ring-1 focus:ring-accent/20 md:text-sm"
             />
           </form>
+
+          {/* Admin only. Icon-only on mobile where it sits beside the log-out
+              icon, icon + label at md: — the same shape as the dashboard's
+              Compare button. Height is 36px, not the usual 44px target,
+              because it has to match the log-out button it pairs with: the
+              nav row is 61px and --top-nav-clearance is that number, so a
+              taller control here silently pushes every sticky element on
+              every page out of alignment. */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Users"
+              title="Manage users"
+              aria-current={onAdmin ? "page" : undefined}
+              className={`flex h-9 w-9 items-center justify-center gap-1.5 rounded-md transition-colors hover:bg-white/5 hover:text-white md:w-auto md:px-2.5 ${
+                onAdmin ? "text-accent" : "text-white/60"
+              }`}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span className="hidden text-xs md:inline">Users</span>
+            </Link>
+          )}
 
           {/* No "Sign in" branch: this whole bar only renders when signed in. */}
           <div className="hidden items-center gap-3 border-l border-white/10 pl-3 md:flex">

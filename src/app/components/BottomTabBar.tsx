@@ -5,19 +5,6 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 
-const ADMIN_TAB = {
-  href: "/admin",
-  label: "Users",
-  icon: (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  ),
-};
-
 const TABS = [
   {
     href: "/",
@@ -55,11 +42,13 @@ const TABS = [
 
 export default function BottomTabBar() {
   const pathname = usePathname();
-  const { isAdmin, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  // Three tabs, four as admin. Compare left the bar in favour of a button on
-  // the dashboard — see the Compare link in src/app/page.tsx.
-  const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
+  // Three tabs, the same three for everyone. Compare left the bar in favour of
+  // a button on the dashboard (see src/app/page.tsx) and Users left it for a
+  // button beside Log out in the Navbar — the pill carries the destinations
+  // every user has, not the ones one role has.
+  const tabs = TABS;
 
   const activeIndex = tabs.findIndex((tab) =>
     tab.href === "/"
@@ -75,7 +64,7 @@ export default function BottomTabBar() {
   //
   // Its geometry is MEASURED rather than computed from tab count, because
   // the tabs are flex-1 inside a fluid pill — their width depends on the
-  // screen, and the admin tab appears and disappears with the role.
+  // screen.
   // ------------------------------------------------------------------
   const railRef = useRef<HTMLDivElement | null>(null);
   const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
