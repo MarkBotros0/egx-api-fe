@@ -692,3 +692,35 @@ export interface SalesResponse {
   risk_free_rate_pct: number;
   dividends: Dividend[];
 }
+
+// ---- News ----
+// Mirrors app/core/news_fetch.py::NEWS_ITEM_FIELDS. Six fields, no body text:
+// stories are Reuters/Zawya/LSE copy and the app links out rather than
+// reproducing them.
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  provider: string | null;
+  published_at: string; // ISO 8601, always UTC with a trailing Z
+  url: string;          // absolute, off-app (tradingview.com)
+  symbols: string[];    // bare EGX tickers, e.g. ["COMI", "OCDI"]
+}
+
+/** Describes YOUR stocks only — never the EGX30 half. See the backend docstring. */
+export interface NewsCoverage {
+  symbols_requested: number;
+  symbols_with_news: number;
+  symbols_without_news: string[];
+  /** The user's own symbols the symbol cap excluded — never silently dropped. */
+  symbols_over_cap: string[];
+  window_days: number;
+}
+
+export interface NewsResponse {
+  your_stocks: NewsItem[];
+  market: NewsItem[];
+  coverage: NewsCoverage;
+  fetched_at: string;
+  status: "ok" | "partial" | "unavailable";
+}
