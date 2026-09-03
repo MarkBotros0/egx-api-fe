@@ -8,9 +8,7 @@ import PEFreshnessBanner from "../components/PEFreshnessBanner";
 import AddHoldingForm from "../components/AddHoldingForm";
 import SellHoldingForm from "../components/SellHoldingForm";
 import AddDividendForm from "../components/AddDividendForm";
-import DividendsTable from "../components/DividendsTable";
-import RealizedGainsCard from "../components/RealizedGainsCard";
-import ClosedPositionsTable from "../components/ClosedPositionsTable";
+import RealizedSection from "../components/RealizedSection";
 import AdvicePanel from "../components/AdvicePanel";
 import CorrelationHeatmap from "../components/CorrelationHeatmap";
 import MonteCarloChart from "../components/MonteCarloChart";
@@ -673,23 +671,16 @@ export default function PortfolioPage() {
         ) : !portfolio?.portfolio.length && !showForm ? (
           /* Sold out, but there is a trading history to keep on screen. */
           <div className="space-y-6">
+            {/* The same one section as the branch below — closed positions and
+                dividends have one home, not two spellings of one. */}
             {sales && (
-              <RealizedGainsCard
+              <RealizedSection
                 summary={sales.summary}
-                riskFreeRatePct={sales.risk_free_rate_pct}
-              />
-            )}
-            {sales && (
-              <ClosedPositionsTable
-                sales={sales.sales}
-                riskFreeRatePct={sales.risk_free_rate_pct}
-                onDelete={handleDeleteSale}
-              />
-            )}
-            {sales && (
-              <DividendsTable
+                orders={sales.orders ?? []}
                 dividends={sales.dividends ?? []}
-                onDelete={handleDeleteDividend}
+                riskFreeRatePct={sales.risk_free_rate_pct}
+                onDeleteSale={handleDeleteSale}
+                onDeleteDividend={handleDeleteDividend}
               />
             )}
             <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
@@ -724,27 +715,9 @@ export default function PortfolioPage() {
               <PortfolioSummary metrics={analysis.portfolio_metrics} />
             ) : null}
 
-            {sales && (sales.sales.length > 0 || (sales.dividends ?? []).length > 0) && (
-              <RealizedGainsCard
-                summary={sales.summary}
-                riskFreeRatePct={sales.risk_free_rate_pct}
-              />
-            )}
-            {sales && sales.sales.length > 0 && (
-              <ClosedPositionsTable
-                sales={sales.sales}
-                riskFreeRatePct={sales.risk_free_rate_pct}
-                onDelete={handleDeleteSale}
-              />
-            )}
-            {sales && (
-              <DividendsTable
-                dividends={sales.dividends ?? []}
-                onDelete={handleDeleteDividend}
-              />
-            )}
-
-            {/* Holdings table */}
+            {/* What you hold, directly under the summary that totals it.
+                Everything below this point is either already banked or is
+                analysis ABOUT these holdings. */}
             {!analysis && portfolio?.portfolio.length ? (
               <TableSkeleton rows={Math.min(portfolio.portfolio.length, 6)} />
             ) : analysis ? (
@@ -756,6 +729,20 @@ export default function PortfolioPage() {
                 onAddDividend={handleAddDividend}
               />
             ) : null}
+
+            {/* Banked — closed positions AND dividends, one section. */}
+            {sales &&
+              (sales.sales.length > 0 ||
+                (sales.dividends ?? []).length > 0) && (
+                <RealizedSection
+                  summary={sales.summary}
+                  orders={sales.orders ?? []}
+                  dividends={sales.dividends ?? []}
+                  riskFreeRatePct={sales.risk_free_rate_pct}
+                  onDeleteSale={handleDeleteSale}
+                  onDeleteDividend={handleDeleteDividend}
+                />
+              )}
 
             {/* Advice signals */}
             {analysis && analysis.signals.length > 0 && (

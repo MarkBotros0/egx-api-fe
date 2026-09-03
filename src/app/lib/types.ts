@@ -604,6 +604,47 @@ export interface Sale {
   annualized_return_pct: number | null;
   /** Null whenever annualized_return_pct is null. */
   beat_t_bill: boolean | null;
+  /** Shared by every row one sell submit wrote. Null on rows recorded before
+   *  orders existed, which read as their own single-part order. */
+  sale_group_id: string | null;
+}
+
+/**
+ * One sell submit, however many purchase lots it reached into.
+ *
+ * Selling 300 shares held as a 200 lot and a 100 lot writes two `Sale` rows —
+ * each keeps its own cost basis, holding period and T-bill hurdle — but the
+ * user placed ONE order, so the ledger shows one line. Built by the backend's
+ * `group_sale_orders`, never re-derived here.
+ *
+ * `days_held`, `annualized_return_pct`, `beat_t_bill` and `t_bill_hurdle_pct`
+ * are **null when the parts ran over different windows**: there is no single
+ * holding period to annualize over, and each part states its own in `lots`.
+ */
+export interface SaleOrder {
+  id: string;
+  symbol: string;
+  name: string;
+  sector: string;
+  sell_price: number;
+  sell_date: string;
+  notes: string;
+  created_at: string;
+  lots: Sale[];
+  lots_count: number;
+  quantity: number;
+  cost: number;
+  proceeds: number;
+  realized_pnl: number;
+  /** Cost-weighted across the parts. Null only when the whole basis was 0. */
+  realized_pnl_pct: number | null;
+  /** Earliest and latest purchase the order reached into. */
+  buy_date: string;
+  buy_date_latest: string;
+  days_held: number | null;
+  annualized_return_pct: number | null;
+  beat_t_bill: boolean | null;
+  t_bill_hurdle_pct: number | null;
 }
 
 export interface SymbolRealized {
@@ -641,7 +682,11 @@ export interface SalesSummary {
 }
 
 export interface SalesResponse {
+  /** The flat per-lot rows. `summary` is built from THESE, because each trade
+   *  is graded against the rate that prevailed over its own window. */
   sales: Sale[];
+  /** The same rows folded into what the user actually submitted. */
+  orders: SaleOrder[];
   summary: SalesSummary;
   currency: string;
   risk_free_rate_pct: number;
