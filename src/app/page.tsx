@@ -47,6 +47,14 @@ interface CardData {
    * clock rather than the price's, which put "22:33:28" on a 14:30 close.
    */
   barDate?: string | null;
+  /**
+   * When THIS card's figures were fetched, epoch ms. Two different clocks by
+   * design: the snapshot's `measured_at` (our cron, hours ago) or the moment
+   * the live upgrade landed in this browser (seconds ago). It answers "how
+   * fresh is what I am looking at", which `barDate` cannot — a card can show
+   * "Sep 3" all afternoon while the number behind it is an hour old.
+   */
+  fetchedAt?: number;
 }
 
 /**
@@ -88,6 +96,24 @@ function isTodaysSession(barDate: string | null | undefined): boolean {
   return barDate.slice(0, 10) === local;
 }
 
+/**
+ * Epoch ms -> "14s ago" / "3m 14s ago" / "18h 22m ago".
+ *
+ * Seconds only matter while they are small — a live card fetched moments ago is
+ * exactly when the reader wants that precision. Past an hour the seconds are
+ * noise, so the unit steps up rather than printing "18h 22m 07s".
+ */
+function agoLabel(at: number | undefined, now: number): string | null {
+  if (!at) return null;
+  const secs = Math.max(0, Math.round((now - at) / 1000));
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ${secs % 60}s ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export default function Dashboard() {
   const { tickers, loading } = useTickers();
   const [index, setIndex] = useState("EGX30");
@@ -100,6 +126,31 @@ export default function Dashboard() {
   const [compositeInterval, setCompositeInterval] =
     useState<CompositeInterval>("Daily");
   const [showNoFeed, setShowNoFeed] = useState(false);
+
+  // Drives the "14s ago" labels. One timer for the whole grid rather than one
+  // per card, and PAUSED while the tab is hidden — a phone in a pocket should
+  // not re-render 24 cards a second. Resyncs on wake so the first paint after
+  // returning is correct rather than however stale the last tick left it.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      setNow(Date.now());
+      id ??= setInterval(() => setNow(Date.now()), 1000);
+    };
+    const stop = () => {
+      if (id) clearInterval(id);
+      id = null;
+    };
+    const onVisibility = () =>
+      document.visibilityState === "visible" ? start() : stop();
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   // Hydrate the on/off toggle from localStorage (client-only).
   //
@@ -171,6 +222,7 @@ export default function Dashboard() {
             signal: row.signal,
             sigma: row.sigma_63_ann_pct,
             barDate: row.last_bar_date,
+            fetchedAt: row.measured_at ? Date.parse(row.measured_at) : undefined,
             state: row.available ? "stale" : "unavailable",
           };
         }
@@ -344,6 +396,9 @@ export default function Dashboard() {
                 sparkline: entry.sparkline ?? next[key]?.sparkline,
                 sigma: next[key]?.sigma,
                 barDate: entry.last_bar_date ?? next[key]?.barDate,
+                // The moment it landed here, not a server timestamp: this is
+                // the age of what is on screen.
+                fetchedAt: Date.now(),
                 state: "live",
               };
             }
@@ -470,6 +525,7 @@ export default function Dashboard() {
         state={c?.state ?? "loading"}
         asOf={sessionLabel(c?.barDate)}
         isToday={isTodaysSession(c?.barDate)}
+        fetchedAgo={agoLabel(c?.fetchedAt, now)}
         onRetry={() => upgrade([t.symbol])}
       />
     );

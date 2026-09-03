@@ -52,6 +52,8 @@ interface StockCardProps {
   asOf?: string | null;
   /** True when `asOf` is today's session, which may still be trading. */
   isToday?: boolean;
+  /** How long ago these figures were fetched, e.g. "14s ago". Ticks live. */
+  fetchedAgo?: string | null;
   onRetry?: () => void;
 }
 
@@ -70,6 +72,7 @@ export default function StockCard({
   state = "live",
   asOf,
   isToday = false,
+  fetchedAgo,
   onRetry,
 }: StockCardProps) {
   const isPositive = (changePct ?? 0) >= 0;
@@ -183,10 +186,17 @@ export default function StockCard({
                     "close" is appended only for a PAST session. Today's bar is
                     still moving while the market is open, so calling it a
                     close would be wrong for four and a half hours a day. */}
-                {asOf && (
+                {(asOf || fetchedAgo) && (
                   <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/25">
                     {asOf}
-                    {!isToday && " close"}
+                    {asOf && !isToday && " close"}
+                    {/* The SESSION and the FETCH are different facts and the
+                        card needs both: "Sep 3" says which bar this is, "14s
+                        ago" says how fresh the number is. A card can sit on
+                        "Sep 3" all afternoon while the figure behind it is an
+                        hour old, and only the second half catches that. */}
+                    {asOf && fetchedAgo && " · "}
+                    {fetchedAgo}
                   </p>
                 )}
               </>
