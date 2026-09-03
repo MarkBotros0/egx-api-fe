@@ -292,6 +292,12 @@ export interface CompositeBatchEntry {
   change?: number;
   change_pct?: number;
   sparkline?: number[];
+  /**
+   * Which bar this live price is. The card shows a date in every state, so an
+   * upgraded card has to say which session it upgraded TO — without this,
+   * refreshing swapped a dated figure for an undated one.
+   */
+  last_bar_date?: string | null;
 }
 
 export interface CompositeBatchResponse {

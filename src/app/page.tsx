@@ -65,6 +65,29 @@ function sessionLabel(iso: string | null | undefined): string | null {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+/**
+ * Is this bar today's session?
+ *
+ * Decides whether the card may call the price a "close". Today's bar is still
+ * moving while the EGX is open (10:00-14:30 Cairo), so labelling it a close
+ * would be wrong for four and a half hours every trading day.
+ *
+ * Compared on the DATE STRING, not by constructing Date objects and comparing
+ * instants: `last_bar_date` is a bare "2026-09-03" with no timezone, and
+ * `new Date("2026-09-03")` parses as UTC midnight, which is the previous day
+ * anywhere west of Greenwich.
+ */
+function isTodaysSession(barDate: string | null | undefined): boolean {
+  if (!barDate) return false;
+  const now = new Date();
+  const local = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+  return barDate.slice(0, 10) === local;
+}
+
 export default function Dashboard() {
   const { tickers, loading } = useTickers();
   const [index, setIndex] = useState("EGX30");
@@ -320,7 +343,7 @@ export default function Dashboard() {
                 changePct: entry.change_pct ?? next[key]?.changePct,
                 sparkline: entry.sparkline ?? next[key]?.sparkline,
                 sigma: next[key]?.sigma,
-                barDate: next[key]?.barDate,
+                barDate: entry.last_bar_date ?? next[key]?.barDate,
                 state: "live",
               };
             }
@@ -446,6 +469,7 @@ export default function Dashboard() {
         changeInterval={showComposite ? compositeInterval : "Daily"}
         state={c?.state ?? "loading"}
         asOf={sessionLabel(c?.barDate)}
+        isToday={isTodaysSession(c?.barDate)}
         onRetry={() => upgrade([t.symbol])}
       />
     );

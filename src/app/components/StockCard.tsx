@@ -48,8 +48,10 @@ interface StockCardProps {
    */
   changeInterval?: string;
   state?: CardState;
-  /** Human date the snapshot figures were measured, e.g. "2 Sep". */
+  /** The session this price belongs to, already formatted, e.g. "2 Sep". */
   asOf?: string | null;
+  /** True when `asOf` is today's session, which may still be trading. */
+  isToday?: boolean;
   onRetry?: () => void;
 }
 
@@ -67,6 +69,7 @@ export default function StockCard({
   changeInterval,
   state = "live",
   asOf,
+  isToday = false,
   onRetry,
 }: StockCardProps) {
   const isPositive = (changePct ?? 0) >= 0;
@@ -167,14 +170,23 @@ export default function StockCard({
                     {changeInterval === "Weekly" ? "vs last week" : "vs last month"}
                   </p>
                 )}
-                {/* Name the SESSION, not a clock time. This price is a daily
-                    CLOSE; the cron that fetched it ran hours after the 14:30
-                    Cairo bell, so "as of 2 Sep, 22:33:28" read as though the
-                    price were struck at 22:33 — wrong, and precise to the
-                    second about a number that moves once a day. */}
-                {state === "stale" && asOf && (
+                {/* ALWAYS shown, in every state that has a price — the date
+                    is the fact the reader is checking, and hiding it on live
+                    cards meant a refresh replaced a dated figure with an
+                    undated one.
+
+                    It names the SESSION, not a clock time: the cron runs hours
+                    after the 14:30 Cairo bell, so "as of 2 Sep, 22:33:28" read
+                    as though the price were struck at 22:33 — wrong, and
+                    precise to the second about a number that moves once a day.
+
+                    "close" is appended only for a PAST session. Today's bar is
+                    still moving while the market is open, so calling it a
+                    close would be wrong for four and a half hours a day. */}
+                {asOf && (
                   <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/25">
-                    {asOf} close
+                    {asOf}
+                    {!isToday && " close"}
                   </p>
                 )}
               </>
