@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: "/compare", label: "Compare" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/learn", label: "Learn" },
+  { href: "/news", label: "News" },
 ];
 
 export default function Navbar() {
@@ -19,9 +20,10 @@ export default function Navbar() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   // Users is NOT one of these. It is an account action rather than a
-  // destination in the app — it sits with Log out at the right-hand end, on
-  // both sizes, so the nav and the bottom pill carry the same four places
-  // every user has.
+  // destination in the app — it sits with Log out at the right-hand end.
+  // Note this list and the bottom pill deliberately DIFFER: Compare lives
+  // here and in the dashboard header, but not in the pill, which has less
+  // room. See CLAUDE.md, "The bottom nav is a floating pill".
   const links = NAV_LINKS;
   const onAdmin = pathname.startsWith("/admin");
 
