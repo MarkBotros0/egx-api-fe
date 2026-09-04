@@ -20,7 +20,8 @@ export default function PasswordRevealDialog({
   password: string;
   onClose: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  // Which button was last used, so each shows its own "Copied" feedback.
+  const [copied, setCopied] = useState<"all" | "password" | null>(null);
 
   // FE_BASE_URL is inlined at build time (see next.config.js). It is empty on
   // the first render when unset, and `window.location.origin` fills it in after
@@ -46,15 +47,21 @@ export default function PasswordRevealDialog({
     .filter(Boolean)
     .join("\n");
 
-  const copy = async () => {
+  // "Copy password only" is here for the WhatsApp case: the combined block is
+  // right for the admin's paste, but when it lands as one message the recipient
+  // long-pressing it copies all three lines. Sending the bare password as its
+  // OWN message lets them copy it in one tap. The combined block stays the
+  // primary action — a password with no link or username is a login the
+  // recipient cannot act on.
+  const copyText = async (text: string, which: "all" | "password") => {
     try {
-      await navigator.clipboard.writeText(message);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied((c) => (c === which ? null : c)), 2000);
     } catch {
       // Clipboard is blocked on insecure origins and in some mobile browsers.
-      // Both values are on screen and selectable, so this is not a dead end.
-      setCopied(false);
+      // Every value is on screen and selectable, so this is not a dead end.
+      setCopied(null);
     }
   };
 
@@ -92,19 +99,27 @@ export default function PasswordRevealDialog({
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 space-y-2">
           <button
-            onClick={copy}
-            className="min-h-[44px] flex-1 rounded-lg bg-accent px-4 text-sm font-semibold text-charcoal-dark transition-opacity active:opacity-70"
+            onClick={() => copyText(message, "all")}
+            className="min-h-[44px] w-full rounded-lg bg-accent px-4 text-sm font-semibold text-charcoal-dark transition-opacity active:opacity-70"
           >
-            {copied ? "Copied" : "Copy link, username & password"}
+            {copied === "all" ? "Copied" : "Copy link, username & password"}
           </button>
-          <button
-            onClick={onClose}
-            className="min-h-[44px] rounded-lg border border-white/10 px-4 text-sm text-white/70 transition-colors hover:bg-white/5"
-          >
-            Done
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => copyText(password, "password")}
+              className="min-h-[44px] flex-1 rounded-lg border border-white/10 px-4 text-sm text-white/70 transition-colors hover:bg-white/5"
+            >
+              {copied === "password" ? "Copied" : "Copy password only"}
+            </button>
+            <button
+              onClick={onClose}
+              className="min-h-[44px] rounded-lg border border-white/10 px-4 text-sm text-white/70 transition-colors hover:bg-white/5"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     </div>
