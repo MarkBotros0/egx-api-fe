@@ -121,6 +121,32 @@ function agoLabel(at: number | undefined, now: number): string | null {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+/**
+ * Is the EGX open right now? It trades Sun-Thu, 10:00-14:30 Africa/Cairo.
+ *
+ * Cairo wall-clock is read through Intl, so this is correct for a user browsing
+ * from another timezone and survives Egypt's DST rather than trusting the
+ * device clock. When the market is shut a price cannot get newer than the last
+ * close, so the card drops its climbing "...ago" for a static "Market closed"
+ * (see StockCard) instead of a stamp that grows all weekend and reads as stale.
+ */
+function isEgxOpen(nowMs: number): boolean {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Cairo",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(nowMs));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const weekday = get("weekday"); // "Sun".."Sat"
+  if (weekday === "Fri" || weekday === "Sat") return false; // EGX weekend
+  let hour = parseInt(get("hour"), 10);
+  if (hour === 24) hour = 0; // some engines emit "24" for midnight
+  const minutes = hour * 60 + parseInt(get("minute"), 10);
+  return minutes >= 600 && minutes <= 870; // 10:00-14:30 Cairo
+}
+
 export default function Dashboard() {
   const { tickers, loading } = useTickers();
   const [index, setIndex] = useState("EGX30");
@@ -515,6 +541,11 @@ export default function Dashboard() {
     return out;
   }, [cards]);
 
+  // One reading of the clock for the whole grid, off the same ticking `now` as
+  // the "...ago" labels, so every card flips to and from "Market closed"
+  // together and in step with the age it replaces.
+  const marketClosed = !isEgxOpen(now);
+
   const renderCard = (t: Ticker) => {
     const c = cards[t.symbol.toUpperCase()];
     return (
@@ -543,6 +574,7 @@ export default function Dashboard() {
         asOf={sessionLabel(c?.barDate)}
         isToday={isTodaysSession(c?.barDate)}
         fetchedAgo={agoLabel(c?.fetchedAt, now)}
+        marketClosed={marketClosed}
         onRetry={() => upgrade([t.symbol])}
       />
     );

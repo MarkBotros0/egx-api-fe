@@ -63,6 +63,13 @@ interface StockCardProps {
   isToday?: boolean;
   /** How long ago these figures were fetched, e.g. "14s ago". Ticks live. */
   fetchedAgo?: string | null;
+  /**
+   * The EGX is shut right now (weekend, or outside 10:00-14:30 Cairo). When
+   * true the card shows a static "Market closed" in place of the climbing
+   * "...ago" — a price cannot get newer than the last close while the market
+   * is closed, so a growing age reads as staleness that isn't real.
+   */
+  marketClosed?: boolean;
   onRetry?: () => void;
 }
 
@@ -84,6 +91,7 @@ export default function StockCard({
   asOf,
   isToday = false,
   fetchedAgo,
+  marketClosed = false,
   onRetry,
 }: StockCardProps) {
   const isPositive = (changePct ?? 0) >= 0;
@@ -223,17 +231,32 @@ export default function StockCard({
                     "close" is appended only for a PAST session. Today's bar is
                     still moving while the market is open, so calling it a
                     close would be wrong for four and a half hours a day. */}
-                {(asOf || fetchedAgo) && (
+                {(asOf || fetchedAgo || marketClosed) && (
                   <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/25">
                     {asOf}
-                    {asOf && !isToday && " close"}
-                    {/* The SESSION and the FETCH are different facts and the
-                        card needs both: "Sep 3" says which bar this is, "14s
-                        ago" says how fresh the number is. A card can sit on
-                        "Sep 3" all afternoon while the figure behind it is an
-                        hour old, and only the second half catches that. */}
-                    {asOf && fetchedAgo && " · "}
-                    {fetchedAgo}
+                    {/* A closed-market bar is always a completed close, so the
+                        "close" suffix applies even to today's session once the
+                        14:30 Cairo bell has rung. */}
+                    {asOf && (!isToday || marketClosed) && " close"}
+                    {marketClosed ? (
+                      // Market shut: freshness is meaningless — the price cannot
+                      // move until it reopens. Say that rather than an age that
+                      // climbs all weekend and reads as broken.
+                      <>
+                        {asOf && " · "}
+                        Market closed
+                      </>
+                    ) : (
+                      // The SESSION and the FETCH are different facts and the
+                      // card needs both: "Sep 3" says which bar this is, "14s
+                      // ago" says how fresh the number is. A card can sit on
+                      // "Sep 3" all afternoon while the figure behind it is an
+                      // hour old, and only the second half catches that.
+                      <>
+                        {asOf && fetchedAgo && " · "}
+                        {fetchedAgo}
+                      </>
+                    )}
                   </p>
                 )}
               </>
