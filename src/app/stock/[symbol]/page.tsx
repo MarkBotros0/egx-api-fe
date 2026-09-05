@@ -157,8 +157,19 @@ export default function StockDetailPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Sticky header with price — visible on scroll */}
         <div className="sticky top-[56px] z-30 -mx-4 mb-4 flex items-center justify-between bg-charcoal-dark/95 px-4 py-3 backdrop-blur-md md:static md:mx-0 md:mb-6 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-          <div>
-            <h1 className="text-xl font-bold text-white md:text-2xl">{symbol}</h1>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-2">
+              <h1 className="font-mono text-xl font-bold text-white md:text-2xl">{symbol}</h1>
+              {/* Company name beside the ticker — four opaque letters are not
+                  what a reader recognises. Truncates rather than wrapping the
+                  header; dropped when the stored name is just the symbol. */}
+              {data?.pe?.company_name &&
+                data.pe.company_name.toUpperCase() !== symbol.toUpperCase() && (
+                  <span className="min-w-0 truncate text-sm font-medium text-white/70 md:text-base">
+                    {data.pe.company_name}
+                  </span>
+                )}
+            </div>
             {data && (
               <p className="mt-0.5 text-xs text-white/40 md:mt-1 md:text-sm">
                 {data.interval} &middot; {data.bars} bars

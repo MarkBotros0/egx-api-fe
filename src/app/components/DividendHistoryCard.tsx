@@ -61,14 +61,18 @@ function EmptyState({ note }: { note: string }) {
   );
 }
 
+const PAGE = 8; // years shown before "Show more"
+
 export default function DividendHistoryCard({ symbol }: { symbol: string }) {
   const [data, setData] = useState<DividendHistoryResponse | null>(null);
   const [failed, setFailed] = useState(false);
+  const [shownCount, setShownCount] = useState(PAGE);
 
   useEffect(() => {
     let alive = true;
     setData(null);
     setFailed(false);
+    setShownCount(PAGE); // reset pagination when the symbol changes
     fetchDividendHistory(symbol)
       .then((d) => alive && setData(d))
       .catch(() => alive && setFailed(true));
@@ -100,9 +104,9 @@ export default function DividendHistoryCard({ symbol }: { symbol: string }) {
     return <EmptyState note="No dividend history on record for this stock." />;
   }
 
-  const MAX = 10;
-  const shown = dividends.slice(0, MAX);
+  const shown = dividends.slice(0, shownCount);
   const remaining = dividends.length - shown.length;
+  const fullyExpanded = shownCount >= dividends.length;
 
   return (
     <div className={SHELL}>
@@ -126,8 +130,20 @@ export default function DividendHistoryCard({ symbol }: { symbol: string }) {
         ))}
       </ul>
 
-      {remaining > 0 && (
-        <p className="mt-2 text-[10px] text-white/30">+{remaining} earlier payment{remaining === 1 ? "" : "s"}</p>
+      {/* Paginate through ALL years, not just a fixed slice. Show more reveals
+          the next page; once fully expanded, Show less collapses it back. */}
+      {dividends.length > PAGE && (
+        <button
+          type="button"
+          onClick={() =>
+            setShownCount(fullyExpanded ? PAGE : Math.min(shownCount + PAGE, dividends.length))
+          }
+          className="mt-2.5 min-h-[36px] w-full rounded-lg border border-white/10 text-[11px] font-medium text-white/50 transition-colors hover:border-accent/30 hover:text-accent"
+        >
+          {fullyExpanded
+            ? "Show less"
+            : `Show ${Math.min(PAGE, remaining)} more — ${remaining} earlier`}
+        </button>
       )}
 
       {/* The estimate — clearly the PAST pattern, not a forward promise. */}
