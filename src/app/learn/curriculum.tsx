@@ -1459,7 +1459,7 @@ export const CURRICULUM: Module[] = [
         definition:
           `A 'cash underperformer' is a stock you've held for 90+ days whose annualized return is below the policy rate (~${T_BILL_RATE_PCT}%). You're literally earning less than risk-free cash — while taking stock-market risk.`,
         whyItMatters:
-          "This is THE #1 invisible loss in Egyptian retail portfolios. A stock that gained 10% in a year feels like a win, but if T-bills paid 25%, you're 15% behind where you could have been with zero risk. Over years, this compounds into life-changing differences.",
+          `This is THE #1 invisible loss in Egyptian retail portfolios. A stock that gained 10% in a year feels like a win, but if T-bills paid ${T_BILL_RATE_PCT}%, you're ${T_BILL_RATE_PCT - 10}% behind where you could have been with zero risk. Over years, this compounds into life-changing differences.`,
         howToUse:
           "The portfolio page flags cash underperformers with a warning signal. When you see one: (1) does the thesis still hold for the next 90 days? (2) is there a specific catalyst coming? If no on both, seriously consider selling and moving the capital to T-bills until a better opportunity presents itself.",
         visual: <TBillRace />,
@@ -1494,7 +1494,7 @@ export const CURRICULUM: Module[] = [
         whyItMatters:
           "Beginners often judge themselves on paper gains, which flatter in a rising market and punish in a falling one. Your realized record is the honest scoreboard: it is what actually happened. But size alone is misleading — a 10% gain earned in a month and a 10% gain earned over three years are completely different results.",
         howToUse:
-          "Check the Winnings card after each sale. Look at the annualized return next to each closed trade, not just the EGP figure. With T-bills near 25%, a small gain held for years actually lost to risk-free cash — that is a lesson about position sizing and patience, not a reason to trade more often. Trades held under 30 days show no annualized figure, because annualizing a few days of return produces meaningless numbers.",
+          `Check the Winnings card after each sale. Look at the annualized return next to each closed trade, not just the EGP figure. With T-bills near ${T_BILL_RATE_PCT}%, a small gain held for years actually lost to risk-free cash — that is a lesson about position sizing and patience, not a reason to trade more often. Trades held under 30 days show no annualized figure, because annualizing a few days of return produces meaningless numbers.`,
         visual: (
           <LedgerRows
             caption="Two 'wins' of identical size. Only one of them beat leaving the money alone."
@@ -1603,7 +1603,7 @@ export const CURRICULUM: Module[] = [
               { from: 1, to: 2, color: V.up, label: "excellent" },
             ]}
             markers={[{ value: 0.55, label: "0.55", color: V.teal }]}
-            caption="Egypt's 25% risk-free rate drags every Sharpe down. 0.5 here is not the 0.5 you read about elsewhere."
+            caption={`Egypt's ${T_BILL_RATE_PCT}% risk-free rate drags every Sharpe down. 0.5 here is not the 0.5 you read about elsewhere.`}
           />
         ),
       },
@@ -1731,9 +1731,9 @@ export const CURRICULUM: Module[] = [
         definition:
           `The CBE policy rate is ~${T_BILL_RATE_PCT}%, and Egyptian Treasury bills track it closely — a near-guaranteed return with no stock-market risk. That is the 'risk-free rate' every comparison in this app is made against.`,
         whyItMatters:
-          "When T-bill rates are high, stocks must offer even higher returns to justify their risk. A stock returning 15% per year sounds good, but if T-bills offer 25% risk-free, you're actually losing value by holding stocks. This is why the Sharpe ratio matters.",
+          `When T-bill rates are high, stocks must offer even higher returns to justify their risk. A stock returning 15% per year sounds good, but if T-bills offer ${T_BILL_RATE_PCT}% risk-free, you're actually losing value by holding stocks. This is why the Sharpe ratio matters.`,
         howToUse:
-          "Before buying any stock, ask: 'Can this stock realistically beat 25% per year?' If not, T-bills might be a better use of your capital. The CBE interest rate is shown on your portfolio's Macro Context card.",
+          `Before buying any stock, ask: 'Can this stock realistically beat ${T_BILL_RATE_PCT}% per year?' If not, T-bills might be a better use of your capital. The CBE interest rate is shown on your portfolio's Macro Context card.`,
         visual: (
           <BarCompare
             caption="This single number is why analysis written for other markets does not transfer here."
@@ -1800,7 +1800,7 @@ export const CURRICULUM: Module[] = [
         whyItMatters:
           "P/E is the most-watched valuation number, but only relative to its own market. The EGX median is about 12, far below what you would see in the US or Europe, so a P/E of 14 is roughly average here even though it would look cheap elsewhere. Judging EGX stocks by foreign yardsticks makes almost everything look like a bargain.",
         howToUse:
-          "Compare against the EGX median of ~12, not against 'low means cheap'. Under 8 is genuinely cheap for this market; 8–15 is around average; 15–25 is on the expensive side; above 25 needs confirmed growth to justify. Below 3 is a WARNING, not a bargain — it almost always means one-off earnings or a share price that has already collapsed. When a company is loss-making the app says so directly instead of quoting a P/E; lean on trend and relative strength there.",
+          "Compare against the EGX median of ~12, not against 'low means cheap'. Under 8 is cheap RELATIVE TO that median; 8–15 is around average; 15–25 is on the expensive side; above 25 needs confirmed growth to justify. None of those are absolute verdicts — with the policy rate near 19%, a low P/E does not by itself mean the stock beats cash. Below 3 is a WARNING, not a bargain — it almost always means one-off earnings or a share price that has already collapsed. When a company is loss-making the app says so directly instead of quoting a P/E; lean on trend and relative strength there.",
         example:
           "One EGX stock trades at P/E 0.7 with a 42.55% dividend yield. That is not the bargain of the decade — it is a suspended, distressed company whose price already collapsed.",
         visual: (
@@ -1826,7 +1826,7 @@ export const CURRICULUM: Module[] = [
         definition:
           "The annual dividend as a percentage of the current share price. A 5% yield on a 100 EGP stock means about 5 EGP a year in cash. The EGX median among payers is roughly 3%.",
         whyItMatters:
-          "Here is the uncomfortable Egyptian truth: with T-bills near 25%, NO EGX dividend yield is competitive as income. A 7% yield still loses badly to risk-free cash. So do not buy a stock for its dividend. What a steady dividend does tell you is that the company generates real cash and its management is disciplined about returning it — that is much harder to fake than a reported profit, which is why it feeds the Quality score.",
+          `Here is the uncomfortable Egyptian truth: with T-bills near ${T_BILL_RATE_PCT}%, NO EGX dividend yield is competitive as income. A 7% yield still loses badly to risk-free cash. So do not buy a stock for its dividend. What a steady dividend does tell you is that the company generates real cash and its management is disciplined about returning it — that is much harder to fake than a reported profit, which is why it feeds the Quality score.`,
         howToUse:
           "Read yield as evidence of quality, never as income. Around 3% is typical; 4–8% is a genuinely strong payer. Above 15% is a red flag rather than a prize — it is usually a one-off special dividend, or the yield only looks high because the share price collapsed. Always check whether the payout recurs before counting on it. A company paying nothing is not being penalised; plenty of good growth companies reinvest instead.",
         visual: (
