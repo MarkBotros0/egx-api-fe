@@ -1514,7 +1514,7 @@ export const CURRICULUM: Module[] = [
         definition:
           "A dividend is cash a company pays you out of its profits, just for holding the shares — no selling involved. On the EGX it is announced per share, and what reaches your account is already after the 5-10% dividend tax.",
         whyItMatters:
-          "With Egyptian T-bills near 25%, no EGX dividend yield competes as income — even a strong 8% loses to simply leaving the money in T-bills. What a dividend IS good evidence of is that the company generates real cash rather than accounting profit. Judge it that way, not as an income stream.",
+          `With Egyptian T-bills near ${T_BILL_RATE_PCT}%, no EGX dividend yield competes as income — even a strong 8% loses to simply leaving the money in T-bills. What a dividend IS good evidence of is that the company generates real cash rather than accounting profit. Judge it that way, not as an income stream.`,
         howToUse:
           "Record what actually landed in your account, not the announced gross. The app adds it to your realized winnings and shows it against the stock that paid it, so a bank holding that is flat on price but pays steadily does not read as dead money. A dividend worth more than about 15% of the share price is usually a special payout or a collapsed price — not income quality.",
         example:
@@ -1527,6 +1527,30 @@ export const CURRICULUM: Module[] = [
               { left: "× 500 shares", right: "2,000 EGP" },
               { left: "Withholding tax (10%)", right: "−200 EGP", tone: "down" },
               { left: "What you record", right: "1,800 EGP", tone: "up" },
+            ]}
+          />
+        ),
+      },
+      {
+        id: "dividend_dates",
+        title: "Dividend Dates — Who Gets Paid, and When",
+        level: "core",
+        definition:
+          "Four dates decide a dividend. The ex-date is the cutoff: own the share BEFORE it and the coupon is yours; buy it on or after and the coupon goes to the seller. On the EGX the exchange announces the نهاية الحق (end-of-right) — the last day you can buy and still qualify — which is the day before the ex-date. The record date (ex-date + T+2 settlement) is when the books confirm who holds it, and the payment date, days to months later, is when the cash actually lands.",
+        whyItMatters:
+          "Buying 'just before the dividend' is not free money: on the ex-date the price drops by roughly the dividend, because that cash is leaving the company. You receive the coupon but the share is worth about that much less — net zero, minus the 5-10% withholding tax. The date that matters for eligibility is the ex-date; the payment date only tells you when to expect the cash.",
+        howToUse:
+          "The stock page shows each company's dividend history and the month it usually pays; the dashboard's Dividends calendar lists every payer's most recent coupon. Use them to know when a coupon is coming so you can record it — not to trade around the date, which the price drop cancels out. One caveat the app repeats everywhere: the EGX publishes no forward calendar, so any 'expected next' date is an estimate from last year, not a schedule.",
+        example:
+          "CIB (COMI) went ex-dividend on 7 Apr 2026 for a 6.00 EGP coupon and paid it on 9 Apr. To receive it you had to own COMI by the close of 6 Apr (end-of-right). Buy on 7 Apr and the 6.00 — and the ~6.00 price drop — both belonged to the seller.",
+        visual: (
+          <LedgerRows
+            caption="EGX dividend timeline — COMI, April 2026."
+            rows={[
+              { left: "End of right (last day to buy in)", right: "6 Apr" },
+              { left: "Ex-date (price drops ~coupon)", right: "7 Apr" },
+              { left: "Record date (T+2 settlement)", right: "9 Apr" },
+              { left: "Payment lands", right: "9 Apr" },
             ]}
           />
         ),

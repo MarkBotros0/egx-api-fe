@@ -13,6 +13,38 @@ function peColor(pe: number): string {
   return peBandColor(pe) ?? "text-white/60";
 }
 
+const _MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-04-07" -> "7 Apr 2026", for the last-market-dividend line. */
+function fmtExDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  return `${parseInt(m[3], 10)} ${_MONTHS[parseInt(m[2], 10)]} ${m[1]}`;
+}
+
+/**
+ * The MARKET's last declared coupon — a grid cell for the expanded row, sitting
+ * beside the user's own recorded "Dividends collected" so the two dividend
+ * facts are together and clearly different. Neutral colour: an amount carries
+ * no direction, and this is not money the user necessarily received.
+ */
+function MarketDividendCell({ h }: { h: HoldingAnalysis }) {
+  if (h.last_dividend_amount == null || !h.last_dividend_ex_date) return null;
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-white/30">
+        Last market dividend
+      </p>
+      <p className="mt-0.5 font-mono text-sm text-white/80">
+        {h.last_dividend_amount.toFixed(2)} EGP
+        <span className="ml-1 text-[10px] font-normal text-white/40">
+          {fmtExDate(h.last_dividend_ex_date)}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 function zonePill(entryExit: EntryExit | null | undefined) {
   if (!entryExit) return null;
   const { entry_zone, exit_zone } = entryExit;
@@ -440,6 +472,7 @@ export default function HoldingsTable({
                         </p>
                       </div>
                     )}
+                    <MarketDividendCell h={h} />
                   </div>
 
                   {/* The purchases behind the average — multi-lot only */}
@@ -831,6 +864,7 @@ export default function HoldingsTable({
                                 </p>
                               </div>
                             )}
+                            <MarketDividendCell h={h} />
                           </div>
 
                           {/* The purchases behind the average — multi-lot only */}

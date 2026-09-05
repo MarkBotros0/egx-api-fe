@@ -445,6 +445,11 @@ export interface HoldingAnalysis {
   /** True when the user has more than one open holding of this symbol, in
    *  which case dividends_collected is the symbol's total, not this row's. */
   dividends_symbol_shared?: boolean;
+  /** The MARKET's last declared coupon (from pe_data) — distinct from
+   *  dividends_collected (the user's own recorded payouts). A heads-up that a
+   *  dividend happened. Null when pe_data has no ex-date for the symbol. */
+  last_dividend_ex_date?: string | null;
+  last_dividend_amount?: number | null;
   error?: string;
 }
 
