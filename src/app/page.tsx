@@ -25,7 +25,7 @@ type CompositeInterval = (typeof COMPOSITE_INTERVALS)[number];
 const LS_COMPOSITE_ENABLED = "egx-dashboard-composite-enabled";
 const LS_COMPOSITE_INTERVAL = "egx-dashboard-composite-interval";
 
-const SORTS = ["Default", "Score", "Change", "Risk"] as const;
+const SORTS = ["Default", "Score", "Change", "Risk", "Recently paid"] as const;
 type SortKey = (typeof SORTS)[number];
 
 interface CardData {
@@ -62,6 +62,15 @@ interface CardData {
    * "Sep 3" all afternoon while the number behind it is an hour old.
    */
   fetchedAt?: number;
+  /**
+   * Dividend fields from pe_data (snapshot payload). `dividendYield` 0 means
+   * "pays nothing" (real); null means unknown — drives the "Pays a dividend"
+   * filter. `dividendExDate` is the last coupon's ex-date (ISO) for the
+   * "Recently paid" sort; null for a non-payer. The live upgrade does not
+   * touch these — they change a few times a year, not intraday.
+   */
+  dividendYield?: number | null;
+  dividendExDate?: string | null;
 }
 
 /**
@@ -153,6 +162,7 @@ export default function Dashboard() {
   const [sector, setSector] = useState("All Sectors");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("Default");
+  const [dividendOnly, setDividendOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showComposite, setShowComposite] = useState(true);
@@ -258,6 +268,8 @@ export default function Dashboard() {
             riskBandLabel: row.risk_band_label,
             barDate: row.last_bar_date,
             fetchedAt: row.measured_at ? Date.parse(row.measured_at) : undefined,
+            dividendYield: row.dividend_yield,
+            dividendExDate: row.dividend_ex_date_recent,
             state: row.available ? "stale" : "unavailable",
           };
         }
@@ -322,20 +334,37 @@ export default function Dashboard() {
     return { quoted: q, unquoted: u };
   }, [filtered, noFeed]);
 
+  // "Pays a dividend" filter. Applied HERE, not in `filtered`, because that memo
+  // runs on the raw ticker list before any card data exists — dividend_yield
+  // lives on `cards`, joined from pe_data in the payload. 0 means "pays nothing"
+  // (real), so the test is strictly > 0; a symbol pe_data has never seen is null
+  // and excluded too.
+  const dividendFiltered = useMemo(() => {
+    if (!dividendOnly) return quoted;
+    return quoted.filter((t) => {
+      const dy = cards[t.symbol.toUpperCase()]?.dividendYield;
+      return dy != null && dy > 0;
+    });
+  }, [quoted, cards, dividendOnly]);
+
   // Sorting is possible only because the snapshot delivers the WHOLE universe
   // in one payload. While cards were fetched a page at a time, off-screen
   // stocks had no score to sort by, so this control could not exist.
   const sorted = useMemo(() => {
-    if (sort === "Default") return quoted;
+    if (sort === "Default") return dividendFiltered;
     const val = (t: Ticker) => {
       const c = cards[t.symbol.toUpperCase()];
       if (!c) return null;
       if (sort === "Score") return c.score ?? null;
       if (sort === "Change") return c.changePct ?? null;
+      // Recently paid: newest ex-date first (dir -1). A non-payer has no date
+      // and sinks, same as any unmeasured value.
+      if (sort === "Recently paid")
+        return c.dividendExDate ? Date.parse(c.dividendExDate) : null;
       return c.sigma ?? null; // Risk: calmest first.
     };
     const dir = sort === "Risk" ? 1 : -1;
-    return [...quoted].sort((a, b) => {
+    return [...dividendFiltered].sort((a, b) => {
       const av = val(a);
       const bv = val(b);
       // Unmeasured stocks sink, whichever direction the sort runs. Treating a
@@ -346,12 +375,12 @@ export default function Dashboard() {
       if (bv === null) return -1;
       return (av - bv) * dir;
     });
-  }, [quoted, cards, sort]);
+  }, [dividendFiltered, cards, sort]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [index, sector, search, sort]);
+  }, [index, sector, search, sort, dividendOnly]);
 
   const visible = sorted.slice(0, page * CARDS_PER_PAGE);
   const hasMore = visible.length < sorted.length;
@@ -621,6 +650,31 @@ export default function Dashboard() {
                   </svg>
                   <span className="hidden text-sm md:inline">Compare</span>
                 </Link>
+                {/* The dividend calendar — every payer's dates in one place.
+                    Same button shape as Compare: icon-only at a 44x44 target on
+                    mobile, icon + label at md:. */}
+                <Link
+                  href="/dividends"
+                  aria-label="Dividend calendar"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-white/10 px-0 text-white/60 transition-colors hover:border-accent/30 hover:text-accent md:px-3"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span className="hidden text-sm md:inline">Dividends</span>
+                </Link>
                 <button
                   onClick={() => setRefreshKey((k) => k + 1)}
                   aria-label="Refresh prices"
@@ -706,6 +760,30 @@ export default function Dashboard() {
                   {s}
                 </button>
               ))}
+            </div>
+
+            {/* Filters that need per-card data (dividend fields live on the
+                snapshot payload, not the raw ticker list). */}
+            <div className="mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
+              <span className="whitespace-nowrap text-[10px] uppercase tracking-wider text-white/25">
+                Filter
+              </span>
+              <button
+                onClick={() => setDividendOnly((v) => !v)}
+                aria-pressed={dividendOnly}
+                className={`min-h-[36px] whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  dividendOnly
+                    ? "bg-accent/20 text-accent"
+                    : "border border-white/10 text-white/40 hover:text-white/60"
+                }`}
+              >
+                <LearnTooltip
+                  term="Pays a dividend"
+                  explanation="Shows only stocks that currently pay a cash dividend (a yield above zero, from the fundamentals feed). A dividend is evidence a company generates real cash — but with the policy rate near 19%, no EGX yield competes as income on its own. Pair it with the 'Recently paid' sort to see who paid most recently."
+                >
+                  <span>Pays a dividend</span>
+                </LearnTooltip>
+              </button>
             </div>
 
             {/* Composite score toggle + interval — lets users sync card scores with the stock detail page */}
