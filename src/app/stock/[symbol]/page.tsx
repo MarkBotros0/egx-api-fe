@@ -156,7 +156,15 @@ export default function StockDetailPage() {
     <div>
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Sticky header with price — visible on scroll */}
-        <div className="sticky top-[56px] z-30 -mx-4 mb-4 flex items-center justify-between bg-charcoal-dark/95 px-4 py-3 backdrop-blur-md md:static md:mx-0 md:mb-6 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+        {/* Sticks BENEATH the navbar, which is `sticky top-0 z-50` at every
+            screen size. Read the clearance variable — a hardcoded offset was
+            5px short of the real 61px nav and carried no safe-area term, so on
+            a notched phone this header parked underneath it and read as
+            broken. Same bug, same fix, as both sticky search bars. */}
+        <div
+          style={{ top: "var(--top-nav-clearance)" }}
+          className="sticky z-30 -mx-4 mb-4 flex items-center justify-between bg-charcoal-dark/95 px-4 py-3 backdrop-blur-md md:static md:mx-0 md:mb-6 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none"
+        >
           <div className="min-w-0">
             <div className="flex items-baseline gap-2">
               <h1 className="font-mono text-xl font-bold text-white md:text-2xl">{symbol}</h1>
