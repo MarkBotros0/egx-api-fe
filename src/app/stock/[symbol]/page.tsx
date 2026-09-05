@@ -12,6 +12,7 @@ import KeyLevelsCard from "../../components/KeyLevelsCard";
 import EntryExitCard from "../../components/EntryExitCard";
 import ForecastCard from "../../components/ForecastCard";
 import RiskGradeCard from "../../components/RiskGradeCard";
+import DividendHistoryCard from "../../components/DividendHistoryCard";
 import PEFreshnessBanner from "../../components/PEFreshnessBanner";
 import { useWatchlist } from "../../components/Watchlist";
 import { useScoreWeights } from "../../components/ScoreWeightsProvider";
@@ -446,6 +447,7 @@ export default function StockDetailPage() {
 
               <RiskGradeCard symbol={symbol} />
               <ForecastCard forecast={data.forecast} symbol={symbol} />
+              <DividendHistoryCard symbol={symbol} />
             </div>
 
             <div className="hidden lg:block lg:w-72">

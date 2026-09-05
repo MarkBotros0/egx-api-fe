@@ -23,6 +23,8 @@ import type {
   SalesResponse,
   Dividend,
   NewsResponse,
+  DividendHistoryResponse,
+  DividendCalendarResponse,
 } from "./types";
 
 export interface ScoreWeightsResponse {
@@ -416,6 +418,14 @@ export interface DashboardRow {
    */
   risk_band: string | null;
   risk_band_label: string | null;
+  /**
+   * Dividend fields joined from pe_data (not the risk snapshot). `dividend_yield`
+   * 0 means "pays nothing" (real), null means unknown — drives the "Pays a
+   * dividend" filter. `dividend_ex_date_recent` is the last coupon's ex-date
+   * (ISO), for the "Recently paid" sort; null for a non-payer.
+   */
+  dividend_yield: number | null;
+  dividend_ex_date_recent: string | null;
 }
 
 export interface DashboardResponse {
@@ -710,6 +720,21 @@ export async function fetchMarketRegime(): Promise<MarketRegime> {
 }
 
 // ---- News ----
+
+export async function fetchDividendHistory(
+  symbol: string
+): Promise<DividendHistoryResponse> {
+  return fetchJSON<DividendHistoryResponse>(
+    `${BASE}/dividend_history?symbol=${encodeURIComponent(symbol)}`,
+    { timeoutMs: 15000 }
+  );
+}
+
+export async function fetchDividendCalendar(): Promise<DividendCalendarResponse> {
+  return fetchJSON<DividendCalendarResponse>(`${BASE}/dividend_calendar`, {
+    timeoutMs: 15000,
+  });
+}
 
 export async function fetchNews(): Promise<NewsResponse> {
   return fetchJSON<NewsResponse>(`${BASE}/news`, { timeoutMs: 20000 });

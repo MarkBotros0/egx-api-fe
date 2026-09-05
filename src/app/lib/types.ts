@@ -724,3 +724,45 @@ export interface NewsResponse {
   fetched_at: string;
   status: "ok" | "partial" | "unavailable";
 }
+
+// ---- Dividends (market history + calendar) ----
+// Distinct from `Dividend` above, which is the USER's own recorded payouts.
+// These describe the MARKET's declared coupons, sourced from Yahoo (history)
+// and pe_data (calendar). Amounts are gross EGP/share, as reported.
+
+export interface DividendHistoryItem {
+  ex_date: string; // ISO YYYY-MM-DD
+  amount: number; // gross EGP/share
+  year: number;
+}
+
+/** Descriptive of PAST payments only — never a forward promise. */
+export interface DividendCadence {
+  last_ex_date: string | null;
+  typical_month: number | null;
+  typical_month_name: string | null;
+  payments_per_year: number | null;
+  count: number;
+}
+
+export interface DividendHistoryResponse {
+  symbol: string;
+  dividends: DividendHistoryItem[];
+  cadence: DividendCadence;
+  status: "ok" | "unavailable";
+}
+
+export interface DividendCalendarStock {
+  symbol: string;
+  name: string | null;
+  dividend_yield: number | null;
+  ex_date: string; // ISO YYYY-MM-DD of the last coupon
+  amount: number | null; // gross EGP/share
+}
+
+export interface DividendCalendarResponse {
+  stocks: DividendCalendarStock[];
+  count: number;
+  as_of: string;
+  status: "ok" | "unavailable";
+}
