@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ComposedChart,
   Line,
@@ -12,7 +13,9 @@ import {
   ReferenceLine,
 } from "recharts";
 
-import type { SupportLevel, FibonacciLevels } from "@/app/lib/types";
+import Link from "next/link";
+
+import type { SupportLevel, FibonacciLevels, TrendLine, TrendLines } from "@/app/lib/types";
 
 interface PriceDataPoint {
   date: string;
@@ -28,6 +31,8 @@ interface PriceDataPoint {
   bollinger_upper?: number | null;
   bollinger_middle?: number | null;
   bollinger_lower?: number | null;
+  trend_support?: number | null;
+  trend_resistance?: number | null;
 }
 
 interface PriceChartProps {
@@ -39,11 +44,49 @@ interface PriceChartProps {
     ema12?: boolean;
     ema26?: boolean;
     bollinger?: boolean;
+    trendlines?: boolean;
   };
   supports?: SupportLevel[];
   resistances?: SupportLevel[];
   fibonacci?: FibonacciLevels | null;
+  trendlines?: TrendLines | null;
   height?: number;
+}
+
+// Support-green and resistance-red, the same convention the horizontal S/R
+// lines below already use. Slightly stronger than those so a diagonal reads
+// as a drawn line rather than a stray gridline.
+const TREND_SUPPORT_STROKE = "rgba(0,255,136,0.7)";
+const TREND_RESISTANCE_STROKE = "rgba(255,51,85,0.7)";
+
+/**
+ * Dots only where the line actually rests on a pivot. Recharts calls this
+ * for EVERY point on the series and its typing insists on an element back,
+ * so a non-anchor bar gets an empty <g/> and draws nothing. The line then
+ * carries exactly as many dots as it has anchors — the reader can see WHY
+ * the line is where it is, which is the whole difference between an
+ * auto-drawn trendline and a decoration.
+ */
+function anchorDot(line: TrendLine, stroke: string) {
+  const anchorDates = new Set(line.anchors.map((a) => a.date));
+  const AnchorDot = (props: any) => {
+    const { cx, cy, payload, index } = props;
+    if (cx == null || cy == null || !anchorDates.has(payload?.date)) {
+      return <g key={`anchor-${index}`} />;
+    }
+    return (
+      <circle
+        key={`anchor-${index}`}
+        cx={cx}
+        cy={cy}
+        r={3.5}
+        fill="#0a0a0f"
+        stroke={stroke}
+        strokeWidth={1.5}
+      />
+    );
+  };
+  return AnchorDot;
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -71,8 +114,20 @@ export default function PriceChart({
   supports,
   resistances,
   fibonacci,
+  trendlines,
   height = 400,
 }: PriceChartProps) {
+  const trendSupport = overlays.trendlines ? trendlines?.support ?? null : null;
+  const trendResistance = overlays.trendlines ? trendlines?.resistance ?? null : null;
+  const supportDot = useMemo(
+    () => (trendSupport ? anchorDot(trendSupport, TREND_SUPPORT_STROKE) : undefined),
+    [trendSupport],
+  );
+  const resistanceDot = useMemo(
+    () => (trendResistance ? anchorDot(trendResistance, TREND_RESISTANCE_STROKE) : undefined),
+    [trendResistance],
+  );
+
   if (!data.length) {
     return (
       <div className="flex items-center justify-center rounded-xl border border-white/5 bg-white/[0.02]" style={{ height }}>
@@ -225,6 +280,40 @@ export default function PriceChart({
             />
           )}
 
+          {/* Trendlines — the diagonal through the last three pivot lows /
+              highs, extended to the last bar. A side is rendered only when
+              the backend drew it, so a stock with no clean trend adds no
+              "--" rows to the tooltip. `type="linear"` because it IS a
+              straight line; a monotone spline would bow it between the
+              anchors it is supposed to rest on. Values are null before the
+              first anchor, and nothing is drawn there. */}
+          {trendSupport && (
+            <Line
+              type="linear"
+              dataKey="trend_support"
+              stroke={TREND_SUPPORT_STROKE}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              dot={supportDot}
+              activeDot={false}
+              name="Trend support"
+              isAnimationActive={false}
+            />
+          )}
+          {trendResistance && (
+            <Line
+              type="linear"
+              dataKey="trend_resistance"
+              stroke={TREND_RESISTANCE_STROKE}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              dot={resistanceDot}
+              activeDot={false}
+              name="Trend resistance"
+              isAnimationActive={false}
+            />
+          )}
+
           {/* Support / resistance / Fibonacci levels.
               `ifOverflow="extendDomain"` is required: these levels are derived
               from the full ~400-bar history while the chart plots only the
@@ -268,6 +357,36 @@ export default function PriceChart({
           ))}
         </ComposedChart>
       </ResponsiveContainer>
+
+      {/* Says what was drawn and, just as important, what was not: a chart
+          with the overlay on and no line is a stock whose pivots do not line
+          up, not a chart that forgot. */}
+      {overlays.trendlines && (
+        <p className="mt-2 text-[10px] leading-relaxed text-white/30">
+          {trendSupport || trendResistance ? (
+            <>
+              Trendline through the last 3 pivot{" "}
+              {trendSupport && (
+                <span style={{ color: TREND_SUPPORT_STROKE }}>
+                  lows ({trendSupport.direction === "up" ? "rising" : "falling"})
+                </span>
+              )}
+              {trendSupport && trendResistance && " and "}
+              {trendResistance && (
+                <span style={{ color: TREND_RESISTANCE_STROKE }}>
+                  highs ({trendResistance.direction === "up" ? "rising" : "falling"})
+                </span>
+              )}
+              , dots mark the anchors.
+            </>
+          ) : (
+            <>No trendline: the last 3 pivots do not line up, or price has not respected the line.</>
+          )}{" "}
+          <Link href="/learn#trendlines" className="text-accent/60 hover:text-accent">
+            Learn more →
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

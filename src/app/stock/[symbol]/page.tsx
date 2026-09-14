@@ -36,9 +36,16 @@ const OVERLAYS = [
   { key: "ema12" as const, label: "EMA 12", color: "#00ccff" },
   { key: "ema26" as const, label: "EMA 26", color: "#cc00ff" },
   { key: "bollinger" as const, label: "Bollinger", color: "#4488ff" },
+  // Neutral, deliberately: the lines themselves are support-green and
+  // resistance-red, and a pill painted either colour would claim a direction
+  // before the chart has said which side, if any, is drawn.
+  { key: "trendlines" as const, label: "Trendlines", color: "#d8dce8" },
 ];
 
 function overlayExplanation(key: string, label: string): string {
+  if (key === "trendlines") {
+    return "A straight line through the last three pivot lows (green, support) and the last three pivot highs (red, resistance), extended to today — the lines a chartist draws by hand. Drawn only when the pivots line up in one direction and price has respected the line; a choppy stock gets none. A pivot needs 20 bars after it, so the newest anchor is always about a month old.";
+  }
   if (key === "sma200") {
     return "200-day SMA — the most important long-term trend indicator. Used for Golden Cross / Death Cross signals.";
   }
@@ -77,6 +84,7 @@ export default function StockDetailPage() {
     ema12: false,
     ema26: false,
     bollinger: false,
+    trendlines: true,
   });
   const [showIndicators, setShowIndicators] = useState(false);
 
@@ -114,6 +122,10 @@ export default function StockDetailPage() {
       bollinger_upper: data.indicators.bollinger_upper[i],
       bollinger_middle: data.indicators.bollinger_middle[i],
       bollinger_lower: data.indicators.bollinger_lower[i],
+      // Aligned to ohlcv.dates by the backend; null before the first anchor
+      // and for a side that was not drawn.
+      trend_support: data.trendlines?.support?.values[i] ?? null,
+      trend_resistance: data.trendlines?.resistance?.values[i] ?? null,
     }));
   }, [data]);
 
@@ -440,6 +452,7 @@ export default function StockDetailPage() {
                   supports={data.support_resistance?.supports?.slice(0, SR_LEVELS_DISPLAYED)}
                   resistances={data.support_resistance?.resistances?.slice(0, SR_LEVELS_DISPLAYED)}
                   fibonacci={data.fibonacci}
+                  trendlines={data.trendlines}
                   height={400}
                 />
               </div>
