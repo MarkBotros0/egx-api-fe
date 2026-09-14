@@ -104,6 +104,30 @@ const DIV_RSI = [
   ...walk(20, 23, { start: 40, drift: -0.15, vol: 0.9 }),
 ];
 
+/**
+ * Straight legs, no noise, so the pivots are exactly where the eye expects
+ * them and the trendline through them is unambiguous. Legs are in POINTS,
+ * not percent, which keeps the lows (86, 92, 98) and highs (92, 98, 104)
+ * exactly collinear — a teaching chart should not have to fudge the fit.
+ */
+function zigzag(start: number, legs: number[], len: number): number[] {
+  const out = [start];
+  for (const leg of legs) {
+    const base = out[out.length - 1];
+    for (let k = 1; k <= len; k++) out.push(base + (leg * k) / len);
+  }
+  return out;
+}
+/** Rising zigzag: lows at 18/36/54, highs at 9/27/45, last bar 63. */
+const TRENDING = zigzag(80, [12, -6, 12, -6, 12, -5, 8], 9);
+/** The line through (i1, v1) and (i2, v2), null before i1, extended to n. */
+function lineThrough(i1: number, v1: number, i2: number, v2: number, n: number): (number | null)[] {
+  const slope = (v2 - v1) / (i2 - i1);
+  return Array.from({ length: n }, (_, i) => (i < i1 ? null : v1 + slope * (i - i1)));
+}
+const TREND_SUPPORT = lineThrough(18, 86, 54, 98, TRENDING.length);
+const TREND_RESISTANCE = lineThrough(9, 92, 45, 104, TRENDING.length);
+
 const bandsFrom = (s: number[], width = 4.5) => ({
   upper: smaOf(s, 20).map((v) => (v === null ? null : v + width)),
   lower: smaOf(s, 20).map((v) => (v === null ? null : v - width)),
@@ -387,6 +411,41 @@ export const CURRICULUM: Module[] = [
                 height={145}
               />
             }
+          />
+        ),
+      },
+      {
+        id: "trendlines",
+        title: "Trendlines — Higher Lows, Lower Highs",
+        level: "core",
+        definition:
+          "A straight line through the last few pivot lows (a support trendline) or pivot highs (a resistance trendline), extended forward. Rising lows mean buyers stepped in a little higher each time; falling highs mean sellers stepped in a little lower. A pivot is a bar that was the lowest or highest of the 20 bars either side of it.",
+        whyItMatters:
+          "It is the oldest tool on a chart, and it only stays honest if it is drawn FROM the pivots rather than through them. The app fits a line through the last three pivots, shifts it so it rests on them, and draws it only when they line up in one direction and price has respected the line since the first — otherwise it draws nothing, because no line beats a wrong line.",
+        howToUse:
+          "Toggle Trendlines on the stock chart. Price riding a rising support line is the trend holding; a close well through it is the trend being questioned. A pivot needs 20 bars after it to count, so the newest anchor is always about a month old — the line describes what has held, not what will.",
+        visual: (
+          <MiniChart
+            series={TRENDING}
+            lines={[
+              { values: TREND_SUPPORT, color: V.up, width: 1.4, dash: "6 3" },
+              { values: TREND_RESISTANCE, color: V.down, width: 1.4, dash: "6 3" },
+            ]}
+            markers={[
+              { index: 18, color: V.up },
+              { index: 36, color: V.up },
+              { index: 54, color: V.up, label: "higher lows", place: "below" },
+              { index: 9, color: V.down },
+              { index: 27, color: V.down },
+              { index: 45, color: V.down, label: "higher highs", place: "above" },
+            ]}
+            legend={[
+              { color: V.inkBright, label: "price" },
+              { color: V.up, label: "support trendline", dash: true },
+              { color: V.down, label: "resistance trendline", dash: true },
+            ]}
+            caption="The line rests on the pivots, never runs through them. The dots are the three it was drawn from."
+            height={150}
           />
         ),
       },

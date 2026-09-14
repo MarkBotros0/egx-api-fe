@@ -93,6 +93,25 @@ export interface FibonacciLevels {
   levels: Record<string, number>;
 }
 
+/**
+ * One auto-drawn trendline — the diagonal through the last three pivot lows
+ * (support) or pivot highs (resistance). `values` is aligned to `ohlcv.dates`:
+ * null before the first anchor, the line's price on every bar from it to the
+ * last. A side is null whenever the pivots do not line up or price has not
+ * respected the line — no line beats a wrong line.
+ */
+export interface TrendLine {
+  values: (number | null)[];
+  anchors: { date: string; price: number }[];
+  direction: "up" | "down";
+  slope_pct_per_bar: number;
+}
+
+export interface TrendLines {
+  support: TrendLine | null;
+  resistance: TrendLine | null;
+}
+
 export interface CrossoverInfo {
   golden_cross: string | null;
   death_cross: string | null;
@@ -339,6 +358,7 @@ export interface AnalysisResponse {
   bb_squeeze: boolean;
   key_levels?: KeyLevels | null;
   entry_exit?: EntryExit | null;
+  trendlines?: TrendLines | null;
   pe?: PEData | null;
   forecast?: StockForecast | null;
 }
