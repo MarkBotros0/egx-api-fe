@@ -316,7 +316,11 @@ export default function StockDetailPage() {
               {/* Composite Score Card */}
               {data.composite_score && (
                 <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-4 md:p-5">
-                  <div className="grid md:grid-cols-[auto,1fr] gap-4 md:gap-6 items-start">
+                  {/* minmax(0,1fr), not the implicit `auto` column: an auto
+                      track grows to its widest child's min-content, so one
+                      nowrap line in the breakdown pushed the whole card past
+                      the screen edge on mobile. */}
+                  <div className="grid grid-cols-[minmax(0,1fr)] md:grid-cols-[auto,minmax(0,1fr)] gap-4 md:gap-6 items-start">
                     <div className="flex flex-col items-center md:items-start gap-2">
                       <CompositeGauge
                         score={data.composite_score.score}

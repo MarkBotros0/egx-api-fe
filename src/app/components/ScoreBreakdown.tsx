@@ -31,9 +31,9 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 md:p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.02] p-4 md:p-5">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="min-w-0">
           <div className="font-mono text-sm font-semibold text-white">
             Score Breakdown
           </div>
@@ -129,7 +129,7 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
 
       {composite.macro_adjustment != null && composite.macro_adjustment !== 0 && (
         <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-white/70 flex items-center justify-between gap-3">
-          <span>
+          <span className="shrink-0">
             Macro adjustment:{" "}
             <span className="font-mono text-white/80">
               {composite.macro_adjustment > 0 ? "+" : ""}
@@ -137,7 +137,7 @@ export default function ScoreBreakdown({ composite, onWeightsChanged }: Props) {
             </span>
           </span>
           {composite.macro_context && (
-            <span className="text-white/40 truncate">{composite.macro_context}</span>
+            <span className="min-w-0 text-white/40 truncate">{composite.macro_context}</span>
           )}
         </div>
       )}
