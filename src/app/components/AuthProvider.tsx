@@ -8,6 +8,10 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { configureApi } from "../lib/apiConfig";
+import { asRole, type AuthUser, type UserRole } from "../lib/auth";
+
+export type { AuthUser, UserRole };
 
 const TOKEN_KEY = "egx.auth.token";
 const USER_KEY = "egx.auth.user";
@@ -15,14 +19,6 @@ const PRESENCE_COOKIE = "egx.auth.present";
 const UNAUTHORIZED_EVENT = "egx:unauthorized";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
-
-export type UserRole = "user" | "admin";
-
-export interface AuthUser {
-  id: string;
-  username: string;
-  role: UserRole;
-}
 
 interface AuthCtx {
   user: AuthUser | null;
@@ -33,11 +29,6 @@ interface AuthCtx {
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-}
-
-/** Anything that isn't literally "admin" is a plain user. */
-function asRole(value: unknown): UserRole {
-  return value === "admin" ? "admin" : "user";
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -104,6 +95,12 @@ export function notifyUnauthorized() {
   clearStoredAuth();
   window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
 }
+
+// The shared API client (lib/api.ts) no longer imports this file — lib/ is
+// shared with the mobile app and must not depend on a web component — so the
+// web registers its token source and 401 handler here, at module load. Every
+// page renders inside layout.tsx, which imports this module first.
+configureApi({ getToken: getStoredToken, onUnauthorized: notifyUnauthorized });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
