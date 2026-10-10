@@ -3,10 +3,8 @@ import {
   COMPOSITE_BATCH_MAX_SYMBOLS,
   COMPOSITE_REQUEST_TIMEOUT_MS,
 } from "./constants";
-import {
-  getStoredToken,
-  notifyUnauthorized,
-} from "../components/AuthProvider";
+import { getApiConfig } from "./apiConfig";
+import { asRole, type AuthUser } from "./auth";
 import type {
   Ticker,
   OHLCVResponse,
@@ -34,13 +32,17 @@ export interface ScoreWeightsResponse {
   default?: ScoreWeights;
 }
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
+/** Read at call time, not import time: each app configures it at startup. */
+function base(): string {
+  return getApiConfig().baseUrl;
+}
 
 async function fetchJSON<T>(
   url: string,
   options?: RequestInit & { timeoutMs?: number }
 ): Promise<T> {
-  const token = getStoredToken();
+  const { getToken, onUnauthorized } = getApiConfig();
+  const token = getToken();
   const headers = new Headers(options?.headers || {});
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
@@ -63,7 +65,7 @@ async function fetchJSON<T>(
       signal: controller?.signal ?? init.signal,
     });
     if (res.status === 401) {
-      notifyUnauthorized();
+      onUnauthorized();
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -87,13 +89,13 @@ export async function fetchTickers(filters?: {
   if (filters?.sector) params.set("sector", filters.sector);
   if (filters?.search) params.set("search", filters.search);
   const qs = params.toString();
-  return fetchJSON<Ticker[]>(`${BASE}/tickers${qs ? `?${qs}` : ""}`);
+  return fetchJSON<Ticker[]>(`${base()}/tickers${qs ? `?${qs}` : ""}`);
 }
 
 export async function validateTicker(
   symbol: string
 ): Promise<{ symbol: string; valid: boolean | null; name: string | null }> {
-  return fetchJSON(`${BASE}/tickers?validate=${encodeURIComponent(symbol)}`);
+  return fetchJSON(`${base()}/tickers?validate=${encodeURIComponent(symbol)}`);
 }
 
 // ---- Market Data ----
@@ -104,7 +106,7 @@ export async function fetchOHLCV(
   bars = 100
 ): Promise<OHLCVResponse> {
   return fetchJSON<OHLCVResponse>(
-    `${BASE}/ohlcv?symbol=${symbol}&interval=${interval}&bars=${bars}`
+    `${base()}/ohlcv?symbol=${symbol}&interval=${interval}&bars=${bars}`
   );
 }
 
@@ -114,7 +116,7 @@ export async function fetchAnalysis(
   bars = 200
 ): Promise<AnalysisResponse> {
   return fetchJSON<AnalysisResponse>(
-    `${BASE}/analysis?symbol=${symbol}&interval=${interval}&bars=${bars}`
+    `${base()}/analysis?symbol=${symbol}&interval=${interval}&bars=${bars}`
   );
 }
 
@@ -127,7 +129,7 @@ export async function fetchHistorical(
   const params = new URLSearchParams({ symbols: symbols.join(","), interval });
   if (start) params.set("start", start);
   if (end) params.set("end", end);
-  return fetchJSON<HistoricalResponse>(`${BASE}/historical?${params}`);
+  return fetchJSON<HistoricalResponse>(`${base()}/historical?${params}`);
 }
 
 export async function fetchComparison(
@@ -139,19 +141,19 @@ export async function fetchComparison(
   const params = new URLSearchParams({ symbols: symbols.join(","), interval });
   if (start) params.set("start", start);
   if (end) params.set("end", end);
-  return fetchJSON<CompareResponse>(`${BASE}/compare?${params}`);
+  return fetchJSON<CompareResponse>(`${base()}/compare?${params}`);
 }
 
 // ---- Portfolio CRUD ----
 
 export async function fetchPortfolio(): Promise<Portfolio> {
-  return fetchJSON<Portfolio>(`${BASE}/portfolio`);
+  return fetchJSON<Portfolio>(`${base()}/portfolio`);
 }
 
 export async function addHolding(
   holding: Omit<PortfolioHolding, "id" | "created_at" | "updated_at">
 ): Promise<PortfolioHolding> {
-  return fetchJSON<PortfolioHolding>(`${BASE}/portfolio`, {
+  return fetchJSON<PortfolioHolding>(`${base()}/portfolio`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(holding),
@@ -162,7 +164,7 @@ export async function updateHolding(
   id: string,
   updates: Partial<PortfolioHolding>
 ): Promise<PortfolioHolding> {
-  return fetchJSON<PortfolioHolding>(`${BASE}/portfolio?id=${id}`, {
+  return fetchJSON<PortfolioHolding>(`${base()}/portfolio?id=${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -170,7 +172,7 @@ export async function updateHolding(
 }
 
 export async function deleteHolding(id: string): Promise<{ deleted: string }> {
-  return fetchJSON<{ deleted: string }>(`${BASE}/portfolio?id=${id}`, {
+  return fetchJSON<{ deleted: string }>(`${base()}/portfolio?id=${id}`, {
     method: "DELETE",
   });
 }
@@ -178,13 +180,13 @@ export async function deleteHolding(id: string): Promise<{ deleted: string }> {
 // ---- Portfolio Analysis ----
 
 export async function fetchPortfolioAnalysis(): Promise<PortfolioAnalysisResponse> {
-  return fetchJSON<PortfolioAnalysisResponse>(`${BASE}/portfolio_analysis`);
+  return fetchJSON<PortfolioAnalysisResponse>(`${base()}/portfolio_analysis`);
 }
 
 // ---- Sales / Realized gains ----
 
 export async function fetchSales(): Promise<SalesResponse> {
-  return fetchJSON<SalesResponse>(`${BASE}/sales`);
+  return fetchJSON<SalesResponse>(`${base()}/sales`);
 }
 
 /**
@@ -202,7 +204,7 @@ export async function recordSale(body: {
   sell_date: string;
   notes?: string;
 }): Promise<{ sales: Sale[]; holdings: PortfolioHolding[] }> {
-  return fetchJSON<{ sales: Sale[]; holdings: PortfolioHolding[] }>(`${BASE}/sales`, {
+  return fetchJSON<{ sales: Sale[]; holdings: PortfolioHolding[] }>(`${base()}/sales`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -212,7 +214,7 @@ export async function recordSale(body: {
 export async function deleteSale(
   id: string
 ): Promise<{ deleted: string; holding_id: string; restored_quantity: number | null }> {
-  return fetchJSON(`${BASE}/sales?id=${encodeURIComponent(id)}`, {
+  return fetchJSON(`${base()}/sales?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }
@@ -230,7 +232,7 @@ export async function recordDividend(body: {
   shares?: number | null;
   notes?: string;
 }): Promise<{ dividend: Dividend }> {
-  return fetchJSON<{ dividend: Dividend }>(`${BASE}/dividends`, {
+  return fetchJSON<{ dividend: Dividend }>(`${base()}/dividends`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -238,7 +240,7 @@ export async function recordDividend(body: {
 }
 
 export async function deleteDividend(id: string): Promise<{ deleted: string }> {
-  return fetchJSON(`${BASE}/dividends?id=${encodeURIComponent(id)}`, {
+  return fetchJSON(`${base()}/dividends?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }
@@ -246,17 +248,17 @@ export async function deleteDividend(id: string): Promise<{ deleted: string }> {
 // ---- Macro ----
 
 export async function fetchMacro(): Promise<MacroData> {
-  return fetchJSON<MacroData>(`${BASE}/macro`);
+  return fetchJSON<MacroData>(`${base()}/macro`);
 }
 
 // ---- Watchlist ----
 
 export async function fetchWatchlist(): Promise<{ symbols: string[] }> {
-  return fetchJSON<{ symbols: string[] }>(`${BASE}/watchlist`);
+  return fetchJSON<{ symbols: string[] }>(`${base()}/watchlist`);
 }
 
 export async function addToWatchlist(symbol: string): Promise<{ symbol: string; added_at: string }> {
-  return fetchJSON<{ symbol: string; added_at: string }>(`${BASE}/watchlist`, {
+  return fetchJSON<{ symbol: string; added_at: string }>(`${base()}/watchlist`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ symbol }),
@@ -265,7 +267,7 @@ export async function addToWatchlist(symbol: string): Promise<{ symbol: string; 
 
 export async function removeFromWatchlist(symbol: string): Promise<{ deleted: string }> {
   return fetchJSON<{ deleted: string }>(
-    `${BASE}/watchlist?symbol=${encodeURIComponent(symbol)}`,
+    `${base()}/watchlist?symbol=${encodeURIComponent(symbol)}`,
     { method: "DELETE" }
   );
 }
@@ -273,13 +275,13 @@ export async function removeFromWatchlist(symbol: string): Promise<{ deleted: st
 // ---- Composite Score Weights ----
 
 export async function fetchScoreWeights(): Promise<ScoreWeightsResponse> {
-  return fetchJSON<ScoreWeightsResponse>(`${BASE}/settings?section=weights`);
+  return fetchJSON<ScoreWeightsResponse>(`${base()}/settings?section=weights`);
 }
 
 export async function updateScoreWeights(
   weights: Partial<ScoreWeights>
 ): Promise<ScoreWeightsResponse> {
-  return fetchJSON<ScoreWeightsResponse>(`${BASE}/settings?section=weights`, {
+  return fetchJSON<ScoreWeightsResponse>(`${base()}/settings?section=weights`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ weights }),
@@ -352,7 +354,7 @@ export async function fetchCompositeBatch(
     });
     try {
       return await fetchJSON<CompositeBatchResponse>(
-        `${BASE}/analysis?${params}`,
+        `${base()}/analysis?${params}`,
         { timeoutMs: opts?.timeoutMs ?? COMPOSITE_REQUEST_TIMEOUT_MS }
       );
     } catch {
@@ -454,7 +456,7 @@ export async function fetchDashboard(opts?: {
   fresh?: boolean;
 }): Promise<DashboardResponse> {
   const q = opts?.fresh ? `?fresh=${Date.now()}` : "";
-  return fetchJSON<DashboardResponse>(`${BASE}/dashboard${q}`);
+  return fetchJSON<DashboardResponse>(`${base()}/dashboard${q}`);
 }
 
 // ---- P/E feed freshness ----
@@ -468,7 +470,7 @@ export async function fetchPEFeedStatus(): Promise<PEFeedStatus> {
   const data = await fetchJSON<{
     last_successful_fetch: string | null;
     last_attempt_status: string | null;
-  }>(`${BASE}/pe`);
+  }>(`${base()}/pe`);
   return {
     last_successful_fetch: data.last_successful_fetch ?? null,
     last_attempt_status: data.last_attempt_status ?? null,
@@ -495,14 +497,14 @@ export interface PasswordResult {
 }
 
 export async function fetchUsers(): Promise<{ users: ManagedUser[] }> {
-  return fetchJSON<{ users: ManagedUser[] }>(`${BASE}/users`);
+  return fetchJSON<{ users: ManagedUser[] }>(`${base()}/users`);
 }
 
 export async function createUser(
   username: string,
   password?: string
 ): Promise<{ user: ManagedUser } & PasswordResult> {
-  return fetchJSON(`${BASE}/users`, {
+  return fetchJSON(`${base()}/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password: password || null }),
@@ -513,7 +515,7 @@ export async function resetUserPassword(
   id: string,
   password?: string
 ): Promise<{ id: string; username: string } & PasswordResult> {
-  return fetchJSON(`${BASE}/users/${encodeURIComponent(id)}/password`, {
+  return fetchJSON(`${base()}/users/${encodeURIComponent(id)}/password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password: password || null }),
@@ -524,7 +526,7 @@ export async function setUserActive(
   id: string,
   isActive: boolean
 ): Promise<ManagedUser> {
-  return fetchJSON<ManagedUser>(`${BASE}/users/${encodeURIComponent(id)}`, {
+  return fetchJSON<ManagedUser>(`${base()}/users/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ is_active: isActive }),
@@ -534,7 +536,7 @@ export async function setUserActive(
 export async function deleteUser(
   id: string
 ): Promise<{ deleted: string; username: string }> {
-  return fetchJSON(`${BASE}/users/${encodeURIComponent(id)}`, {
+  return fetchJSON(`${base()}/users/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }
@@ -649,7 +651,7 @@ export interface CalibrationResponse {
 }
 
 export async function fetchCalibration(): Promise<CalibrationResponse> {
-  return fetchJSON<CalibrationResponse>(`${BASE}/calibration`);
+  return fetchJSON<CalibrationResponse>(`${base()}/calibration`);
 }
 
 // ---- Per-stock risk grade ----
@@ -712,11 +714,11 @@ export interface RiskResponse {
 
 export async function fetchRisk(symbol?: string): Promise<RiskResponse> {
   const q = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
-  return fetchJSON<RiskResponse>(`${BASE}/risk${q}`);
+  return fetchJSON<RiskResponse>(`${base()}/risk${q}`);
 }
 
 export async function fetchMarketRegime(): Promise<MarketRegime> {
-  return fetchJSON<MarketRegime>(`${BASE}/market_regime`);
+  return fetchJSON<MarketRegime>(`${base()}/market_regime`);
 }
 
 // ---- News ----
@@ -725,17 +727,65 @@ export async function fetchDividendHistory(
   symbol: string
 ): Promise<DividendHistoryResponse> {
   return fetchJSON<DividendHistoryResponse>(
-    `${BASE}/dividend_history?symbol=${encodeURIComponent(symbol)}`,
+    `${base()}/dividend_history?symbol=${encodeURIComponent(symbol)}`,
     { timeoutMs: 15000 }
   );
 }
 
 export async function fetchDividendCalendar(): Promise<DividendCalendarResponse> {
-  return fetchJSON<DividendCalendarResponse>(`${BASE}/dividend_calendar`, {
+  return fetchJSON<DividendCalendarResponse>(`${base()}/dividend_calendar`, {
     timeoutMs: 15000,
   });
 }
 
 export async function fetchNews(): Promise<NewsResponse> {
-  return fetchJSON<NewsResponse>(`${BASE}/news`, { timeoutMs: 20000 });
+  return fetchJSON<NewsResponse>(`${base()}/news`, { timeoutMs: 20000 });
+}
+
+// ---- Auth ----
+
+/** A rejected sign-in, carrying the message to show on the form. */
+export class LoginError extends Error {}
+
+/**
+ * POST /auth/login. Deliberately NOT routed through fetchJSON: a wrong
+ * password is a 401, and that must surface as a message on the form, not
+ * trigger the "your session expired" sign-out path.
+ */
+export async function loginRequest(
+  username: string,
+  password: string
+): Promise<{ token: string; user: AuthUser }> {
+  const res = await fetch(`${base()}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      (typeof data?.detail === "string" && data.detail) ||
+      (typeof data?.error === "string" && data.error) ||
+      "Invalid username or password";
+    throw new LoginError(msg);
+  }
+  return {
+    token: data.access_token,
+    user: {
+      id: data.user?.id,
+      username: data.user?.username,
+      role: asRole(data.user?.role),
+    },
+  };
+}
+
+/** GET /auth/me — re-reads the role from the DB. A 401 signs out like any call. */
+export async function fetchMe(): Promise<AuthUser> {
+  const data = await fetchJSON<{ id?: unknown; username?: unknown; role?: unknown }>(
+    `${base()}/auth/me`
+  );
+  if (typeof data.id !== "string" || typeof data.username !== "string") {
+    throw new Error("Malformed /auth/me response");
+  }
+  return { id: data.id, username: data.username, role: asRole(data.role) };
 }

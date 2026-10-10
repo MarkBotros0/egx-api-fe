@@ -1,16 +1,11 @@
 import type { Config } from "tailwindcss";
+import { COLORS } from "./src/app/lib/theme";
 
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      colors: {
-        "charcoal-dark": "#0a0a0f",
-        charcoal: "#12121a",
-        gain: "#00ff88",
-        loss: "#ff3355",
-        accent: "#4488ff",
-      },
+      colors: { ...COLORS },
       fontFamily: {
         sans: ["Outfit", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
