@@ -14,22 +14,23 @@
  */
 
 import { useId } from "react";
+import {
+  V,
+  VIEW_W as W,
+  extent,
+  toPath,
+  type Nums,
+  type ChartLine,
+  type ChartLevel,
+  type ChartMarker,
+  type ChartShade,
+  type Zone,
+} from "../../lib/learnVisuals";
 
-// ---------------------------------------------------------------- palette
-
-export const V = {
-  up: "#00ff88",
-  down: "#ff3355",
-  accent: "#4488ff",
-  gold: "#e8b04b",
-  teal: "#2fd3c0",
-  coral: "#ff7a59",
-  violet: "#a68bff",
-  grid: "rgba(255,255,255,0.05)",
-  axis: "rgba(255,255,255,0.18)",
-  ink: "rgba(255,255,255,0.45)",
-  inkBright: "rgba(255,255,255,0.75)",
-} as const;
+// The palette, prop shapes and series generators live in lib/learnVisuals.ts,
+// shared with the mobile app. Re-exported so existing importers keep working.
+export { V, walk, smaOf } from "../../lib/learnVisuals";
+export type { ChartLine, ChartLevel, ChartMarker, ChartShade, Zone } from "../../lib/learnVisuals";
 
 // ---------------------------------------------------------------- frame
 
@@ -72,74 +73,7 @@ export function VisualFrame({
   );
 }
 
-// ---------------------------------------------------------------- helpers
-
-type Nums = (number | null)[];
-
-const W = 320;
-
-function extent(sets: Nums[]): [number, number] {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const s of sets) {
-    for (const v of s) {
-      if (v === null || v === undefined || !Number.isFinite(v)) continue;
-      if (v < min) min = v;
-      if (v > max) max = v;
-    }
-  }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
-  if (min === max) return [min - 1, max + 1];
-  return [min, max];
-}
-
-/** Straight-segment path that breaks across nulls, so leading NaNs leave a gap. */
-function toPath(
-  values: Nums,
-  x: (i: number) => number,
-  y: (v: number) => number
-): string {
-  let d = "";
-  let pen = false;
-  values.forEach((v, i) => {
-    if (v === null || v === undefined || !Number.isFinite(v)) {
-      pen = false;
-      return;
-    }
-    d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
-    pen = true;
-  });
-  return d;
-}
-
 // ---------------------------------------------------------------- MiniChart
-
-export interface ChartLine {
-  values: Nums;
-  color: string;
-  width?: number;
-  dash?: string;
-  label?: string;
-}
-export interface ChartLevel {
-  value: number;
-  color: string;
-  label?: string;
-  dash?: string;
-}
-export interface ChartMarker {
-  index: number;
-  color: string;
-  label?: string;
-  /** Where the label sits relative to the point. */
-  place?: "above" | "below";
-}
-export interface ChartShade {
-  from: number;
-  to: number;
-  color: string;
-  label?: string;
-}
 
 /**
  * The workhorse. A price path plus any combination of overlay lines, a
@@ -351,13 +285,6 @@ export function MiniChart({
 }
 
 // ---------------------------------------------------------------- ZoneScale
-
-export interface Zone {
-  from: number;
-  to: number;
-  color: string;
-  label?: string;
-}
 
 /**
  * A 0–100 rail with meaning-bearing zones and one or more readings on it.
@@ -880,40 +807,4 @@ export function LedgerRows({
       </dl>
     </VisualFrame>
   );
-}
-
-// ---------------------------------------------------------------- series gen
-
-/**
- * Deterministic pseudo-random walk. Seeded so a diagram looks identical on
- * every render and between server and client — a Math.random() series would
- * hydrate-mismatch and flicker.
- */
-export function walk(
-  n: number,
-  seed: number,
-  { start = 100, drift = 0, vol = 1 } = {}
-): number[] {
-  let s = seed >>> 0;
-  const rnd = () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296 - 0.5;
-  };
-  const out: number[] = [];
-  let v = start;
-  for (let i = 0; i < n; i++) {
-    v += drift + rnd() * vol * 2;
-    out.push(Math.round(v * 100) / 100);
-  }
-  return out;
-}
-
-/** Trailing simple moving average, null until the window fills. */
-export function smaOf(values: number[], period: number): Nums {
-  return values.map((_, i) => {
-    if (i < period - 1) return null;
-    let sum = 0;
-    for (let k = i - period + 1; k <= i; k++) sum += values[k];
-    return Math.round((sum / period) * 100) / 100;
-  });
 }
