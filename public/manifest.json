@@ -1,6 +1,6 @@
 {
-  "name": "EGX Analytics",
-  "short_name": "EGX",
+  "name": "Borsa Compass",
+  "short_name": "Borsa Compass",
   "description": "Egyptian Stock Market Terminal — Technical analysis, portfolio tracking, and educational insights.",
   "start_url": "/",
   "display": "standalone",

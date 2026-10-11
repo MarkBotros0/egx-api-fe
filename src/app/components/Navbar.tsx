@@ -50,8 +50,8 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 border-b border-white/10 bg-charcoal-dark/90 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold text-accent">EGX</span>
-          <span className="text-sm text-white/60">Analytics</span>
+          <span className="text-xl font-bold text-accent">Borsa</span>
+          <span className="text-sm text-white/60">Compass</span>
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">

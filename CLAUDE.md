@@ -1,4 +1,4 @@
-# EGX Analytics — Project Guide for Claude
+# Borsa Compass (formerly EGX Analytics) — Project Guide for Claude
 
 This file orients future Claude sessions to the codebase. Read it first before exploring.
 

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import LearnClient from "./LearnClient";
 
 export const metadata: Metadata = {
-  title: "Learn — EGX Analytics",
+  title: "Learn — Borsa Compass",
   description:
-    "A guided path through everything EGX Analytics shows you: charts, indicators, the composite score, risk, and the Egyptian context — with diagrams and worked examples in EGP.",
+    "A guided path through everything Borsa Compass shows you: charts, indicators, the composite score, risk, and the Egyptian context — with diagrams and worked examples in EGP.",
 };
 
 export default function LearnPage() {

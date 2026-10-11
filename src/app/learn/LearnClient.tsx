@@ -210,7 +210,7 @@ export default function LearnClient() {
       {/* ---------------------------------------------------------- hero */}
       <header className="mb-7">
         <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-white/30">
-          EGX Analytics · Learn
+          Borsa Compass · Learn
         </p>
         <h1 className="max-w-2xl text-[26px] font-bold leading-[1.15] tracking-tight text-white md:text-[38px]">
           Learn the EGX,

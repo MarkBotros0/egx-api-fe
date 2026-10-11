@@ -29,13 +29,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "EGX Analytics — Egyptian Stock Market Terminal",
+  title: "Borsa Compass — Egyptian Stock Market Terminal",
   description:
     "Analyze Egyptian Exchange stocks with technical indicators, portfolio tracking, and educational insights.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "EGX Analytics",
+    title: "Borsa Compass",
   },
   manifest: "/manifest.json",
   icons: {
