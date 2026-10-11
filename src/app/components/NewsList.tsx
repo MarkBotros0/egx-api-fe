@@ -44,6 +44,12 @@ function sourceName(provider: string | null): string {
     .join(" ");
 }
 
+/** "https://www.arabfinance.com/en/…" -> "arabfinance.com": where a story opens. */
+function storySite(url: string): string {
+  const m = /^[a-z]+:\/\/(?:www\.)?([^/?#:]+)/i.exec(url);
+  return m ? m[1].toLowerCase() : "the publisher's site";
+}
+
 /**
  * A small monogram anchors each story to its source without a logo asset
  * (external images are CSP/CORS-blocked here). It is deliberately monochrome —
@@ -96,7 +102,8 @@ function NewsCard({ item }: { item: NewsItem }) {
       </div>
 
       {/* The headline is the hero of the card and the link to the story. The
-          story lives on TradingView, so it opens off-app with a marker rather
+          story lives on the publisher's site (TradingView or Arab Finance), so it
+          opens off-app with a marker rather
           than leaving silently. */}
       <a
         href={item.url}
@@ -109,7 +116,7 @@ function NewsCard({ item }: { item: NewsItem }) {
           className="mt-1 h-3.5 w-3.5 flex-none text-white/25 transition-colors group-hover:text-white/50"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round"
-          aria-label="Opens on tradingview.com"
+          aria-label={`Opens on ${storySite(item.url)}`}
         >
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
           <path d="M15 3h6v6" />
