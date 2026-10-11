@@ -2,18 +2,12 @@
 <defs><clipPath id="lc"><rect width="512" height="512" rx="110"/></clipPath></defs>
 <rect width="512" height="512" rx="110" fill="#08080d"/>
 <g clip-path="url(#lc)">
-<line x1="110" y1="72" x2="110" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
-<line x1="110" y1="382" x2="435" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
-<line x1="105" y1="82" x2="110" y2="68" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
-<line x1="115" y1="82" x2="110" y2="68" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
-<line x1="425" y1="377" x2="440" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
-<line x1="425" y1="387" x2="440" y2="382" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
-<rect x="130" y="322" width="30" height="60" rx="3" fill="#00ff88" opacity="0.35"/>
-<rect x="175" y="292" width="30" height="90" rx="3" fill="#00ff88" opacity="0.42"/>
-<rect x="220" y="252" width="30" height="130" rx="3" fill="#00ff88" opacity="0.50"/>
-<rect x="265" y="212" width="30" height="170" rx="3" fill="#00ff88" opacity="0.58"/>
-<rect x="310" y="162" width="30" height="220" rx="3" fill="#00ff88" opacity="0.68"/>
-<rect x="355" y="102" width="30" height="280" rx="3" fill="#00ff88" opacity="0.80"/>
-<text x="256" y="445" text-anchor="middle" font-family="'Helvetica Neue','Arial',sans-serif" font-size="44" font-weight="300" fill="#e4e4e7" letter-spacing="16">EGX</text>
+<circle cx="256" cy="256" r="168" fill="none" stroke="#e4e4e7" stroke-width="12"/>
+<line x1="256" y1="70" x2="256" y2="104" stroke="#e4e4e7" stroke-width="12" stroke-linecap="round"/>
+<line x1="256" y1="408" x2="256" y2="442" stroke="#e4e4e7" stroke-width="12" stroke-linecap="round" opacity="0.45"/>
+<line x1="70" y1="256" x2="104" y2="256" stroke="#e4e4e7" stroke-width="12" stroke-linecap="round" opacity="0.45"/>
+<line x1="408" y1="256" x2="442" y2="256" stroke="#e4e4e7" stroke-width="12" stroke-linecap="round" opacity="0.45"/>
+<polyline points="158,330 216,268 256,300 330,206" fill="none" stroke="#00ff88" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="364,164 290,186 342,238" fill="#00ff88" stroke="#00ff88" stroke-width="10" stroke-linejoin="round"/>
 </g>
 </svg>
