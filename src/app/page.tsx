@@ -161,7 +161,8 @@ export default function Dashboard() {
   const [index, setIndex] = useState("EGX30");
   const [sector, setSector] = useState("All Sectors");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("Default");
+  // Opens on the composite ranking; "Default" is the ticker-file order.
+  const [sort, setSort] = useState<SortKey>("Score");
   const [dividendOnly, setDividendOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
