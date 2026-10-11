@@ -25,6 +25,14 @@ import {
   type ChartMarker,
   type ChartShade,
   type Zone,
+  type MiniChartProps,
+  type ZoneScaleProps,
+  type BarCompareProps,
+  type StepFlowProps,
+  type AllocationDonutProps,
+  type CorrelationGridProps,
+  type ConeChartProps,
+  type LedgerRowsProps,
 } from "../../lib/learnVisuals";
 
 // The palette, prop shapes and series generators live in lib/learnVisuals.ts,
@@ -93,21 +101,7 @@ export function MiniChart({
   caption,
   legend,
   labelPad = 34,
-}: {
-  series: number[];
-  lines?: ChartLine[];
-  band?: { upper: Nums; lower: Nums; color: string };
-  levels?: ChartLevel[];
-  markers?: ChartMarker[];
-  shades?: ChartShade[];
-  height?: number;
-  priceColor?: string;
-  fill?: boolean;
-  caption?: string;
-  legend?: { color: string; label: string; dash?: boolean }[];
-  /** Right gutter reserved for level labels. */
-  labelPad?: number;
-}) {
+}: MiniChartProps) {
   const H = height;
   const padT = 12;
   const padB = 12;
@@ -299,16 +293,7 @@ export function ZoneScale({
   unit = "",
   caption,
   height = 74,
-}: {
-  zones: Zone[];
-  markers: { value: number; label: string; color?: string }[];
-  min?: number;
-  max?: number;
-  ticks?: number[];
-  unit?: string;
-  caption?: string;
-  height?: number;
-}) {
+}: ZoneScaleProps) {
   const H = height;
   const padL = 10;
   const padR = 10;
@@ -405,12 +390,7 @@ export function BarCompare({
   unit = "%",
   caption,
   baseline,
-}: {
-  bars: { label: string; value: number; color: string; note?: string }[];
-  unit?: string;
-  caption?: string;
-  baseline?: { value: number; label: string; color: string };
-}) {
+}: BarCompareProps) {
   const maxV = Math.max(
     ...bars.map((b) => Math.abs(b.value)),
     baseline ? Math.abs(baseline.value) : 0,
@@ -483,11 +463,7 @@ export function StepFlow({
   steps,
   accent = V.accent,
   caption,
-}: {
-  steps: { title: string; text: string }[];
-  accent?: string;
-  caption?: string;
-}) {
+}: StepFlowProps) {
   return (
     <VisualFrame caption={caption}>
       <ol className="m-0 list-none space-y-0 p-3">
@@ -531,12 +507,7 @@ export function AllocationDonut({
   centerLabel,
   centerSub,
   caption,
-}: {
-  slices: { label: string; value: number; color: string }[];
-  centerLabel: string;
-  centerSub?: string;
-  caption?: string;
-}) {
+}: AllocationDonutProps) {
   const total = slices.reduce((a, s) => a + s.value, 0) || 1;
   const R = 42;
   const C = 2 * Math.PI * R;
@@ -618,11 +589,7 @@ export function CorrelationGrid({
   labels,
   matrix,
   caption,
-}: {
-  labels: string[];
-  matrix: number[][];
-  caption?: string;
-}) {
+}: CorrelationGridProps) {
   // +1 is concentrated risk (red), 0 is unrelated, -1 is true diversification.
   const tint = (v: number) => (v > 0.15 ? V.down : v < -0.15 ? V.up : "#7f8ea3");
 
@@ -688,13 +655,7 @@ export function ConeChart({
   drift = 0.0008,
   vol = 0.018,
   caption,
-}: {
-  days?: number;
-  start?: number;
-  drift?: number;
-  vol?: number;
-  caption?: string;
-}) {
+}: ConeChartProps) {
   const H = 150;
   const padT = 14;
   const padB = 18;
@@ -779,10 +740,7 @@ export function ConeChart({
 export function LedgerRows({
   rows,
   caption,
-}: {
-  rows: { left: string; right: string; tone?: "up" | "down" | "muted" }[];
-  caption?: string;
-}) {
+}: LedgerRowsProps) {
   const tone = (t?: string) =>
     t === "up" ? V.up : t === "down" ? V.down : "rgba(255,255,255,0.75)";
   return (

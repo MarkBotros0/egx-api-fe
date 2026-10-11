@@ -12,12 +12,12 @@
  */
 
 import { useId, useState } from "react";
-import { STOP_LOSS_ATR_MULTIPLIER } from "../../lib/constants";
 import { V } from "../../lib/learnVisuals";
 import {
   RSI_STRIP_STOPS,
   SCORE_BAND_SEGMENTS,
   SCORE_EXPLORER_NOTE,
+  STOP_LOSS_FORMULA,
   TBILL_TITLE,
   egp,
   positionSizing,
@@ -194,7 +194,7 @@ export function StopLossCalculator() {
   return (
     <Panel title="Stop-loss — the app's own formula" accent={V.coral}>
       <p className="mb-3 font-mono text-[10px] leading-relaxed text-white/40">
-        stop = support − {STOP_LOSS_ATR_MULTIPLIER} × ATR
+        {STOP_LOSS_FORMULA}
       </p>
       <Slider label="Entry price you'd pay" value={entry} min={60} max={160} suffix=" EGP" accent={V.coral} onChange={setEntry} />
       <Slider label="Nearest support" value={support} min={50} max={150} suffix=" EGP" accent={V.coral} onChange={setSupport} />
