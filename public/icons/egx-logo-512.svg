@@ -15,6 +15,5 @@
 <rect x="310" y="162" width="30" height="220" rx="3" fill="#00ff88" opacity="0.68"/>
 <rect x="355" y="102" width="30" height="280" rx="3" fill="#00ff88" opacity="0.80"/>
 <text x="256" y="445" text-anchor="middle" font-family="'Helvetica Neue','Arial',sans-serif" font-size="44" font-weight="300" fill="#e4e4e7" letter-spacing="16">EGX</text>
-<text x="256" y="472" text-anchor="middle" font-family="'Helvetica Neue','Arial',sans-serif" font-size="14" font-weight="300" fill="#e4e4e7" opacity="0.4" letter-spacing="1">by Mark Botros</text>
 </g>
 </svg>
