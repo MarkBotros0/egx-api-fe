@@ -14,22 +14,31 @@
  */
 
 import { useId } from "react";
+import {
+  V,
+  VIEW_W as W,
+  extent,
+  toPath,
+  type Nums,
+  type ChartLine,
+  type ChartLevel,
+  type ChartMarker,
+  type ChartShade,
+  type Zone,
+  type MiniChartProps,
+  type ZoneScaleProps,
+  type BarCompareProps,
+  type StepFlowProps,
+  type AllocationDonutProps,
+  type CorrelationGridProps,
+  type ConeChartProps,
+  type LedgerRowsProps,
+} from "../../lib/learnVisuals";
 
-// ---------------------------------------------------------------- palette
-
-export const V = {
-  up: "#00ff88",
-  down: "#ff3355",
-  accent: "#4488ff",
-  gold: "#e8b04b",
-  teal: "#2fd3c0",
-  coral: "#ff7a59",
-  violet: "#a68bff",
-  grid: "rgba(255,255,255,0.05)",
-  axis: "rgba(255,255,255,0.18)",
-  ink: "rgba(255,255,255,0.45)",
-  inkBright: "rgba(255,255,255,0.75)",
-} as const;
+// The palette, prop shapes and series generators live in lib/learnVisuals.ts,
+// shared with the mobile app. Re-exported so existing importers keep working.
+export { V, walk, smaOf } from "../../lib/learnVisuals";
+export type { ChartLine, ChartLevel, ChartMarker, ChartShade, Zone } from "../../lib/learnVisuals";
 
 // ---------------------------------------------------------------- frame
 
@@ -72,74 +81,7 @@ export function VisualFrame({
   );
 }
 
-// ---------------------------------------------------------------- helpers
-
-type Nums = (number | null)[];
-
-const W = 320;
-
-function extent(sets: Nums[]): [number, number] {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const s of sets) {
-    for (const v of s) {
-      if (v === null || v === undefined || !Number.isFinite(v)) continue;
-      if (v < min) min = v;
-      if (v > max) max = v;
-    }
-  }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
-  if (min === max) return [min - 1, max + 1];
-  return [min, max];
-}
-
-/** Straight-segment path that breaks across nulls, so leading NaNs leave a gap. */
-function toPath(
-  values: Nums,
-  x: (i: number) => number,
-  y: (v: number) => number
-): string {
-  let d = "";
-  let pen = false;
-  values.forEach((v, i) => {
-    if (v === null || v === undefined || !Number.isFinite(v)) {
-      pen = false;
-      return;
-    }
-    d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
-    pen = true;
-  });
-  return d;
-}
-
 // ---------------------------------------------------------------- MiniChart
-
-export interface ChartLine {
-  values: Nums;
-  color: string;
-  width?: number;
-  dash?: string;
-  label?: string;
-}
-export interface ChartLevel {
-  value: number;
-  color: string;
-  label?: string;
-  dash?: string;
-}
-export interface ChartMarker {
-  index: number;
-  color: string;
-  label?: string;
-  /** Where the label sits relative to the point. */
-  place?: "above" | "below";
-}
-export interface ChartShade {
-  from: number;
-  to: number;
-  color: string;
-  label?: string;
-}
 
 /**
  * The workhorse. A price path plus any combination of overlay lines, a
@@ -159,21 +101,7 @@ export function MiniChart({
   caption,
   legend,
   labelPad = 34,
-}: {
-  series: number[];
-  lines?: ChartLine[];
-  band?: { upper: Nums; lower: Nums; color: string };
-  levels?: ChartLevel[];
-  markers?: ChartMarker[];
-  shades?: ChartShade[];
-  height?: number;
-  priceColor?: string;
-  fill?: boolean;
-  caption?: string;
-  legend?: { color: string; label: string; dash?: boolean }[];
-  /** Right gutter reserved for level labels. */
-  labelPad?: number;
-}) {
+}: MiniChartProps) {
   const H = height;
   const padT = 12;
   const padB = 12;
@@ -352,13 +280,6 @@ export function MiniChart({
 
 // ---------------------------------------------------------------- ZoneScale
 
-export interface Zone {
-  from: number;
-  to: number;
-  color: string;
-  label?: string;
-}
-
 /**
  * A 0–100 rail with meaning-bearing zones and one or more readings on it.
  * Used for RSI, MFI, Stochastic, ADX and the composite score bands.
@@ -372,16 +293,7 @@ export function ZoneScale({
   unit = "",
   caption,
   height = 74,
-}: {
-  zones: Zone[];
-  markers: { value: number; label: string; color?: string }[];
-  min?: number;
-  max?: number;
-  ticks?: number[];
-  unit?: string;
-  caption?: string;
-  height?: number;
-}) {
+}: ZoneScaleProps) {
   const H = height;
   const padL = 10;
   const padR = 10;
@@ -478,12 +390,7 @@ export function BarCompare({
   unit = "%",
   caption,
   baseline,
-}: {
-  bars: { label: string; value: number; color: string; note?: string }[];
-  unit?: string;
-  caption?: string;
-  baseline?: { value: number; label: string; color: string };
-}) {
+}: BarCompareProps) {
   const maxV = Math.max(
     ...bars.map((b) => Math.abs(b.value)),
     baseline ? Math.abs(baseline.value) : 0,
@@ -556,11 +463,7 @@ export function StepFlow({
   steps,
   accent = V.accent,
   caption,
-}: {
-  steps: { title: string; text: string }[];
-  accent?: string;
-  caption?: string;
-}) {
+}: StepFlowProps) {
   return (
     <VisualFrame caption={caption}>
       <ol className="m-0 list-none space-y-0 p-3">
@@ -604,12 +507,7 @@ export function AllocationDonut({
   centerLabel,
   centerSub,
   caption,
-}: {
-  slices: { label: string; value: number; color: string }[];
-  centerLabel: string;
-  centerSub?: string;
-  caption?: string;
-}) {
+}: AllocationDonutProps) {
   const total = slices.reduce((a, s) => a + s.value, 0) || 1;
   const R = 42;
   const C = 2 * Math.PI * R;
@@ -691,11 +589,7 @@ export function CorrelationGrid({
   labels,
   matrix,
   caption,
-}: {
-  labels: string[];
-  matrix: number[][];
-  caption?: string;
-}) {
+}: CorrelationGridProps) {
   // +1 is concentrated risk (red), 0 is unrelated, -1 is true diversification.
   const tint = (v: number) => (v > 0.15 ? V.down : v < -0.15 ? V.up : "#7f8ea3");
 
@@ -761,13 +655,7 @@ export function ConeChart({
   drift = 0.0008,
   vol = 0.018,
   caption,
-}: {
-  days?: number;
-  start?: number;
-  drift?: number;
-  vol?: number;
-  caption?: string;
-}) {
+}: ConeChartProps) {
   const H = 150;
   const padT = 14;
   const padB = 18;
@@ -852,10 +740,7 @@ export function ConeChart({
 export function LedgerRows({
   rows,
   caption,
-}: {
-  rows: { left: string; right: string; tone?: "up" | "down" | "muted" }[];
-  caption?: string;
-}) {
+}: LedgerRowsProps) {
   const tone = (t?: string) =>
     t === "up" ? V.up : t === "down" ? V.down : "rgba(255,255,255,0.75)";
   return (
@@ -880,40 +765,4 @@ export function LedgerRows({
       </dl>
     </VisualFrame>
   );
-}
-
-// ---------------------------------------------------------------- series gen
-
-/**
- * Deterministic pseudo-random walk. Seeded so a diagram looks identical on
- * every render and between server and client — a Math.random() series would
- * hydrate-mismatch and flicker.
- */
-export function walk(
-  n: number,
-  seed: number,
-  { start = 100, drift = 0, vol = 1 } = {}
-): number[] {
-  let s = seed >>> 0;
-  const rnd = () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296 - 0.5;
-  };
-  const out: number[] = [];
-  let v = start;
-  for (let i = 0; i < n; i++) {
-    v += drift + rnd() * vol * 2;
-    out.push(Math.round(v * 100) / 100);
-  }
-  return out;
-}
-
-/** Trailing simple moving average, null until the window fills. */
-export function smaOf(values: number[], period: number): Nums {
-  return values.map((_, i) => {
-    if (i < period - 1) return null;
-    let sum = 0;
-    for (let k = i - period + 1; k <= i; k++) sum += values[k];
-    return Math.round((sum / period) * 100) / 100;
-  });
 }

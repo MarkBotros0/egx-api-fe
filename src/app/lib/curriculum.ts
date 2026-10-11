@@ -1,76 +1,26 @@
-"use client";
-
 /**
- * The Learn curriculum.
+ * The Learn curriculum — all content as DATA.
  *
- * Content lives here as data so the page component stays about layout and
- * navigation. Every `id` on this page is a public anchor: in-app signals
- * deep-link to `/learn#<learn_concept>` from `AdvicePanel`, and
- * `ForecastCard`, `EntryExitCard`, `HoldingsTable` and `MarketRegimeCard`
- * link to fixed ones. **Never rename or drop an id** — move a concept
- * between modules freely, the hash router finds it wherever it lives.
+ * Shared by the web app (rendered by components/learn/LearnVisual.tsx) and
+ * the mobile app (copied into egx-api-mobile/src/shared by its sync script),
+ * so it must stay platform-neutral: no JSX, no DOM, no React. Diagrams are
+ * `VisualSpec` objects (lib/learnVisuals.ts), not elements.
+ *
+ * Every `id` on this page is a public anchor: in-app signals deep-link to
+ * `/learn#<learn_concept>` from `AdvicePanel`, and `ForecastCard`,
+ * `EntryExitCard`, `HoldingsTable` and `MarketRegimeCard` link to fixed
+ * ones. **Never rename or drop an id** — move a concept between modules
+ * freely, the hash router finds it wherever it lives.
  *
  * The nine module ids are the old section anchors, kept for the same reason.
+ *
+ * A string that states a number the app computes MUST interpolate the
+ * constant (`${T_BILL_RATE_PCT}`), never restate it.
  */
 
-import {
-  MiniChart,
-  ZoneScale,
-  BarCompare,
-  StepFlow,
-  AllocationDonut,
-  CorrelationGrid,
-  ConeChart,
-  LedgerRows,
-  walk,
-  smaOf,
-  V,
-} from "../components/learn/visuals";
-import {
-  RsiPlayground,
-  StopLossCalculator,
-  PositionSizer,
-  TBillRace,
-  ScoreBandExplorer,
-} from "../components/learn/widgets";
-import LiveChart from "../components/learn/LiveChart";
-import { DEFAULT_WEIGHTS, T_BILL_RATE_PCT } from "../lib/constants";
-
-// ---------------------------------------------------------------- types
-
-export type Level = "start" | "core" | "deep";
-
-export interface Concept {
-  /** Public deep-link anchor. Optional only for concepts nothing links to. */
-  id?: string;
-  title: string;
-  definition: string;
-  whyItMatters: string;
-  howToUse: string;
-  /** A concrete worked example, in EGP. Rendered in mono. */
-  example?: string;
-  level?: Level;
-  visual?: React.ReactNode;
-}
-
-export interface Module {
-  /** Was a `<Section id>` before the redesign. Kept as a live anchor. */
-  id: string;
-  title: string;
-  goal: string;
-  hue: string;
-  /** Shown once above the module's concepts. */
-  overview?: React.ReactNode;
-  concepts: Concept[];
-}
-
-/** Stable key for progress tracking — ids are preferred, titles are the fallback. */
-export const conceptKey = (c: Concept) =>
-  c.id ?? c.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-function Stack({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-2.5">{children}</div>;
-}
+import { V, walk, smaOf } from "./learnVisuals";
+import { DEFAULT_WEIGHTS, T_BILL_RATE_PCT } from "./constants";
+import type { Module } from "./learn";
 
 // ---------------------------------------------------------------- series
 
@@ -121,9 +71,17 @@ function zigzag(start: number, legs: number[], len: number): number[] {
 /** Rising zigzag: lows at 18/36/54, highs at 9/27/45, last bar 63. */
 const TRENDING = zigzag(80, [12, -6, 12, -6, 12, -5, 8], 9);
 /** The line through (i1, v1) and (i2, v2), null before i1, extended to n. */
-function lineThrough(i1: number, v1: number, i2: number, v2: number, n: number): (number | null)[] {
+function lineThrough(
+  i1: number,
+  v1: number,
+  i2: number,
+  v2: number,
+  n: number,
+): (number | null)[] {
   const slope = (v2 - v1) / (i2 - i1);
-  return Array.from({ length: n }, (_, i) => (i < i1 ? null : v1 + slope * (i - i1)));
+  return Array.from({ length: n }, (_, i) =>
+    i < i1 ? null : v1 + slope * (i - i1),
+  );
 }
 const TREND_SUPPORT = lineThrough(18, 86, 54, 98, TRENDING.length);
 const TREND_RESISTANCE = lineThrough(9, 92, 45, 104, TRENDING.length);
@@ -155,17 +113,16 @@ export const CURRICULUM: Module[] = [
           "Buy stocks of companies you believe will grow in value. You profit when you sell for more than you paid (capital gains) or through dividends (cash payments from the company).",
         example:
           "A company has 1,000,000 shares. You buy 500 at 82 EGP = 41,000 EGP. You now own 0.05% of that company — and 0.05% of every profit it makes.",
-        visual: (
-          <LedgerRows
-            caption="Ownership is literal, just very small."
-            rows={[
-              { left: "Shares the company issued", right: "1,000,000" },
-              { left: "Shares you bought", right: "500" },
-              { left: "Your slice of the company", right: "0.05%" },
-              { left: "You paid", right: "41,000 EGP" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption: "Ownership is literal, just very small.",
+          rows: [
+            { left: "Shares the company issued", right: "1,000,000" },
+            { left: "Shares you bought", right: "500" },
+            { left: "Your slice of the company", right: "0.05%" },
+            { left: "You paid", right: "41,000 EGP" },
+          ],
+        },
       },
       {
         title: "Order Types",
@@ -178,17 +135,32 @@ export const CURRICULUM: Module[] = [
           "Use market orders when speed matters (you want in or out NOW). Use limit orders when price matters (you'll wait for your target price). On Thndr, you'll choose between these when placing trades.",
         example:
           "You want 500 shares around 82 EGP. A market order fills instantly at 82.45 — 225 EGP more than you planned. A limit order at 82.00 fills at 82.00, or not at all.",
-        visual: (
-          <LedgerRows
-            caption="Same intention, two different bills."
-            rows={[
-              { left: "Market order — fills at", right: "82.45 EGP", tone: "down" },
-              { left: "Limit order at 82.00 — fills at", right: "82.00 EGP", tone: "up" },
-              { left: "Difference on 500 shares", right: "225 EGP", tone: "down" },
-              { left: "Limit order risk", right: "may never fill", tone: "muted" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption: "Same intention, two different bills.",
+          rows: [
+            {
+              left: "Market order — fills at",
+              right: "82.45 EGP",
+              tone: "down",
+            },
+            {
+              left: "Limit order at 82.00 — fills at",
+              right: "82.00 EGP",
+              tone: "up",
+            },
+            {
+              left: "Difference on 500 shares",
+              right: "225 EGP",
+              tone: "down",
+            },
+            {
+              left: "Limit order risk",
+              right: "may never fill",
+              tone: "muted",
+            },
+          ],
+        },
       },
       {
         title: "Bid & Ask",
@@ -201,17 +173,25 @@ export const CURRICULUM: Module[] = [
           "Look for stocks with tight spreads (bid and ask are close together). High-volume EGX30 stocks like COMI and TMGH typically have tighter spreads than smaller stocks.",
         example:
           "Bid 81.90 / ask 82.10 is a 0.24% spread — buy and immediately sell and you are down 100 EGP on 500 shares. On a thin NILEX name the spread can be 3%, so you start 1,200 EGP behind.",
-        visual: (
-          <LedgerRows
-            caption="You buy at the ask and sell at the bid. The gap is the toll."
-            rows={[
-              { left: "Liquid EGX30 name — spread", right: "0.24%", tone: "up" },
-              { left: "Cost to buy then sell 41,000 EGP", right: "≈ 100 EGP", tone: "down" },
-              { left: "Thin NILEX name — spread", right: "3.0%", tone: "down" },
-              { left: "Same round trip costs", right: "≈ 1,230 EGP", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "You buy at the ask and sell at the bid. The gap is the toll.",
+          rows: [
+            { left: "Liquid EGX30 name — spread", right: "0.24%", tone: "up" },
+            {
+              left: "Cost to buy then sell 41,000 EGP",
+              right: "≈ 100 EGP",
+              tone: "down",
+            },
+            { left: "Thin NILEX name — spread", right: "3.0%", tone: "down" },
+            {
+              left: "Same round trip costs",
+              right: "≈ 1,230 EGP",
+              tone: "down",
+            },
+          ],
+        },
       },
       {
         title: "Market Capitalization",
@@ -222,17 +202,32 @@ export const CURRICULUM: Module[] = [
           "Market cap helps you understand if a company is large (blue-chip, more stable) or small (more volatile, more growth potential). EGX30 contains Egypt's largest companies by market cap.",
         howToUse:
           "Large-cap stocks (EGX30) are good for beginners — they're more liquid and less volatile. Start there before exploring smaller companies.",
-        visual: (
-          <BarCompare
-            unit=" bn EGP"
-            caption="Illustrative sizes. Bigger usually means steadier and easier to sell."
-            bars={[
-              { label: "Blue chip (EGX30)", value: 180, color: V.accent, note: "Most liquid, tightest spreads, least dramatic." },
-              { label: "Mid cap (EGX70)", value: 22, color: V.teal, note: "More room to grow, wider spreads." },
-              { label: "Small cap (NILEX)", value: 2, color: V.coral, note: "Can move 10% on one order. Size accordingly." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          unit: " bn EGP",
+          caption:
+            "Illustrative sizes. Bigger usually means steadier and easier to sell.",
+          bars: [
+            {
+              label: "Blue chip (EGX30)",
+              value: 180,
+              color: V.accent,
+              note: "Most liquid, tightest spreads, least dramatic.",
+            },
+            {
+              label: "Mid cap (EGX70)",
+              value: 22,
+              color: V.teal,
+              note: "More room to grow, wider spreads.",
+            },
+            {
+              label: "Small cap (NILEX)",
+              value: 2,
+              color: V.coral,
+              note: "Can move 10% on one order. Size accordingly.",
+            },
+          ],
+        },
       },
     ],
   },
@@ -253,18 +248,18 @@ export const CURRICULUM: Module[] = [
           "Understanding your local market's rules and behavior is essential before trading. EGX has its own quirks compared to international markets.",
         howToUse:
           "Use this app to explore all listed stocks via the dashboard. Filter by EGX30 (top 30 blue-chips), EGX70, EGX100, or NILEX (small companies).",
-        visual: (
-          <AllocationDonut
-            centerLabel="~293"
-            centerSub="listed"
-            caption="The indices are tiers of size and liquidity, not quality rankings."
-            slices={[
-              { label: "EGX30 blue chips", value: 30, color: V.accent },
-              { label: "EGX70 mid caps", value: 70, color: V.teal },
-              { label: "Everything else", value: 193, color: "#4a5568" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "AllocationDonut",
+          centerLabel: "~293",
+          centerSub: "listed",
+          caption:
+            "The indices are tiers of size and liquidity, not quality rankings.",
+          slices: [
+            { label: "EGX30 blue chips", value: 30, color: V.accent },
+            { label: "EGX70 mid caps", value: 70, color: V.teal },
+            { label: "Everything else", value: 193, color: "#4a5568" },
+          ],
+        },
       },
       {
         title: "Trading Hours",
@@ -275,17 +270,26 @@ export const CURRICULUM: Module[] = [
           "If you place orders outside these hours, they'll queue until the next session. The market is closed on Fridays and Saturdays.",
         howToUse:
           "Plan your trading around these hours. On Thndr, you can place orders before market open and they'll execute at 10:00 AM.",
-        visual: (
-          <StepFlow
-            accent={V.gold}
-            caption="Sunday to Thursday. Friday and Saturday the market is shut."
-            steps={[
-              { title: "09:30 — Pre-open", text: "Orders collect. Nothing trades yet; the opening price is being discovered." },
-              { title: "10:00 — Continuous trading", text: "Orders match in real time. This is the only window your market order fills." },
-              { title: "14:30 — Close", text: "Anything unfilled queues for the next session. Prices stop moving until Sunday." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "StepFlow",
+          accent: V.gold,
+          caption:
+            "Sunday to Thursday. Friday and Saturday the market is shut.",
+          steps: [
+            {
+              title: "09:30 — Pre-open",
+              text: "Orders collect. Nothing trades yet; the opening price is being discovered.",
+            },
+            {
+              title: "10:00 — Continuous trading",
+              text: "Orders match in real time. This is the only window your market order fills.",
+            },
+            {
+              title: "14:30 — Close",
+              text: "Anything unfilled queues for the next session. Prices stop moving until Sunday.",
+            },
+          ],
+        },
       },
       {
         title: "T+2 Settlement",
@@ -298,17 +302,26 @@ export const CURRICULUM: Module[] = [
           "Keep some cash available in your Thndr account for opportunities. Don't sell Stock A expecting to immediately buy Stock B — there's a 2-day wait.",
         example:
           "Sell 41,000 EGP of COMI on Sunday. The cash is usable on Tuesday. If the stock you wanted rallies 6% on Monday, that wait cost you 2,460 EGP of entry price.",
-        visual: (
-          <StepFlow
-            accent={V.gold}
-            caption="The gap is real money when you are switching between stocks."
-            steps={[
-              { title: "Sunday — you sell", text: "The trade executes. The shares leave your account immediately." },
-              { title: "Monday — settling", text: "The cash is not yours to spend yet. The market keeps moving without you." },
-              { title: "Tuesday — cash lands", text: "Now you can buy. Whatever you were switching into has moved two days." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "StepFlow",
+          accent: V.gold,
+          caption:
+            "The gap is real money when you are switching between stocks.",
+          steps: [
+            {
+              title: "Sunday — you sell",
+              text: "The trade executes. The shares leave your account immediately.",
+            },
+            {
+              title: "Monday — settling",
+              text: "The cash is not yours to spend yet. The market keeps moving without you.",
+            },
+            {
+              title: "Tuesday — cash lands",
+              text: "Now you can buy. Whatever you were switching into has moved two days.",
+            },
+          ],
+        },
       },
       {
         title: "EGX30 Index",
@@ -319,14 +332,14 @@ export const CURRICULUM: Module[] = [
           "EGX30 is the market's pulse. If EGX30 is up, the overall market sentiment is positive. Most professional money managers benchmark their performance against it.",
         howToUse:
           "Compare your portfolio's performance against EGX30 to see if you're beating the market. If not, you might be better off buying an EGX30 index fund.",
-        visual: (
-          <MiniChart
-            series={RISING}
-            priceColor={V.gold}
-            caption="The index is the tide. Most individual stocks move with it most of the time."
-            height={120}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: RISING,
+          priceColor: V.gold,
+          caption:
+            "The index is the tide. Most individual stocks move with it most of the time.",
+          height: 120,
+        },
       },
       {
         title: "Price Limits",
@@ -337,18 +350,18 @@ export const CURRICULUM: Module[] = [
           "This protects against extreme volatility and manipulation. But it also means that in a crisis, you might not be able to sell even at the limit-down price because there are no buyers.",
         howToUse:
           "If a stock hits its upper limit, don't chase it — it might gap down the next day. If it hits the lower limit, don't panic sell — wait for clarity.",
-        visual: (
-          <MiniChart
-            series={RANGE}
-            levels={[
-              { value: 110, color: V.down, label: "+10%" },
-              { value: 90, color: V.up, label: "−10%" },
-            ]}
-            caption="Trading halts at the rails. A halt is not a floor — it is a pause."
-            height={125}
-            labelPad={30}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: RANGE,
+          levels: [
+            { value: 110, color: V.down, label: "+10%" },
+            { value: 90, color: V.up, label: "−10%" },
+          ],
+          caption:
+            "Trading halts at the rails. A halt is not a floor — it is a pause.",
+          height: 125,
+          labelPad: 30,
+        },
       },
       {
         title: "The Role of the CBE",
@@ -359,17 +372,29 @@ export const CURRICULUM: Module[] = [
           "When CBE raises interest rates, savings accounts become more attractive and stocks may fall. When it devalues the EGP, export companies benefit but import-heavy companies suffer.",
         howToUse:
           "Follow CBE announcements. Rate hikes generally pressure stock prices down. Rate cuts can fuel stock market rallies as investors seek higher returns than savings accounts.",
-        visual: (
-          <LedgerRows
-            caption="One committee meeting reprices every stock on the exchange."
-            rows={[
-              { left: "CBE raises rates", right: "cash gets more attractive", tone: "down" },
-              { left: "→ effect on stocks", right: "pressure down", tone: "down" },
-              { left: "CBE cuts rates", right: "cash gets less attractive", tone: "up" },
-              { left: "→ effect on stocks", right: "support up", tone: "up" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "One committee meeting reprices every stock on the exchange.",
+          rows: [
+            {
+              left: "CBE raises rates",
+              right: "cash gets more attractive",
+              tone: "down",
+            },
+            {
+              left: "→ effect on stocks",
+              right: "pressure down",
+              tone: "down",
+            },
+            {
+              left: "CBE cuts rates",
+              right: "cash gets less attractive",
+              tone: "up",
+            },
+            { left: "→ effect on stocks", right: "support up", tone: "up" },
+          ],
+        },
       },
     ],
   },
@@ -391,28 +416,27 @@ export const CURRICULUM: Module[] = [
           "Smooths out day-to-day noise to reveal the underlying trend. When price crosses above its SMA, it's a bullish signal. When it crosses below, bearish.",
         howToUse:
           "On the stock detail page, toggle SMA overlays on the price chart. If the 20-day SMA crosses above the 50-day SMA ('Golden Cross'), many traders see it as a strong buy signal.",
-        visual: (
-          <LiveChart
-            variant="trend"
-            caption="COMI's real price against its 50- and 200-day averages."
-            fallback={
-              <MiniChart
-                series={CROSSING}
-                lines={[
-                  { values: smaOf(CROSSING, 20), color: V.accent, width: 1.4 },
-                  { values: smaOf(CROSSING, 50), color: V.gold, width: 1.4 },
-                ]}
-                legend={[
-                  { color: V.inkBright, label: "price" },
-                  { color: V.accent, label: "SMA 20" },
-                  { color: V.gold, label: "SMA 50" },
-                ]}
-                caption="The averages lag on purpose — that lag is what filters the noise."
-                height={145}
-              />
-            }
-          />
-        ),
+        visual: {
+          kind: "LiveChart",
+          variant: "trend",
+          caption: "COMI's real price against its 50- and 200-day averages.",
+          fallback: {
+            kind: "MiniChart",
+            series: CROSSING,
+            lines: [
+              { values: smaOf(CROSSING, 20), color: V.accent, width: 1.4 },
+              { values: smaOf(CROSSING, 50), color: V.gold, width: 1.4 },
+            ],
+            legend: [
+              { color: V.inkBright, label: "price" },
+              { color: V.accent, label: "SMA 20" },
+              { color: V.gold, label: "SMA 50" },
+            ],
+            caption:
+              "The averages lag on purpose — that lag is what filters the noise.",
+            height: 145,
+          },
+        },
       },
       {
         id: "trendlines",
@@ -424,30 +448,35 @@ export const CURRICULUM: Module[] = [
           "It is the oldest tool on a chart, and it only stays honest if it is drawn FROM the pivots rather than through them. The app fits a line through the last three pivots, shifts it so it rests on them, and draws it only when they line up in one direction and price has respected the line since the first — otherwise it draws nothing, because no line beats a wrong line.",
         howToUse:
           "Toggle Trendlines on the stock chart. Price riding a rising support line is the trend holding; a close well through it is the trend being questioned. A pivot needs 20 bars after it to count, so the newest anchor is always about a month old — the line describes what has held, not what will.",
-        visual: (
-          <MiniChart
-            series={TRENDING}
-            lines={[
-              { values: TREND_SUPPORT, color: V.up, width: 1.4, dash: "6 3" },
-              { values: TREND_RESISTANCE, color: V.down, width: 1.4, dash: "6 3" },
-            ]}
-            markers={[
-              { index: 18, color: V.up },
-              { index: 36, color: V.up },
-              { index: 54, color: V.up, label: "higher lows", place: "below" },
-              { index: 9, color: V.down },
-              { index: 27, color: V.down },
-              { index: 45, color: V.down, label: "higher highs", place: "above" },
-            ]}
-            legend={[
-              { color: V.inkBright, label: "price" },
-              { color: V.up, label: "support trendline", dash: true },
-              { color: V.down, label: "resistance trendline", dash: true },
-            ]}
-            caption="The line rests on the pivots, never runs through them. The dots are the three it was drawn from."
-            height={150}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: TRENDING,
+          lines: [
+            { values: TREND_SUPPORT, color: V.up, width: 1.4, dash: "6 3" },
+            {
+              values: TREND_RESISTANCE,
+              color: V.down,
+              width: 1.4,
+              dash: "6 3",
+            },
+          ],
+          markers: [
+            { index: 18, color: V.up },
+            { index: 36, color: V.up },
+            { index: 54, color: V.up, label: "higher lows", place: "below" },
+            { index: 9, color: V.down },
+            { index: 27, color: V.down },
+            { index: 45, color: V.down, label: "higher highs", place: "above" },
+          ],
+          legend: [
+            { color: V.inkBright, label: "price" },
+            { color: V.up, label: "support trendline", dash: true },
+            { color: V.down, label: "resistance trendline", dash: true },
+          ],
+          caption:
+            "The line rests on the pivots, never runs through them. The dots are the three it was drawn from.",
+          height: 150,
+        },
       },
       {
         title: "EMA — Exponential Moving Average",
@@ -458,21 +487,21 @@ export const CURRICULUM: Module[] = [
           "Because it reacts faster than SMA, EMA is better for short-term trading. The MACD indicator is built from EMAs.",
         howToUse:
           "Compare EMA 12 and EMA 26 on the chart. When EMA 12 crosses above EMA 26, momentum is turning bullish. This is essentially what MACD measures.",
-        visual: (
-          <MiniChart
-            series={CROSSING}
-            lines={[
-              { values: smaOf(CROSSING, 12), color: V.teal, width: 1.6 },
-              { values: smaOf(CROSSING, 26), color: V.violet, width: 1.6 },
-            ]}
-            legend={[
-              { color: V.teal, label: "fast (12)" },
-              { color: V.violet, label: "slow (26)" },
-            ]}
-            caption="The fast line turns first. When it crosses the slow one, momentum has changed hands."
-            height={145}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: CROSSING,
+          lines: [
+            { values: smaOf(CROSSING, 12), color: V.teal, width: 1.6 },
+            { values: smaOf(CROSSING, 26), color: V.violet, width: 1.6 },
+          ],
+          legend: [
+            { color: V.teal, label: "fast (12)" },
+            { color: V.violet, label: "slow (26)" },
+          ],
+          caption:
+            "The fast line turns first. When it crosses the slow one, momentum has changed hands.",
+          height: 145,
+        },
       },
       {
         id: "rsi",
@@ -484,27 +513,31 @@ export const CURRICULUM: Module[] = [
           "RSI > 70 means the stock might be overbought (price rose too fast, may pull back). RSI < 30 means it might be oversold (dropped too much, may bounce). It helps you avoid buying at peaks.",
         howToUse:
           "Check the RSI panel on the stock detail page. Don't buy when RSI is above 70. Consider buying when RSI drops below 30 — but only if the company's fundamentals are solid. RSI alone isn't enough.",
-        visual: (
-          <Stack>
-            <RsiPlayground />
-            <LiveChart
-              variant="rsi"
-              fallback={
-                <MiniChart
-                  series={DIV_RSI}
-                  priceColor={V.gold}
-                  levels={[
-                    { value: 70, color: V.down, label: "70" },
-                    { value: 30, color: V.up, label: "30" },
-                  ]}
-                  caption="RSI spends most of its life in the middle, saying nothing."
-                  height={125}
-                  labelPad={20}
-                />
-              }
-            />
-          </Stack>
-        ),
+        visual: {
+          kind: "Stack",
+          children: [
+            {
+              kind: "RsiPlayground",
+            },
+            {
+              kind: "LiveChart",
+              variant: "rsi",
+              fallback: {
+                kind: "MiniChart",
+                series: DIV_RSI,
+                priceColor: V.gold,
+                levels: [
+                  { value: 70, color: V.down, label: "70" },
+                  { value: 30, color: V.up, label: "30" },
+                ],
+                caption:
+                  "RSI spends most of its life in the middle, saying nothing.",
+                height: 125,
+                labelPad: 20,
+              },
+            },
+          ],
+        },
       },
       {
         title: "MACD — Moving Average Convergence Divergence",
@@ -515,19 +548,21 @@ export const CURRICULUM: Module[] = [
           "MACD is one of the most popular trend-following indicators. It shows both the direction and strength of momentum.",
         howToUse:
           "Watch for crossovers: MACD crossing above Signal = bullish, below = bearish. The histogram shows momentum strength — growing bars mean the trend is strengthening.",
-        visual: (
-          <MiniChart
-            series={smaOf(CROSSING, 12).map((v, i) => {
-              const s = smaOf(CROSSING, 26)[i];
-              return v !== null && s !== null ? Math.round((v - s) * 100) / 100 : 0;
-            })}
-            levels={[{ value: 0, color: V.axis, label: "0", dash: "2 4" }]}
-            priceColor={V.teal}
-            caption="MACD is just the gap between the fast and slow averages. Above zero, the fast one is winning."
-            height={120}
-            labelPad={16}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: smaOf(CROSSING, 12).map((v, i) => {
+            const s = smaOf(CROSSING, 26)[i];
+            return v !== null && s !== null
+              ? Math.round((v - s) * 100) / 100
+              : 0;
+          }),
+          levels: [{ value: 0, color: V.axis, label: "0", dash: "2 4" }],
+          priceColor: V.teal,
+          caption:
+            "MACD is just the gap between the fast and slow averages. Above zero, the fast one is winning.",
+          height: 120,
+          labelPad: 16,
+        },
       },
       {
         title: "Bollinger Bands",
@@ -538,24 +573,23 @@ export const CURRICULUM: Module[] = [
           "When bands squeeze together (low volatility), a big price move is coming — you just don't know which direction. When price touches the upper band, it may be overextended.",
         howToUse:
           "Toggle Bollinger Bands on the price chart. Look for 'squeezes' (bands narrowing) as a signal that a breakout is imminent. Combine with RSI to determine direction.",
-        visual: (
-          <LiveChart
-            variant="bollinger"
-            fallback={
-              <MiniChart
-                series={CHOPPY}
-                band={bandsFrom(CHOPPY, 5)}
-                fill={false}
-                legend={[
-                  { color: V.inkBright, label: "price" },
-                  { color: V.violet, label: "±2σ band" },
-                ]}
-                caption="The band is where the price normally lives. The edges are unusual, not forbidden."
-                height={145}
-              />
-            }
-          />
-        ),
+        visual: {
+          kind: "LiveChart",
+          variant: "bollinger",
+          fallback: {
+            kind: "MiniChart",
+            series: CHOPPY,
+            band: bandsFrom(CHOPPY, 5),
+            fill: false,
+            legend: [
+              { color: V.inkBright, label: "price" },
+              { color: V.violet, label: "±2σ band" },
+            ],
+            caption:
+              "The band is where the price normally lives. The edges are unusual, not forbidden.",
+            height: 145,
+          },
+        },
       },
       {
         title: "Volume",
@@ -566,19 +600,19 @@ export const CURRICULUM: Module[] = [
           "Volume confirms trends. A price rise on high volume is more trustworthy than one on low volume. Low volume moves can easily reverse.",
         howToUse:
           "The volume chart below the price chart shows daily trading volume. Green bars = price went up that day, red = price went down. Look for volume spikes as confirmation of breakouts.",
-        visual: (
-          <LiveChart
-            variant="volume"
-            fallback={
-              <MiniChart
-                series={walk(60, 77, { start: 100, drift: 0, vol: 22 }).map((v) => Math.abs(v))}
-                priceColor={V.teal}
-                caption="Spikes are the days something actually happened."
-                height={105}
-              />
-            }
-          />
-        ),
+        visual: {
+          kind: "LiveChart",
+          variant: "volume",
+          fallback: {
+            kind: "MiniChart",
+            series: walk(60, 77, { start: 100, drift: 0, vol: 22 }).map((v) =>
+              Math.abs(v),
+            ),
+            priceColor: V.teal,
+            caption: "Spikes are the days something actually happened.",
+            height: 105,
+          },
+        },
       },
     ],
   },
@@ -602,27 +636,26 @@ export const CURRICULUM: Module[] = [
           "The Key Levels card on the stock detail page shows the nearest support and resistance prices with their distance from current price. The 'strength' number shows how many times the level was tested — tested 5 times is stronger than tested twice. Set your stop-loss just below a strong support level.",
         example:
           "Support at 98 tested 4 times is a floor buyers have defended. Support at 98 touched once is a coincidence. The app labels the difference: 'Tested 4x' versus 'Touched once — weak level'.",
-        visual: (
-          <LiveChart
-            variant="levels"
-            fallback={
-              <MiniChart
-                series={RANGE}
-                levels={[
-                  { value: 108, color: V.down, label: "resist" },
-                  { value: 92, color: V.up, label: "support" },
-                ]}
-                legend={[
-                  { color: V.up, label: "support", dash: true },
-                  { color: V.down, label: "resistance", dash: true },
-                ]}
-                caption="Levels are memory: prices where enough people previously changed their mind."
-                height={145}
-                labelPad={40}
-              />
-            }
-          />
-        ),
+        visual: {
+          kind: "LiveChart",
+          variant: "levels",
+          fallback: {
+            kind: "MiniChart",
+            series: RANGE,
+            levels: [
+              { value: 108, color: V.down, label: "resist" },
+              { value: 92, color: V.up, label: "support" },
+            ],
+            legend: [
+              { color: V.up, label: "support", dash: true },
+              { color: V.down, label: "resistance", dash: true },
+            ],
+            caption:
+              "Levels are memory: prices where enough people previously changed their mind.",
+            height: 145,
+            labelPad: 40,
+          },
+        },
       },
       {
         id: "entry_exit_zones",
@@ -634,20 +667,20 @@ export const CURRICULUM: Module[] = [
           "Support/resistance levels alone can mislead — a stock can sit at support and keep dropping. Combining the level with a momentum filter (RSI not overbought for entries, RSI overbought for exits) filters out weaker setups. The result is fewer but higher-quality decisions, which is exactly what a beginner needs. Low confidence = a hint to watch; high confidence = a setup worth acting on. Note the zones use tighter RSI cutoffs than the classic 30/70 lines drawn on the RSI chart: an entry is vetoed once RSI reaches 65, and an exit can trigger from 65 upward. So a zone can fire without the RSI panel showing a crossed line — that is deliberate, not a mismatch.",
         howToUse:
           "Look at the Entry / Exit Zones card on the stock detail page, and the zone pills on the portfolio holdings table. When an entry zone is active, it shows the buy price band and a suggested stop-loss (1.5× ATR below support). When an exit zone is active, it shows the trim band. Pair this with the 6-step decision framework below — always check the macro and composite score first, never enter a zone blindly, and set your stop-loss before you buy.",
-        visual: (
-          <MiniChart
-            series={RANGE}
-            levels={[
-              { value: 108, color: V.down, label: "resist" },
-              { value: 92, color: V.up, label: "support" },
-              { value: 96.6, color: V.up, label: "entry", dash: "1 3" },
-              { value: 104.8, color: V.down, label: "exit", dash: "1 3" },
-            ]}
-            caption="Entry sits just above support; exit just below resistance. Momentum decides whether either one opens."
-            height={150}
-            labelPad={38}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: RANGE,
+          levels: [
+            { value: 108, color: V.down, label: "resist" },
+            { value: 92, color: V.up, label: "support" },
+            { value: 96.6, color: V.up, label: "entry", dash: "1 3" },
+            { value: 104.8, color: V.down, label: "exit", dash: "1 3" },
+          ],
+          caption:
+            "Entry sits just above support; exit just below resistance. Momentum decides whether either one opens.",
+          height: 150,
+          labelPad: 38,
+        },
       },
       {
         id: "golden_death_cross",
@@ -659,22 +692,22 @@ export const CURRICULUM: Module[] = [
           "These are among the most widely-watched signals in technical analysis. A Golden Cross often precedes sustained uptrends. A Death Cross suggests the downtrend may continue. Institutional investors use these as buy/sell triggers.",
         howToUse:
           "Look for the Golden/Death Cross badge on the stock detail page. When a Golden Cross occurs, it's a potential entry point. When a Death Cross occurs, consider tightening stop-losses. These signals work best on daily charts with the 50/200 SMA combination.",
-        visual: (
-          <MiniChart
-            series={CROSSING}
-            lines={[
-              { values: smaOf(CROSSING, 20), color: V.accent, width: 1.5 },
-              { values: smaOf(CROSSING, 50), color: V.gold, width: 1.5 },
-            ]}
-            markers={[{ index: 62, color: V.up, label: "cross" }]}
-            legend={[
-              { color: V.accent, label: "fast avg" },
-              { color: V.gold, label: "slow avg" },
-            ]}
-            caption="The cross confirms a trend that already started. It is late by design — that is why it is reliable."
-            height={148}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: CROSSING,
+          lines: [
+            { values: smaOf(CROSSING, 20), color: V.accent, width: 1.5 },
+            { values: smaOf(CROSSING, 50), color: V.gold, width: 1.5 },
+          ],
+          markers: [{ index: 62, color: V.up, label: "cross" }],
+          legend: [
+            { color: V.accent, label: "fast avg" },
+            { color: V.gold, label: "slow avg" },
+          ],
+          caption:
+            "The cross confirms a trend that already started. It is late by design — that is why it is reliable.",
+          height: 148,
+        },
       },
       {
         id: "beta",
@@ -688,16 +721,31 @@ export const CURRICULUM: Module[] = [
           "Check the beta value on the stock detail page. If you want a calmer portfolio, pick low-beta stocks. If you believe the market is going up and want to amplify gains, pick high-beta stocks. Example: COMI (banking) often has beta > 1 because banks are sensitive to economic cycles.",
         example:
           "EGX30 falls 10%. A beta-1.5 stock falls about 15%; a beta-0.6 stock falls about 6%. Beta cuts both ways — the amplifier has no preference for direction.",
-        visual: (
-          <BarCompare
-            caption="Same market move, three different experiences. This is the downside case."
-            bars={[
-              { label: "EGX30 falls", value: -10, color: V.ink, note: "The market move everything else is measured against." },
-              { label: "Beta 1.5 stock", value: -15, color: V.down, note: "Amplifies the market. Wonderful upward, brutal downward." },
-              { label: "Beta 0.6 stock", value: -6, color: V.up, note: "Defensive. Lags rallies, cushions falls." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          caption:
+            "Same market move, three different experiences. This is the downside case.",
+          bars: [
+            {
+              label: "EGX30 falls",
+              value: -10,
+              color: V.ink,
+              note: "The market move everything else is measured against.",
+            },
+            {
+              label: "Beta 1.5 stock",
+              value: -15,
+              color: V.down,
+              note: "Amplifies the market. Wonderful upward, brutal downward.",
+            },
+            {
+              label: "Beta 0.6 stock",
+              value: -6,
+              color: V.up,
+              note: "Defensive. Lags rallies, cushions falls.",
+            },
+          ],
+        },
       },
       {
         title: "Fibonacci Retracement",
@@ -708,20 +756,20 @@ export const CURRICULUM: Module[] = [
           "The 61.8% level (the 'golden ratio') is considered the strongest retracement level. Many traders watch Fibonacci levels for entry points during pullbacks in an uptrend. Direction matters: in an uptrend the levels are measured DOWN from the recent high, and in a downtrend UP from the recent low, because a retracement always runs back toward where the move started.",
         howToUse:
           "Fibonacci levels appear as gold dashed lines on the price chart. In an uptrend, if the price pulls back to the 38.2% or 61.8% level and bounces, it's often a good entry point. If it falls below the 78.6% level, the uptrend may be over.",
-        visual: (
-          <MiniChart
-            series={BREAKOUT}
-            levels={[
-              { value: 118, color: V.gold, label: "23.6%" },
-              { value: 110, color: V.gold, label: "38.2%" },
-              { value: 103, color: V.gold, label: "50%" },
-              { value: 96, color: V.gold, label: "61.8%" },
-            ]}
-            caption="Retracement levels are measured back from the move, not projected forward from it."
-            height={155}
-            labelPad={34}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: BREAKOUT,
+          levels: [
+            { value: 118, color: V.gold, label: "23.6%" },
+            { value: 110, color: V.gold, label: "38.2%" },
+            { value: 103, color: V.gold, label: "50%" },
+            { value: 96, color: V.gold, label: "61.8%" },
+          ],
+          caption:
+            "Retracement levels are measured back from the move, not projected forward from it.",
+          height: 155,
+          labelPad: 34,
+        },
       },
       {
         id: "atr",
@@ -733,7 +781,9 @@ export const CURRICULUM: Module[] = [
           "ATR is essential for setting stop-losses. Setting a stop-loss within 1x ATR means you'll likely get stopped out by normal price noise. A stop-loss at 1.5-2x ATR gives the trade room to breathe.",
         howToUse:
           "Check the ATR value in the stats panel. This app places every suggested stop at 1.5x ATR below the nearest SUPPORT level — not below your entry price — so the number is the same whatever price you happened to pay, and it sits under the level buyers have defended before. Example: support is 98 EGP and ATR is 4 EGP, so the stop goes at 92 EGP (98 - 1.5 × 4). The Entry Zone and Max Buy Price cards both show this exact figure.",
-        visual: <StopLossCalculator />,
+        visual: {
+          kind: "StopLossCalculator",
+        },
       },
       {
         id: "obv",
@@ -745,22 +795,26 @@ export const CURRICULUM: Module[] = [
           "OBV confirms price trends. If price is rising AND OBV is rising, the uptrend is healthy (confirmed by volume). If price is rising but OBV is falling, the rally may be fake — not enough buyers to sustain it (divergence).",
         howToUse:
           "Check the OBV tab in the indicators panel. The most important signal is divergence: when OBV moves in the opposite direction of price. Bullish divergence (price falling, OBV rising) can signal a reversal is coming.",
-        visual: (
-          <Stack>
-            <MiniChart
-              series={BREAKOUT.slice(0, 55)}
-              caption="Price grinds higher…"
-              height={100}
-            />
-            <MiniChart
-              series={walk(55, 91, { start: 100, drift: -0.5, vol: 1.1 })}
-              priceColor={V.down}
-              caption="…while OBV drains. Nobody is actually buying this rally."
-              height={100}
-              fill={false}
-            />
-          </Stack>
-        ),
+        visual: {
+          kind: "Stack",
+          children: [
+            {
+              kind: "MiniChart",
+              series: BREAKOUT.slice(0, 55),
+              caption: "Price grinds higher…",
+              height: 100,
+            },
+            {
+              kind: "MiniChart",
+              series: walk(55, 91, { start: 100, drift: -0.5, vol: 1.1 }),
+              priceColor: V.down,
+              caption:
+                "…while OBV drains. Nobody is actually buying this rally.",
+              height: 100,
+              fill: false,
+            },
+          ],
+        },
       },
       {
         title: "Volume-Price Confirmation",
@@ -771,17 +825,33 @@ export const CURRICULUM: Module[] = [
           "Price moves mean very little without volume context. A 5% rally on normal volume is exciting; a 5% rally on 3x normal volume is a confirmation that major buyers are stepping in. Conversely, an unconfirmed rally is a warning that retail traders are chasing with no institutional support — it often reverses.",
         howToUse:
           "The Volume Trend field on portfolio holdings and the volume-price classification on the stock detail page tell you the current state. 'Accumulation' is particularly interesting — it often precedes a significant price increase as whatever entity was quietly accumulating begins to push the price up. 'Unconfirmed Up' is a yellow flag — consider waiting before buying into the rally.",
-        visual: (
-          <LedgerRows
-            caption="The same 5% move means four different things depending on who showed up."
-            rows={[
-              { left: "Price up, volume high", right: "Confirmed — trust it", tone: "up" },
-              { left: "Price up, volume low", right: "Unconfirmed — wait", tone: "down" },
-              { left: "Price flat, volume high", right: "Accumulation — watch", tone: "up" },
-              { left: "Price down, volume high", right: "Confirmed selling", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "The same 5% move means four different things depending on who showed up.",
+          rows: [
+            {
+              left: "Price up, volume high",
+              right: "Confirmed — trust it",
+              tone: "up",
+            },
+            {
+              left: "Price up, volume low",
+              right: "Unconfirmed — wait",
+              tone: "down",
+            },
+            {
+              left: "Price flat, volume high",
+              right: "Accumulation — watch",
+              tone: "up",
+            },
+            {
+              left: "Price down, volume high",
+              right: "Confirmed selling",
+              tone: "down",
+            },
+          ],
+        },
       },
       {
         id: "multi_timeframe",
@@ -793,23 +863,27 @@ export const CURRICULUM: Module[] = [
           "A stock that looks bullish on a daily chart may actually be in a downtrend on the weekly chart — you'd be buying a temporary bounce inside a larger decline. When daily and weekly trends align (both bullish or both bearish), the probability of success is significantly higher.",
         howToUse:
           "Look for the alignment badge on the stock detail page (e.g., 'Daily + Weekly aligned (bullish)'). When you see this, any buy signal from RSI, MACD, or ADX is more reliable. When you see 'Daily bullish vs Weekly bearish — mixed signals', be cautious: you may be trading against the larger trend. Reduce position size or wait for the weekly trend to turn.",
-        visual: (
-          <Stack>
-            <MiniChart
-              series={DIV_PRICE.slice(36)}
-              priceColor={V.up}
-              caption="Daily: looks like a recovery."
-              height={95}
-            />
-            <MiniChart
-              series={DIV_PRICE}
-              priceColor={V.down}
-              caption="Weekly: the same stock, still falling. You were buying a bounce inside a decline."
-              height={95}
-              fill={false}
-            />
-          </Stack>
-        ),
+        visual: {
+          kind: "Stack",
+          children: [
+            {
+              kind: "MiniChart",
+              series: DIV_PRICE.slice(36),
+              priceColor: V.up,
+              caption: "Daily: looks like a recovery.",
+              height: 95,
+            },
+            {
+              kind: "MiniChart",
+              series: DIV_PRICE,
+              priceColor: V.down,
+              caption:
+                "Weekly: the same stock, still falling. You were buying a bounce inside a decline.",
+              height: 95,
+              fill: false,
+            },
+          ],
+        },
       },
       {
         id: "which_interval",
@@ -821,17 +895,20 @@ export const CURRICULUM: Module[] = [
           "Seeing the score move when you tap Weekly is not an error, but it does mean you have to know which reading you are acting on. Traders lose money by checking a long timeframe, getting excited, and then entering on a short-term spike — or by panic-selling a daily dip inside a healthy multi-year uptrend.",
         howToUse:
           "Use DAILY as your primary view: it is the best-supported timeframe in this app and the one all entry zones, stop-losses and portfolio signals are built on. Use WEEKLY to check the bigger trend before you commit — if weekly is falling, be far more demanding of a daily buy signal. MONTHLY is context only: a 200-month average needs 16 years of history, so some score categories have less to work with there. The rule of thumb: the longer timeframe decides WHETHER to buy, the daily decides WHEN. When they disagree, respect the longer one and wait.",
-        visual: (
-          <LedgerRows
-            caption="Different questions, not different accuracies."
-            rows={[
-              { left: "Daily", right: "when to buy", tone: "up" },
-              { left: "Weekly", right: "whether to buy", tone: "up" },
-              { left: "Monthly", right: "context only", tone: "muted" },
-              { left: "When they disagree", right: "respect the longer one", tone: "muted" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption: "Different questions, not different accuracies.",
+          rows: [
+            { left: "Daily", right: "when to buy", tone: "up" },
+            { left: "Weekly", right: "whether to buy", tone: "up" },
+            { left: "Monthly", right: "context only", tone: "muted" },
+            {
+              left: "When they disagree",
+              right: "respect the longer one",
+              tone: "muted",
+            },
+          ],
+        },
       },
       {
         id: "stochastic",
@@ -843,18 +920,18 @@ export const CURRICULUM: Module[] = [
           "Like RSI, it identifies overbought (>80) and oversold (<20) conditions. The key signal is the crossover: when %K crosses above %D from below 20, it's a buy signal. When %K crosses below %D from above 80, it's a sell signal.",
         howToUse:
           "Check the Stochastic tab in the indicators panel. The strongest buy signals come when: (1) both lines are below 20, (2) %K crosses above %D, and (3) the price is near a support level. This triple confirmation gives higher-probability entries.",
-        visual: (
-          <ZoneScale
-            zones={[
-              { from: 0, to: 20, color: V.up, label: "oversold" },
-              { from: 20, to: 80, color: "#7f8ea3", label: "normal range" },
-              { from: 80, to: 100, color: V.down, label: "overbought" },
-            ]}
-            markers={[{ value: 14, label: "%K 14", color: V.up }]}
-            ticks={[0, 20, 50, 80, 100]}
-            caption="Below 20 with %K turning up, near support, is the setup worth waiting for."
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          zones: [
+            { from: 0, to: 20, color: V.up, label: "oversold" },
+            { from: 20, to: 80, color: "#7f8ea3", label: "normal range" },
+            { from: 80, to: 100, color: V.down, label: "overbought" },
+          ],
+          markers: [{ value: 14, label: "%K 14", color: V.up }],
+          ticks: [0, 20, 50, 80, 100],
+          caption:
+            "Below 20 with %K turning up, near support, is the setup worth waiting for.",
+        },
       },
       {
         id: "adx",
@@ -866,19 +943,19 @@ export const CURRICULUM: Module[] = [
           "Many traders buy breakouts only to get burned when the move fades quickly. ADX tells you if a trend has enough strength to sustain itself. High ADX means the current trend — up or down — is powerful and likely to continue.",
         howToUse:
           "Use ADX as a filter: only trade momentum signals (like RSI oversold or MACD crossover) when ADX is above 25. When DI+ is above DI-, buyers are dominant — look for long entries. When DI- is above DI+, sellers are in control — be cautious. Ignore signals when ADX is below 20; the market is just noise.",
-        visual: (
-          <ZoneScale
-            max={60}
-            ticks={[0, 20, 25, 40, 60]}
-            zones={[
-              { from: 0, to: 20, color: "#4a5568", label: "no trend" },
-              { from: 20, to: 25, color: V.gold, label: "forming" },
-              { from: 25, to: 60, color: V.up, label: "strong trend" },
-            ]}
-            markers={[{ value: 31, label: "ADX 31", color: V.up }]}
-            caption="ADX has no opinion on direction. It only says whether the current move has legs."
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          max: 60,
+          ticks: [0, 20, 25, 40, 60],
+          zones: [
+            { from: 0, to: 20, color: "#4a5568", label: "no trend" },
+            { from: 20, to: 25, color: V.gold, label: "forming" },
+            { from: 25, to: 60, color: V.up, label: "strong trend" },
+          ],
+          markers: [{ value: 31, label: "ADX 31", color: V.up }],
+          caption:
+            "ADX has no opinion on direction. It only says whether the current move has legs.",
+        },
       },
       {
         id: "mfi",
@@ -890,21 +967,21 @@ export const CURRICULUM: Module[] = [
           "MFI is harder to fake than RSI because it requires volume confirmation. A stock can briefly spike in price on low volume (RSI might look overbought), but MFI won't confirm unless real buying pressure (volume) backs the move.",
         howToUse:
           "Use MFI alongside RSI for higher-conviction signals. If both RSI and MFI are below 20 simultaneously, the oversold signal is very strong. MFI divergence is especially powerful: if price makes a new high but MFI makes a lower high, selling pressure is growing even though price looks strong — consider reducing your position.",
-        visual: (
-          <ZoneScale
-            zones={[
-              { from: 0, to: 20, color: V.up, label: "money leaving" },
-              { from: 20, to: 80, color: "#7f8ea3", label: "normal" },
-              { from: 80, to: 100, color: V.down, label: "money crowding in" },
-            ]}
-            markers={[
-              { value: 18, label: "MFI 18", color: V.up },
-              { value: 64, label: "RSI 64", color: V.gold },
-            ]}
-            ticks={[0, 20, 50, 80, 100]}
-            caption="When RSI and MFI disagree, believe the one that counts volume."
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          zones: [
+            { from: 0, to: 20, color: V.up, label: "money leaving" },
+            { from: 20, to: 80, color: "#7f8ea3", label: "normal" },
+            { from: 80, to: 100, color: V.down, label: "money crowding in" },
+          ],
+          markers: [
+            { value: 18, label: "MFI 18", color: V.up },
+            { value: 64, label: "RSI 64", color: V.gold },
+          ],
+          ticks: [0, 20, 50, 80, 100],
+          caption:
+            "When RSI and MFI disagree, believe the one that counts volume.",
+        },
       },
       {
         id: "divergence",
@@ -916,30 +993,39 @@ export const CURRICULUM: Module[] = [
           "Divergence is one of the most reliable early warning signs in technical analysis. It shows that the current trend is losing the fuel that was driving it, even before the price reverses. Institutional traders watch divergences carefully.",
         howToUse:
           "On the stock detail page, look for the divergence badges below the score card (e.g., 'RSI bullish divergence'). Bullish divergence after a significant drop is a high-probability setup, especially if RSI is below 30 when it occurs. Don't act on divergence alone — wait for price confirmation (a close above a recent swing high, for example).",
-        visual: (
-          <Stack>
-            <MiniChart
-              series={DIV_PRICE}
-              markers={[
+        visual: {
+          kind: "Stack",
+          children: [
+            {
+              kind: "MiniChart",
+              series: DIV_PRICE,
+              markers: [
                 { index: 19, color: V.down, label: "low", place: "below" },
-                { index: 53, color: V.down, label: "LOWER low", place: "below" },
-              ]}
-              caption="Price makes a lower low…"
-              height={110}
-            />
-            <MiniChart
-              series={DIV_RSI}
-              priceColor={V.gold}
-              fill={false}
-              markers={[
+                {
+                  index: 53,
+                  color: V.down,
+                  label: "LOWER low",
+                  place: "below",
+                },
+              ],
+              caption: "Price makes a lower low…",
+              height: 110,
+            },
+            {
+              kind: "MiniChart",
+              series: DIV_RSI,
+              priceColor: V.gold,
+              fill: false,
+              markers: [
                 { index: 19, color: V.up, label: "low" },
                 { index: 53, color: V.up, label: "HIGHER low" },
-              ]}
-              caption="…but RSI makes a higher one. The selling is running out of force."
-              height={110}
-            />
-          </Stack>
-        ),
+              ],
+              caption:
+                "…but RSI makes a higher one. The selling is running out of force.",
+              height: 110,
+            },
+          ],
+        },
       },
       {
         title: "Bollinger Squeeze",
@@ -950,16 +1036,16 @@ export const CURRICULUM: Module[] = [
           "Markets alternate between low-volatility (contraction) and high-volatility (expansion) phases. When the Bollinger Bands squeeze tightly, energy is building for a breakout. The squeeze itself doesn't tell you which direction, but it tells you a big move is imminent.",
         howToUse:
           "Watch for the 'Bollinger squeeze — breakout likely' badge on the stock detail page. When you see it, check ADX (is a trend forming?), RSI (momentum direction?), and MACD (crossing?). These indicators help determine which direction the breakout is likely to go. Enter only when the price actually breaks out of the squeeze zone, not before.",
-        visual: (
-          <MiniChart
-            series={SQUEEZE}
-            band={bandsFrom(SQUEEZE, 3)}
-            fill={false}
-            shades={[{ from: 34, to: 52, color: V.gold, label: "squeeze" }]}
-            caption="The quiet stretch is the setup. The squeeze says a move is coming, never which way."
-            height={150}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: SQUEEZE,
+          band: bandsFrom(SQUEEZE, 3),
+          fill: false,
+          shades: [{ from: 34, to: 52, color: V.gold, label: "squeeze" }],
+          caption:
+            "The quiet stretch is the setup. The squeeze says a move is coming, never which way.",
+          height: 150,
+        },
       },
     ],
   },
@@ -981,28 +1067,32 @@ export const CURRICULUM: Module[] = [
           "Looking at 20+ indicators individually and reaching a coherent conclusion is hard, especially for new investors. The composite does that blending for you and shows its working — every category expands to the exact reasons behind its number. Its value is that it summarises a stock's condition quickly and honestly, not that it tells you what happens next.",
         howToUse:
           "Find it on every stock detail page (the circular gauge at the top), on portfolio holding rows, and averaged across your portfolio. Use it to ORIENT, not to decide: tap into the categories and read the reasons, which are checkable statements about the stock today. Treat the number itself as a starting point for research, never as the research.",
-        visual: (
-          <Stack>
-            <ScoreBandExplorer />
-            <LiveChart
-              variant="score"
-              fallback={
-                <ZoneScale
-                  zones={[
-                    { from: 0, to: 20, color: V.down, label: "Very Weak" },
-                    { from: 20, to: 40, color: V.coral, label: "Weak" },
-                    { from: 40, to: 60, color: "#7f8ea3", label: "Neutral" },
-                    { from: 60, to: 80, color: V.up, label: "Strong" },
-                    { from: 80, to: 100, color: V.up, label: "Very Strong" },
-                  ]}
-                  markers={[{ value: 64, label: "64" }]}
-                  ticks={[0, 20, 40, 60, 80, 100]}
-                  caption="The bands describe condition. They are not instructions."
-                />
-              }
-            />
-          </Stack>
-        ),
+        visual: {
+          kind: "Stack",
+          children: [
+            {
+              kind: "ScoreBandExplorer",
+            },
+            {
+              kind: "LiveChart",
+              variant: "score",
+              fallback: {
+                kind: "ZoneScale",
+                zones: [
+                  { from: 0, to: 20, color: V.down, label: "Very Weak" },
+                  { from: 20, to: 40, color: V.coral, label: "Weak" },
+                  { from: 40, to: 60, color: "#7f8ea3", label: "Neutral" },
+                  { from: 60, to: 80, color: V.up, label: "Strong" },
+                  { from: 80, to: 100, color: V.up, label: "Very Strong" },
+                ],
+                markers: [{ value: 64, label: "64" }],
+                ticks: [0, 20, 40, 60, 80, 100],
+                caption:
+                  "The bands describe condition. They are not instructions.",
+              },
+            },
+          ],
+        },
       },
       {
         id: "score_limits",
@@ -1014,16 +1104,26 @@ export const CURRICULUM: Module[] = [
           "This is the single most important thing to understand about the number. The individual facts behind it are correct — the moving averages, the volume, the 52-week range, the dividend are all computed properly and verified. What has no evidence behind it is the idea that blending them into one number tells you which stock will outperform. Among liquid stocks the lowest-scoring names slightly OUTPERFORMED the highest-scoring ones, which is why the labels describe condition and no longer say Buy or Sell.",
         howToUse:
           "Never size a position off the score. Use it to shortlist and to spot what is going on with a stock quickly, then make the decision on things the score does not contain: why the price moved, whether earnings are real and recurring, where your stop goes, and how much you can afford to lose. If you want one rule: a low score is NOT a reason to sell, because historically those stocks bounced about as often as the high scorers.",
-        visual: (
-          <BarCompare
-            caption="Median 21-day return by score decile, 2007–2026, ~37,000 observations. This is the real result."
-            bars={[
-              { label: "Lowest-scoring 10%", value: 0.0, color: "#7f8ea3" },
-              { label: "Middle deciles (8 of them)", value: 0.0, color: "#7f8ea3", note: "Every one of them: exactly 0.00%." },
-              { label: "Highest-scoring 10%", value: -0.1, color: V.down, note: "The most negative median of all ten buckets." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          caption:
+            "Median 21-day return by score decile, 2007–2026, ~37,000 observations. This is the real result.",
+          bars: [
+            { label: "Lowest-scoring 10%", value: 0.0, color: "#7f8ea3" },
+            {
+              label: "Middle deciles (8 of them)",
+              value: 0.0,
+              color: "#7f8ea3",
+              note: "Every one of them: exactly 0.00%.",
+            },
+            {
+              label: "Highest-scoring 10%",
+              value: -0.1,
+              color: V.down,
+              note: "The most negative median of all ten buckets.",
+            },
+          ],
+        },
       },
       {
         id: "market_condition",
@@ -1035,65 +1135,121 @@ export const CURRICULUM: Module[] = [
           "The per-stock score cannot rank one stock above another. But the market-wide AVERAGE of those same scores does carry information about the market itself: measured over 221 monthly readings from 2007 to 2026, it had a rank correlation of +0.32 with the EGX30's next three months, across 74 independent periods. Cross-sectional ranking and market-level condition are different questions, and the score answers the second one far better than the first.",
         howToUse:
           "Read it as a caution signal rather than a green light. When the reading has been in the bottom third (below 45), the next three months averaged roughly nothing and were positive only about half the time. Above that, they were positive around seven times in ten — but the middle and top bands are not meaningfully different from each other, so treat it as weak-versus-not rather than a dial. Use it to decide whether to deploy cash now or wait, never to pick which stock to buy. And note the base rate: the EGX rose a lot over this window in EGP terms, so 'weak' means flat, not falling.",
-        visual: (
-          <BarCompare
-            caption="Median EGX30 return over the following three months, by band. 221 readings, 2007–2026."
-            bars={[
-              { label: "Weak — reading below 45.1", value: -0.1, color: V.down, note: "Positive only 49% of the time. Flat, not falling." },
-              { label: "Mixed — 45.1 to 51.5", value: 5.5, color: V.up, note: "Positive 68% of the time." },
-              { label: "Broad — 51.5 and above", value: 6.7, color: V.up, note: "Positive 70% of the time — not meaningfully better than Mixed." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          caption:
+            "Median EGX30 return over the following three months, by band. 221 readings, 2007–2026.",
+          bars: [
+            {
+              label: "Weak — reading below 45.1",
+              value: -0.1,
+              color: V.down,
+              note: "Positive only 49% of the time. Flat, not falling.",
+            },
+            {
+              label: "Mixed — 45.1 to 51.5",
+              value: 5.5,
+              color: V.up,
+              note: "Positive 68% of the time.",
+            },
+            {
+              label: "Broad — 51.5 and above",
+              value: 6.7,
+              color: V.up,
+              note: "Positive 70% of the time — not meaningfully better than Mixed.",
+            },
+          ],
+        },
       },
       {
         title: "The Eight Score Categories",
         level: "core",
-        definition:
-          `Trend: price vs SMAs, ADX, golden/death cross. Momentum: RSI, MACD, Stochastic. Volume: OBV, MFI, volume-price confirmation, and tradeable liquidity. Volatility: Bollinger Bands position and squeeze. Divergence: RSI/MACD divergence vs price. Quality: trend consistency + multi-timeframe alignment + distance from the 52-week high + P/E and dividend yield vs the EGX median. Risk-Adjusted: annualized return vs the ${T_BILL_RATE_PCT}% policy rate + ATR context. Relative Strength: alpha vs the EGX30 over 30 days.`,
+        definition: `Trend: price vs SMAs, ADX, golden/death cross. Momentum: RSI, MACD, Stochastic. Volume: OBV, MFI, volume-price confirmation, and tradeable liquidity. Volatility: Bollinger Bands position and squeeze. Divergence: RSI/MACD divergence vs price. Quality: trend consistency + multi-timeframe alignment + distance from the 52-week high + P/E and dividend yield vs the EGX median. Risk-Adjusted: annualized return vs the ${T_BILL_RATE_PCT}% policy rate + ATR context. Relative Strength: alpha vs the EGX30 over 30 days.`,
         whyItMatters:
           "The three newer categories — Quality, Risk-Adjusted, and Relative Strength — address the three most expensive beginner mistakes: (1) chasing choppy stocks whose trends flip weekly, (2) holding stocks that underperform cash, and (3) holding market laggards. Each category captures a different dimension; the score is only as confident as the agreement across them.",
         howToUse:
           "Tap any category bar in the Score Breakdown to expand its reasons list — plain-language explanations of exactly what's contributing positively or negatively. A stock scoring 70 with all 8 categories contributing is much stronger than a 70 where only 2 categories scored high. Watch for 'N/A' categories on freshly-listed stocks — Risk-Adjusted requires at least 120 days of history.",
-        visual: (
-          <AllocationDonut
-            centerLabel="100"
-            centerSub="weights"
-            caption="The 'Beginner Safe' default. You can reweight any of these in the app."
-            slices={[
-              { label: "Trend", value: DEFAULT_WEIGHTS.trend, color: V.accent },
-              { label: "Momentum", value: DEFAULT_WEIGHTS.momentum, color: V.teal },
-              { label: "Risk-Adjusted", value: DEFAULT_WEIGHTS.risk_adjusted, color: V.violet },
-              { label: "Volume", value: DEFAULT_WEIGHTS.volume, color: V.gold },
-              { label: "Quality", value: DEFAULT_WEIGHTS.quality, color: V.coral },
-              { label: "Relative Strength", value: DEFAULT_WEIGHTS.relative_strength, color: "#5aa9e6" },
-              { label: "Volatility", value: DEFAULT_WEIGHTS.volatility, color: "#8b7fd4" },
-              { label: "Divergence", value: DEFAULT_WEIGHTS.divergence, color: "#4a5568" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "AllocationDonut",
+          centerLabel: "100",
+          centerSub: "weights",
+          caption:
+            "The 'Beginner Safe' default. You can reweight any of these in the app.",
+          slices: [
+            { label: "Trend", value: DEFAULT_WEIGHTS.trend, color: V.accent },
+            {
+              label: "Momentum",
+              value: DEFAULT_WEIGHTS.momentum,
+              color: V.teal,
+            },
+            {
+              label: "Risk-Adjusted",
+              value: DEFAULT_WEIGHTS.risk_adjusted,
+              color: V.violet,
+            },
+            { label: "Volume", value: DEFAULT_WEIGHTS.volume, color: V.gold },
+            {
+              label: "Quality",
+              value: DEFAULT_WEIGHTS.quality,
+              color: V.coral,
+            },
+            {
+              label: "Relative Strength",
+              value: DEFAULT_WEIGHTS.relative_strength,
+              color: "#5aa9e6",
+            },
+            {
+              label: "Volatility",
+              value: DEFAULT_WEIGHTS.volatility,
+              color: "#8b7fd4",
+            },
+            {
+              label: "Divergence",
+              value: DEFAULT_WEIGHTS.divergence,
+              color: "#4a5568",
+            },
+          ],
+        },
       },
       {
         id: "risk_adjusted_return",
         title: "Risk-Adjusted Return — Beating the T-Bill",
         level: "core",
-        definition:
-          `This category compares a stock's annualized return to the Egyptian policy rate (~${T_BILL_RATE_PCT}%). A stock returning 12% annualized is losing you money vs holding risk-free cash. The category also penalises extreme volatility and wide ATR relative to price, both of which eat into real returns.`,
+        definition: `This category compares a stock's annualized return to the Egyptian policy rate (~${T_BILL_RATE_PCT}%). A stock returning 12% annualized is losing you money vs holding risk-free cash. The category also penalises extreme volatility and wide ATR relative to price, both of which eat into real returns.`,
         whyItMatters:
           "Egypt's T-bill rate is the HIGHEST risk-free rate of any major market. In the US, stocks returning 10% easily beat a 4% T-bill. In Egypt, a 20% stock return is actually a LOSS vs cash. Without this category, the composite would happily give 'Buy' signals to mediocre performers that aren't worth the risk.",
         howToUse:
           "If Risk-Adjusted is red on a stock you own, seriously ask whether the thesis still justifies the risk over T-bills. If it's green, the stock is pulling its weight. Beginner tip: the 'Income / Defensive' preset weights this category heavily — great if your first priority is protecting capital.",
-        visual: (
-          <BarCompare
-            caption="In Egypt the bar is unusually high. A rising stock can still be a losing decision."
-            baseline={{ value: T_BILL_RATE_PCT, label: `Cash hurdle — ${T_BILL_RATE_PCT}%, zero risk`, color: V.violet }}
-            bars={[
-              { label: "Stock returning 34%", value: 34, color: V.up, note: "Clears the hurdle. It is paying for its risk." },
-              { label: "Stock returning 20%", value: 20, color: V.down, note: "Up on the year — and still behind cash." },
-              { label: "Stock returning 8%", value: 8, color: V.down, note: "A 'gain' that cost you 17 points of risk-free return." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          caption:
+            "In Egypt the bar is unusually high. A rising stock can still be a losing decision.",
+          baseline: {
+            value: T_BILL_RATE_PCT,
+            label: `Cash hurdle — ${T_BILL_RATE_PCT}%, zero risk`,
+            color: V.violet,
+          },
+          bars: [
+            {
+              label: "Stock returning 34%",
+              value: 34,
+              color: V.up,
+              note: "Clears the hurdle. It is paying for its risk.",
+            },
+            {
+              label: "Stock returning 20%",
+              value: 20,
+              color: V.down,
+              note: "Up on the year — and still behind cash.",
+            },
+            {
+              label: "Stock returning 8%",
+              value: 8,
+              color: V.down,
+              note: "A 'gain' that cost you 17 points of risk-free return.",
+            },
+          ],
+        },
       },
       {
         id: "relative_strength",
@@ -1105,17 +1261,35 @@ export const CURRICULUM: Module[] = [
           "In any market, roughly half the stocks underperform the index. A huge class of beginner losses comes from buying laggards that 'look cheap'. If you can't beat EGX30, you should own EGX30 (via an index fund) instead of individual picks.",
         howToUse:
           "Before buying any stock, check Relative Strength. If it's a laggard, you need a very specific thesis (e.g., a turnaround catalyst) to justify the purchase. For existing holdings, persistent laggards are candidates for replacement — consider switching to a leader in the same sector.",
-        visual: (
-          <BarCompare
-            caption="30-day return against the index. The gap is alpha."
-            baseline={{ value: 6, label: "EGX30 over the same 30 days", color: V.ink }}
-            bars={[
-              { label: "Leader — alpha +7%", value: 13, color: V.up, note: "Beating the market. Leaders tend to keep leading." },
-              { label: "Tracking the market", value: 6, color: "#7f8ea3", note: "You are taking single-stock risk for index returns." },
-              { label: "Laggard — alpha −11%", value: -5, color: V.down, note: "'Cheap' usually means money has been leaving." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          caption: "30-day return against the index. The gap is alpha.",
+          baseline: {
+            value: 6,
+            label: "EGX30 over the same 30 days",
+            color: V.ink,
+          },
+          bars: [
+            {
+              label: "Leader — alpha +7%",
+              value: 13,
+              color: V.up,
+              note: "Beating the market. Leaders tend to keep leading.",
+            },
+            {
+              label: "Tracking the market",
+              value: 6,
+              color: "#7f8ea3",
+              note: "You are taking single-stock risk for index returns.",
+            },
+            {
+              label: "Laggard — alpha −11%",
+              value: -5,
+              color: V.down,
+              note: "'Cheap' usually means money has been leaving.",
+            },
+          ],
+        },
       },
       {
         id: "quality",
@@ -1127,23 +1301,28 @@ export const CURRICULUM: Module[] = [
           "Choppy stocks are where over-trading losses come from. A stock flipping between +3% and -3% daily will generate constant buy/sell signals and drain you in transaction costs and emotional stress. Clean trends are 'investable'; choppy stocks are traps for beginners.",
         howToUse:
           "If Quality is red but Trend is green, you're looking at a stock that recently turned — but its history is messy. Wait for a few weeks of clean trending before committing capital. The Quality category is heavily weighted in the default 'Beginner Safe' preset for exactly this reason.",
-        visual: (
-          <Stack>
-            <MiniChart
-              series={RISING}
-              priceColor={V.up}
-              caption="Investable: the trend holds, so one decision covers months."
-              height={100}
-            />
-            <MiniChart
-              series={CHOPPY}
-              priceColor={V.down}
-              fill={false}
-              caption="A trap: same net move, but it fires a signal every week and bleeds you on costs and nerves."
-              height={100}
-            />
-          </Stack>
-        ),
+        visual: {
+          kind: "Stack",
+          children: [
+            {
+              kind: "MiniChart",
+              series: RISING,
+              priceColor: V.up,
+              caption:
+                "Investable: the trend holds, so one decision covers months.",
+              height: 100,
+            },
+            {
+              kind: "MiniChart",
+              series: CHOPPY,
+              priceColor: V.down,
+              fill: false,
+              caption:
+                "A trap: same net move, but it fires a signal every week and bleeds you on costs and nerves.",
+              height: 100,
+            },
+          ],
+        },
       },
       {
         title: "Macro Modulation",
@@ -1154,17 +1333,17 @@ export const CURRICULUM: Module[] = [
           "The #1 piece of market wisdom: 'Don't fight the tape.' Individual stocks rise and fall with the broader market ~70% of the time. A technically perfect stock in a bear market still tends to fall. Macro modulation prevents the composite from confidently signalling 'Buy' into a falling market.",
         howToUse:
           "In a bearish EGX30 regime, demand higher scores before buying — the bar rises. Conversely, scores below 30 are amplified (fall faster), giving more conviction on exits. Watch the macro adjustment on the Score Breakdown card: a -8 adjustment means the raw technicals were actually 8 points higher; the market is pulling them down.",
-        visual: (
-          <LedgerRows
-            caption="Same stock, same technicals. Only the market around it changed."
-            rows={[
-              { left: "Raw technical score", right: "72" },
-              { left: "EGX30 bullish", right: "72 — unchanged", tone: "muted" },
-              { left: "EGX30 sideways", right: "72 — unchanged", tone: "muted" },
-              { left: "EGX30 bearish", right: "68 (−4)", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "Same stock, same technicals. Only the market around it changed.",
+          rows: [
+            { left: "Raw technical score", right: "72" },
+            { left: "EGX30 bullish", right: "72 — unchanged", tone: "muted" },
+            { left: "EGX30 sideways", right: "72 — unchanged", tone: "muted" },
+            { left: "EGX30 bearish", right: "68 (−4)", tone: "down" },
+          ],
+        },
       },
       {
         title: "Customizing Weights — Presets",
@@ -1175,18 +1354,21 @@ export const CURRICULUM: Module[] = [
           "Different goals need different blends. A first-time investor should use 'Beginner Safe' — it won't tell you to buy choppy, cash-underperforming stocks. A seasoned trader looking for reversals wants 'Reversal Hunter'. An investor trying to beat T-bills uses 'Income / Defensive'.",
         howToUse:
           "Start with 'Beginner Safe'. After a month, if you find the signals too conservative (missing momentum moves), try 'Trend Follower'. If T-bills feel more attractive than your picks, try 'Income / Defensive'. Weights are saved and immediately recalculate all scores across the app.",
-        visual: (
-          <LedgerRows
-            caption="Pick the one that matches what you are actually trying to do."
-            rows={[
-              { left: "Beginner Safe (default)", right: "quality + cash-beating" },
-              { left: "Balanced", right: "even across all eight" },
-              { left: "Trend Follower", right: "trend + leadership" },
-              { left: "Reversal Hunter", right: "divergence + momentum" },
-              { left: "Income / Defensive", right: "protect capital first" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "Pick the one that matches what you are actually trying to do.",
+          rows: [
+            {
+              left: "Beginner Safe (default)",
+              right: "quality + cash-beating",
+            },
+            { left: "Balanced", right: "even across all eight" },
+            { left: "Trend Follower", right: "trend + leadership" },
+            { left: "Reversal Hunter", right: "divergence + momentum" },
+            { left: "Income / Defensive", right: "protect capital first" },
+          ],
+        },
       },
       {
         title: "Composite Score Limitations",
@@ -1197,17 +1379,32 @@ export const CURRICULUM: Module[] = [
           "No single number can capture everything. A score of 85 (Strong Buy) means the technical + macro setup is favourable — not that you're guaranteed to profit. The score has no knowledge of upcoming earnings, regulatory changes, or war headlines that could override any technical signal instantly.",
         howToUse:
           "Use the score as one input in a broader decision process: (1) Is the technical score ≥ 60? (2) Are fundamentals reasonable? (3) Is the macro environment supportive? (4) Is position sizing appropriate? All four boxes should ideally be checked before taking a position. See 'How to Take a Decision' below for the step-by-step framework.",
-        visual: (
-          <LedgerRows
-            caption="Know what is inside the number and what is not."
-            rows={[
-              { left: "Price, volume, volatility", right: "in the score", tone: "up" },
-              { left: "P/E and dividend yield", right: "in the score", tone: "up" },
-              { left: "Earnings quality, debt, management", right: "not in it", tone: "down" },
-              { left: "News, regulation, politics", right: "not in it", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption: "Know what is inside the number and what is not.",
+          rows: [
+            {
+              left: "Price, volume, volatility",
+              right: "in the score",
+              tone: "up",
+            },
+            {
+              left: "P/E and dividend yield",
+              right: "in the score",
+              tone: "up",
+            },
+            {
+              left: "Earnings quality, debt, management",
+              right: "not in it",
+              tone: "down",
+            },
+            {
+              left: "News, regulation, politics",
+              right: "not in it",
+              tone: "down",
+            },
+          ],
+        },
       },
     ],
   },
@@ -1218,20 +1415,35 @@ export const CURRICULUM: Module[] = [
     title: "Taking a Decision",
     goal: "Six checks, in order, before any money moves.",
     hue: V.up,
-    overview: (
-      <StepFlow
-        accent={V.up}
-        caption="This order is not arbitrary — each step can stop the trade before you spend effort on the next."
-        steps={[
-          { title: "Check the macro", text: "In a bearish market, raise your bar from 60 to 70." },
-          { title: "Read the breakdown", text: "The category reasons are facts. The blended number is not a forecast." },
-          { title: "Does it beat cash?", text: `Below ~${T_BILL_RATE_PCT}% annualized, cash was the better trade.` },
-          { title: "Leader or laggard?", text: "Buying a laggard needs a specific reason, not a low price." },
-          { title: "Set the stop first", text: "Before you buy. After you buy, hope takes over." },
-          { title: "Size it at 5–10%", text: "2–3% for thin or NILEX names." },
-        ]}
-      />
-    ),
+    overview: {
+      kind: "StepFlow",
+      accent: V.up,
+      caption:
+        "This order is not arbitrary — each step can stop the trade before you spend effort on the next.",
+      steps: [
+        {
+          title: "Check the macro",
+          text: "In a bearish market, raise your bar from 60 to 70.",
+        },
+        {
+          title: "Read the breakdown",
+          text: "The category reasons are facts. The blended number is not a forecast.",
+        },
+        {
+          title: "Does it beat cash?",
+          text: `Below ~${T_BILL_RATE_PCT}% annualized, cash was the better trade.`,
+        },
+        {
+          title: "Leader or laggard?",
+          text: "Buying a laggard needs a specific reason, not a low price.",
+        },
+        {
+          title: "Set the stop first",
+          text: "Before you buy. After you buy, hope takes over.",
+        },
+        { title: "Size it at 5–10%", text: "2–3% for thin or NILEX names." },
+      ],
+    },
     concepts: [
       {
         id: "decision_step_macro",
@@ -1243,20 +1455,20 @@ export const CURRICULUM: Module[] = [
           "Individual stocks rise and fall with the market most of the time. Buying anything in a strong bear market — even a technically perfect stock — has a poor expected outcome. The composite score's macro adjustment already bakes this in, but you should understand it consciously too.",
         howToUse:
           "If EGX30 is bearish, raise your bar. Instead of buying at Composite ≥ 60, wait for ≥ 70. In a sideways market, tighten position sizes. In a bullish macro, you can be more aggressive.",
-        visual: (
-          <ZoneScale
-            zones={[
-              { from: 30, to: 45.1, color: V.down, label: "weak" },
-              { from: 45.1, to: 51.5, color: V.gold, label: "mixed" },
-              { from: 51.5, to: 70, color: V.up, label: "broad" },
-            ]}
-            min={30}
-            max={70}
-            ticks={[30, 45, 51.5, 70]}
-            markers={[{ value: 48, label: "today", color: V.gold }]}
-            caption="The market-condition bands from the dashboard. Below 45.1 is the one that has historically mattered."
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          zones: [
+            { from: 30, to: 45.1, color: V.down, label: "weak" },
+            { from: 45.1, to: 51.5, color: V.gold, label: "mixed" },
+            { from: 51.5, to: 70, color: V.up, label: "broad" },
+          ],
+          min: 30,
+          max: 70,
+          ticks: [30, 45, 51.5, 70],
+          markers: [{ value: 48, label: "today", color: V.gold }],
+          caption:
+            "The market-condition bands from the dashboard. Below 45.1 is the one that has historically mattered.",
+        },
       },
       {
         id: "decision_step_score",
@@ -1268,30 +1480,39 @@ export const CURRICULUM: Module[] = [
           "Backtesting found the score itself does not predict which stock outperforms (see “What the score cannot do”). The reasons behind it are a different matter: “price above SMA200”, “thin liquidity — hard to exit”, “24% below its 52-week high”, “P/E 6.8, cheap versus the EGX median” are all verified facts. Use the facts, not the average of them.",
         howToUse:
           "Use the score to orient: a high one usually means an established uptrend, a low one usually means a stock that has been falling. Neither is a verdict. Critically, a LOW score is not a sell signal — historically the lowest-scoring EGX stocks bounced about as often as the highest-scoring ones. If the categories disagree with each other, that is genuine information: it means the picture is mixed and you should be slower, not faster.",
-        visual: (
-          <LedgerRows
-            caption="A real breakdown. Every line is checkable; the average of them is not a forecast."
-            rows={[
-              { left: "Price above SMA 200", right: "fact", tone: "up" },
-              { left: "P/E 6.8 vs EGX median 12.4", right: "fact", tone: "up" },
-              { left: "24% below its 52-week high", right: "fact", tone: "down" },
-              { left: "Thin liquidity — hard to exit", right: "fact", tone: "down" },
-              { left: "Blended into a score of 61", right: "not a forecast", tone: "muted" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "A real breakdown. Every line is checkable; the average of them is not a forecast.",
+          rows: [
+            { left: "Price above SMA 200", right: "fact", tone: "up" },
+            { left: "P/E 6.8 vs EGX median 12.4", right: "fact", tone: "up" },
+            { left: "24% below its 52-week high", right: "fact", tone: "down" },
+            {
+              left: "Thin liquidity — hard to exit",
+              right: "fact",
+              tone: "down",
+            },
+            {
+              left: "Blended into a score of 61",
+              right: "not a forecast",
+              tone: "muted",
+            },
+          ],
+        },
       },
       {
         id: "decision_step_risk",
         title: "Step 3 — Does It Beat T-Bills?",
         level: "start",
-        definition:
-          `Look at the Risk-Adjusted category specifically. Is the annualized return comfortably above the ~${T_BILL_RATE_PCT}% policy rate? The reasons list will tell you the exact numbers.`,
+        definition: `Look at the Risk-Adjusted category specifically. Is the annualized return comfortably above the ~${T_BILL_RATE_PCT}% policy rate? The reasons list will tell you the exact numbers.`,
         whyItMatters:
           "Egypt's risk-free rate is unusually high. A stock returning 22% annualized is LOSING real money vs cash. This single filter eliminates a huge class of low-quality opportunities.",
         howToUse:
           "If Risk-Adjusted is red or missing (insufficient history), be very sceptical. The stock either underperforms cash or we can't tell. For beginners, the 'Income / Defensive' preset makes this the dominant factor — consider switching to it.",
-        visual: <TBillRace />,
+        visual: {
+          kind: "TBillRace",
+        },
       },
       {
         id: "decision_step_leader",
@@ -1303,18 +1524,25 @@ export const CURRICULUM: Module[] = [
           "Leaders tend to keep leading, laggards tend to keep lagging. Buying a laggard because 'it looks cheap' is a classic beginner trap — it's cheap for a reason, usually because institutional money has been leaving.",
         howToUse:
           "If the stock is a laggard, you need a very specific catalyst (e.g., upcoming earnings, new contract) to justify buying. Otherwise, find a leader in the same sector. If Relative Strength is green, proceed.",
-        visual: (
-          <MiniChart
-            series={RISING}
-            lines={[{ values: walk(70, 55, { start: 62, drift: 0.16, vol: 0.9 }), color: V.ink, width: 1.4, dash: "4 3" }]}
-            legend={[
-              { color: V.inkBright, label: "the stock" },
-              { color: V.ink, label: "EGX30", dash: true },
-            ]}
-            caption="A leader pulls away from the index and keeps pulling. That persistence is the whole signal."
-            height={140}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: RISING,
+          lines: [
+            {
+              values: walk(70, 55, { start: 62, drift: 0.16, vol: 0.9 }),
+              color: V.ink,
+              width: 1.4,
+              dash: "4 3",
+            },
+          ],
+          legend: [
+            { color: V.inkBright, label: "the stock" },
+            { color: V.ink, label: "EGX30", dash: true },
+          ],
+          caption:
+            "A leader pulls away from the index and keeps pulling. That persistence is the whole signal.",
+          height: 140,
+        },
       },
       {
         id: "decision_step_stop",
@@ -1328,18 +1556,18 @@ export const CURRICULUM: Module[] = [
           "Example: buying at 100 EGP, ATR is 3 EGP → stop-loss at 94-95 EGP (about 5% below). Accept that you may get stopped out by normal volatility; that's fine. A stopped-out small loss is much better than a no-stop catastrophic loss.",
         example:
           "Support 98, ATR 4 → the stop goes at 92, not at a round number you picked. Buy at 104 and you are risking 12 EGP per share. On 500 shares that is a 6,000 EGP maximum loss, decided before you clicked buy.",
-        visual: (
-          <MiniChart
-            series={RANGE}
-            levels={[
-              { value: 92, color: V.up, label: "support" },
-              { value: 86, color: V.down, label: "stop" },
-            ]}
-            caption="The stop sits below the level buyers defended — not below the price you happened to pay."
-            height={140}
-            labelPad={38}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: RANGE,
+          levels: [
+            { value: 92, color: V.up, label: "support" },
+            { value: 86, color: V.down, label: "stop" },
+          ],
+          caption:
+            "The stop sits below the level buyers defended — not below the price you happened to pay.",
+          height: 140,
+          labelPad: 38,
+        },
       },
       {
         id: "decision_step_size",
@@ -1351,7 +1579,9 @@ export const CURRICULUM: Module[] = [
           "A 50% drop on a stock that's 20% of your portfolio is a 10% portfolio hit. A 50% drop on a stock that's 5% of your portfolio is a 2.5% hit — survivable, recoverable. Position sizing is the single biggest determinant of long-term survival.",
         howToUse:
           "Divide your portfolio into ~10 slots. Each stock gets one slot. If a position grows to 15%+ due to gains, consider trimming it back to 10%. Diversification is boring but it's the closest thing to a free lunch in investing.",
-        visual: <PositionSizer />,
+        visual: {
+          kind: "PositionSizer",
+        },
       },
     ],
   },
@@ -1405,17 +1635,21 @@ export const CURRICULUM: Module[] = [
           "Without a stop-loss, a small loss can become a catastrophic one. The #1 rule of investing: protect your capital. You can always buy back, but you can't invest money you've lost.",
         howToUse:
           "When adding a stock to your portfolio in this app, set a stop-loss. A common rule: set it at 7-10% below your buy price. Review it regularly.",
-        visual: (
-          <LedgerRows
-            caption="The arithmetic of recovery is not symmetric. This is why the first rule is not to lose."
-            rows={[
-              { left: "Lose 10% — to get back you need", right: "+11%", tone: "up" },
-              { left: "Lose 25% — you need", right: "+33%", tone: "up" },
-              { left: "Lose 50% — you need", right: "+100%", tone: "down" },
-              { left: "Lose 80% — you need", right: "+400%", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "The arithmetic of recovery is not symmetric. This is why the first rule is not to lose.",
+          rows: [
+            {
+              left: "Lose 10% — to get back you need",
+              right: "+11%",
+              tone: "up",
+            },
+            { left: "Lose 25% — you need", right: "+33%", tone: "up" },
+            { left: "Lose 50% — you need", right: "+100%", tone: "down" },
+            { left: "Lose 80% — you need", right: "+400%", tone: "down" },
+          ],
+        },
       },
       {
         title: "Position Sizing",
@@ -1426,20 +1660,20 @@ export const CURRICULUM: Module[] = [
           "Never put all your money in one stock. If that stock drops 50%, you lose 50% of everything. But if it's only 10% of your portfolio, you only lose 5% overall.",
         howToUse:
           "The portfolio page shows your stock concentration. Keep any single position below 20-25% of your total portfolio. The diversification score penalizes concentration.",
-        visual: (
-          <AllocationDonut
-            centerLabel="10"
-            centerSub="slots"
-            caption="Ten slots, one stock each. Boring, and the closest thing to a free lunch there is."
-            slices={[
-              { label: "Banking", value: 20, color: V.accent },
-              { label: "Real estate", value: 20, color: V.teal },
-              { label: "Industrials", value: 20, color: V.gold },
-              { label: "Consumer", value: 20, color: V.coral },
-              { label: "Telecom / other", value: 20, color: V.violet },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "AllocationDonut",
+          centerLabel: "10",
+          centerSub: "slots",
+          caption:
+            "Ten slots, one stock each. Boring, and the closest thing to a free lunch there is.",
+          slices: [
+            { label: "Banking", value: 20, color: V.accent },
+            { label: "Real estate", value: 20, color: V.teal },
+            { label: "Industrials", value: 20, color: V.gold },
+            { label: "Consumer", value: 20, color: V.coral },
+            { label: "Telecom / other", value: 20, color: V.violet },
+          ],
+        },
       },
       {
         title: "Diversification",
@@ -1452,18 +1686,18 @@ export const CURRICULUM: Module[] = [
           "The portfolio page shows sector allocation. Aim for exposure across 3-5 sectors. The diversification score on your portfolio page helps you track this.",
         example:
           "Three banks is not three positions — it is one bet on Egyptian banking, made three times. When the CBE moves, all three move together.",
-        visual: (
-          <CorrelationGrid
-            labels={["BNK1", "BNK2", "BNK3", "IND"]}
-            matrix={[
-              [1.0, 0.86, 0.81, 0.22],
-              [0.86, 1.0, 0.84, 0.19],
-              [0.81, 0.84, 1.0, 0.25],
-              [0.22, 0.19, 0.25, 1.0],
-            ]}
-            caption="Three banks move together (red). Only the industrial name is genuinely adding diversification."
-          />
-        ),
+        visual: {
+          kind: "CorrelationGrid",
+          labels: ["BNK1", "BNK2", "BNK3", "IND"],
+          matrix: [
+            [1.0, 0.86, 0.81, 0.22],
+            [0.86, 1.0, 0.84, 0.19],
+            [0.81, 0.84, 1.0, 0.25],
+            [0.22, 0.19, 0.25, 1.0],
+          ],
+          caption:
+            "Three banks move together (red). Only the industrial name is genuinely adding diversification.",
+        },
       },
       {
         title: "Max Drawdown",
@@ -1474,18 +1708,18 @@ export const CURRICULUM: Module[] = [
           "Shows the worst-case scenario. Even if a stock has great returns overall, a -40% drawdown means at some point you'd have watched 40% of your investment disappear. Can you stomach that?",
         howToUse:
           "Check max drawdown on the Compare page when evaluating stocks. Compare it to your risk tolerance. If you'd panic at a 20% loss, avoid stocks with max drawdowns worse than -20%.",
-        visual: (
-          <MiniChart
-            series={DRAWDOWN}
-            markers={[
-              { index: 27, color: V.up, label: "peak" },
-              { index: 50, color: V.down, label: "trough", place: "below" },
-            ]}
-            shades={[{ from: 27, to: 50, color: V.down }]}
-            caption="The shaded stretch is what you would have had to sit through. Returns are earned there."
-            height={145}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: DRAWDOWN,
+          markers: [
+            { index: 27, color: V.up, label: "peak" },
+            { index: 50, color: V.down, label: "trough", place: "below" },
+          ],
+          shades: [{ from: 27, to: 50, color: V.down }],
+          caption:
+            "The shaded stretch is what you would have had to sit through. Returns are earned there.",
+          height: 145,
+        },
       },
       {
         id: "liquidity",
@@ -1499,29 +1733,44 @@ export const CURRICULUM: Module[] = [
           "Thin volume now lowers the Volume part of the composite score, and the comparison is index-aware — a NILEX stock isn't expected to trade like COMI. Normal liquidity earns no bonus; only genuinely untradeable stocks are marked down. If you see a thin-volume warning, keep position size tiny (≤ 2% of portfolio) and use limit orders only. If it says there was no trading on most recent sessions, treat the quoted price as fiction. Prefer EGX30/EGX70 names for core positions.",
         example:
           "One EGX stock has been frozen at 12.54 with zero volume since January 2022 — yet a single old block trade leaves it averaging ~99,000 shares a day. The average says 'fine'. The dead sessions say 'you cannot sell this'.",
-        visual: (
-          <BarCompare
-            unit=" k shares/day"
-            caption="Index-aware: a NILEX name is not expected to trade like COMI. Only untradeable is penalised."
-            bars={[
-              { label: "EGX30 blue chip", value: 4200, color: V.up, note: "You can exit in a panic. That is what you're paying for." },
-              { label: "EGX70 mid cap", value: 380, color: V.teal, note: "Fine for a normal position, use limit orders." },
-              { label: "Suspended name — 'average'", value: 99, color: V.down, note: "Zero volume since 2022. The average is one old block trade." },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "BarCompare",
+          unit: " k shares/day",
+          caption:
+            "Index-aware: a NILEX name is not expected to trade like COMI. Only untradeable is penalised.",
+          bars: [
+            {
+              label: "EGX30 blue chip",
+              value: 4200,
+              color: V.up,
+              note: "You can exit in a panic. That is what you're paying for.",
+            },
+            {
+              label: "EGX70 mid cap",
+              value: 380,
+              color: V.teal,
+              note: "Fine for a normal position, use limit orders.",
+            },
+            {
+              label: "Suspended name — 'average'",
+              value: 99,
+              color: V.down,
+              note: "Zero volume since 2022. The average is one old block trade.",
+            },
+          ],
+        },
       },
       {
         id: "cash_underperformer",
         title: "The Cash Underperformer Trap",
         level: "core",
-        definition:
-          `A 'cash underperformer' is a stock you've held for 90+ days whose annualized return is below the policy rate (~${T_BILL_RATE_PCT}%). You're literally earning less than risk-free cash — while taking stock-market risk.`,
-        whyItMatters:
-          `This is THE #1 invisible loss in Egyptian retail portfolios. A stock that gained 10% in a year feels like a win, but if T-bills paid ${T_BILL_RATE_PCT}%, you're ${T_BILL_RATE_PCT - 10}% behind where you could have been with zero risk. Over years, this compounds into life-changing differences.`,
+        definition: `A 'cash underperformer' is a stock you've held for 90+ days whose annualized return is below the policy rate (~${T_BILL_RATE_PCT}%). You're literally earning less than risk-free cash — while taking stock-market risk.`,
+        whyItMatters: `This is THE #1 invisible loss in Egyptian retail portfolios. A stock that gained 10% in a year feels like a win, but if T-bills paid ${T_BILL_RATE_PCT}%, you're ${T_BILL_RATE_PCT - 10}% behind where you could have been with zero risk. Over years, this compounds into life-changing differences.`,
         howToUse:
           "The portfolio page flags cash underperformers with a warning signal. When you see one: (1) does the thesis still hold for the next 90 days? (2) is there a specific catalyst coming? If no on both, seriously consider selling and moving the capital to T-bills until a better opportunity presents itself.",
-        visual: <TBillRace />,
+        visual: {
+          kind: "TBillRace",
+        },
       },
       {
         id: "max_buy_price",
@@ -1533,16 +1782,16 @@ export const CURRICULUM: Module[] = [
           "The old card derived its reward from the nearest resistance ABOVE the price. But a stock in a strong uptrend making new highs has no resistance above it — so the reward came out as zero or negative and the card told you to wait. The stronger the breakout, the more certainly it said 'wait for a pullback', including on stocks the composite score rated Buy. On a sample of real EGX stocks it said wait on 7 of 8 and never once said it was OK to buy. A rule that rejects every stock is not a safety rail, it is noise — and it contradicted the rest of the app.",
         howToUse:
           "Use the Entry Zone card instead: it activates when price is genuinely near a tested support AND momentum is not overbought, and it gives you a buy band plus the stop-loss to set. For the 'am I chasing?' question, look at the Key Levels card — if the nearest support is far below the current price, your stop has to be far away too, which means either a smaller position or waiting for a better level. And judge the trade itself on the composite score and its Risk-Adjusted category rather than on any single price threshold.",
-        visual: (
-          <MiniChart
-            series={BREAKOUT}
-            levels={[{ value: 96, color: V.ink, label: "old resist" }]}
-            markers={[{ index: 66, color: V.up, label: "no resistance above" }]}
-            caption="Nothing overhead. The old card read that as 'no reward' and told you to wait — on the strongest setups it could see."
-            height={150}
-            labelPad={44}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: BREAKOUT,
+          levels: [{ value: 96, color: V.ink, label: "old resist" }],
+          markers: [{ index: 66, color: V.up, label: "no resistance above" }],
+          caption:
+            "Nothing overhead. The old card read that as 'no reward' and told you to wait — on the strongest setups it could see.",
+          height: 150,
+          labelPad: 44,
+        },
       },
       {
         id: "realized_gains",
@@ -1552,19 +1801,34 @@ export const CURRICULUM: Module[] = [
           "An unrealized gain is profit on paper: your stock is up but you still own it, so the number moves every day and can vanish. A realized gain is profit you have banked by selling. It cannot go back down.",
         whyItMatters:
           "Beginners often judge themselves on paper gains, which flatter in a rising market and punish in a falling one. Your realized record is the honest scoreboard: it is what actually happened. But size alone is misleading — a 10% gain earned in a month and a 10% gain earned over three years are completely different results.",
-        howToUse:
-          `Check the Winnings card after each sale. Look at the annualized return next to each closed trade, not just the EGP figure. With T-bills near ${T_BILL_RATE_PCT}%, a small gain held for years actually lost to risk-free cash — that is a lesson about position sizing and patience, not a reason to trade more often. Trades held under 30 days show no annualized figure, because annualizing a few days of return produces meaningless numbers.`,
-        visual: (
-          <LedgerRows
-            caption="Two 'wins' of identical size. Only one of them beat leaving the money alone."
-            rows={[
-              { left: "+10% earned in 2 months", right: "≈ 77% annualized", tone: "up" },
-              { left: `Beat the ${T_BILL_RATE_PCT}% cash rate?`, right: "yes", tone: "up" },
-              { left: "+10% earned over 3 years", right: "≈ 3% annualized", tone: "down" },
-              { left: `Beat the ${T_BILL_RATE_PCT}% cash rate?`, right: "no — badly", tone: "down" },
-            ]}
-          />
-        ),
+        howToUse: `Check the Winnings card after each sale. Look at the annualized return next to each closed trade, not just the EGP figure. With T-bills near ${T_BILL_RATE_PCT}%, a small gain held for years actually lost to risk-free cash — that is a lesson about position sizing and patience, not a reason to trade more often. Trades held under 30 days show no annualized figure, because annualizing a few days of return produces meaningless numbers.`,
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "Two 'wins' of identical size. Only one of them beat leaving the money alone.",
+          rows: [
+            {
+              left: "+10% earned in 2 months",
+              right: "≈ 77% annualized",
+              tone: "up",
+            },
+            {
+              left: `Beat the ${T_BILL_RATE_PCT}% cash rate?`,
+              right: "yes",
+              tone: "up",
+            },
+            {
+              left: "+10% earned over 3 years",
+              right: "≈ 3% annualized",
+              tone: "down",
+            },
+            {
+              left: `Beat the ${T_BILL_RATE_PCT}% cash rate?`,
+              right: "no — badly",
+              tone: "down",
+            },
+          ],
+        },
       },
       {
         id: "dividends",
@@ -1572,23 +1836,21 @@ export const CURRICULUM: Module[] = [
         level: "core",
         definition:
           "A dividend is cash a company pays you out of its profits, just for holding the shares — no selling involved. On the EGX it is announced per share, and what reaches your account is already after the 5-10% dividend tax.",
-        whyItMatters:
-          `With Egyptian T-bills near ${T_BILL_RATE_PCT}%, no EGX dividend yield competes as income — even a strong 8% loses to simply leaving the money in T-bills. What a dividend IS good evidence of is that the company generates real cash rather than accounting profit. Judge it that way, not as an income stream.`,
+        whyItMatters: `With Egyptian T-bills near ${T_BILL_RATE_PCT}%, no EGX dividend yield competes as income — even a strong 8% loses to simply leaving the money in T-bills. What a dividend IS good evidence of is that the company generates real cash rather than accounting profit. Judge it that way, not as an income stream.`,
         howToUse:
           "Record what actually landed in your account, not the announced gross. The app adds it to your realized winnings and shows it against the stock that paid it, so a bank holding that is flat on price but pays steadily does not read as dead money. A dividend worth more than about 15% of the share price is usually a special payout or a collapsed price — not income quality.",
         example:
           "500 shares, 4.00 EGP declared per share = 2,000 EGP gross. After 10% withholding, 1,800 EGP lands. Record 1,800 — the app never computes the tax for you.",
-        visual: (
-          <LedgerRows
-            caption="Record what landed, never the announced figure."
-            rows={[
-              { left: "Declared per share", right: "4.00 EGP" },
-              { left: "× 500 shares", right: "2,000 EGP" },
-              { left: "Withholding tax (10%)", right: "−200 EGP", tone: "down" },
-              { left: "What you record", right: "1,800 EGP", tone: "up" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption: "Record what landed, never the announced figure.",
+          rows: [
+            { left: "Declared per share", right: "4.00 EGP" },
+            { left: "× 500 shares", right: "2,000 EGP" },
+            { left: "Withholding tax (10%)", right: "−200 EGP", tone: "down" },
+            { left: "What you record", right: "1,800 EGP", tone: "up" },
+          ],
+        },
       },
       {
         id: "dividend_dates",
@@ -1602,17 +1864,16 @@ export const CURRICULUM: Module[] = [
           "The stock page shows each company's dividend history and the month it usually pays; the dashboard's Dividends calendar lists every payer's most recent coupon. Use them to know when a coupon is coming so you can record it — not to trade around the date, which the price drop cancels out. One caveat the app repeats everywhere: the EGX publishes no forward calendar, so any 'expected next' date is an estimate from last year, not a schedule.",
         example:
           "CIB (COMI) went ex-dividend on 7 Apr 2026 for a 6.00 EGP coupon and paid it on 9 Apr. To receive it you had to own COMI by the close of 6 Apr (end-of-right). Buy on 7 Apr and the 6.00 — and the ~6.00 price drop — both belonged to the seller.",
-        visual: (
-          <LedgerRows
-            caption="EGX dividend timeline — COMI, April 2026."
-            rows={[
-              { left: "End of right (last day to buy in)", right: "6 Apr" },
-              { left: "Ex-date (price drops ~coupon)", right: "7 Apr" },
-              { left: "Record date (T+2 settlement)", right: "9 Apr" },
-              { left: "Payment lands", right: "9 Apr" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption: "EGX dividend timeline — COMI, April 2026.",
+          rows: [
+            { left: "End of right (last day to buy in)", right: "6 Apr" },
+            { left: "Ex-date (price drops ~coupon)", right: "7 Apr" },
+            { left: "Record date (T+2 settlement)", right: "9 Apr" },
+            { left: "Payment lands", right: "9 Apr" },
+          ],
+        },
       },
       {
         id: "expected_move",
@@ -1624,11 +1885,11 @@ export const CURRICULUM: Module[] = [
           "These reframe the question 'when will the stock go up?' (impossible to answer) into 'what range of moves is plausible?' (answerable). A 2% daily drop on a stock whose typical day is ±1.8% is normal noise — no action needed. A 2% drop on a stock whose typical day is ±0.5% is an outlier worth investigating. The cone gives you an honest sense of the spread of outcomes rather than a false-precision forecast.",
         howToUse:
           "On the stock detail page, check the Expected Move tiles before reacting to any single day's movement. Use the cone's bearish-5% line as a rough 60-day worst-case for position sizing. CRITICAL caveat: the cone assumes volatility stays similar to history. A news catalyst, earnings surprise, or regime shift (new finance minister, currency devaluation) can push price well outside the cone. Never treat the median line as a prediction — it's just the middle of a range, not where the stock is 'going'.",
-        visual: (
-          <ConeChart
-            caption="The cone is a range of plausible outcomes, not a forecast. The dashed middle is not where the stock is 'going'."
-          />
-        ),
+        visual: {
+          kind: "ConeChart",
+          caption:
+            "The cone is a range of plausible outcomes, not a forecast. The dashed middle is not where the stock is 'going'.",
+        },
       },
     ],
   },
@@ -1646,25 +1907,23 @@ export const CURRICULUM: Module[] = [
         level: "core",
         definition:
           "The Sharpe ratio measures risk-adjusted return: how much excess return you earn per unit of risk. Formula: (portfolio return - risk-free rate) / portfolio volatility.",
-        whyItMatters:
-          `A positive Sharpe means your portfolio beats the risk-free rate (Egyptian cash at ~${T_BILL_RATE_PCT}%). Below 0 means you'd literally earn more taking no risk at all. Above 1.0 is excellent. Note: Egypt's high policy rate makes it harder for stocks to have a positive Sharpe.`,
+        whyItMatters: `A positive Sharpe means your portfolio beats the risk-free rate (Egyptian cash at ~${T_BILL_RATE_PCT}%). Below 0 means you'd literally earn more taking no risk at all. Above 1.0 is excellent. Note: Egypt's high policy rate makes it harder for stocks to have a positive Sharpe.`,
         howToUse:
           "Check your portfolio's Sharpe ratio on the Risk Dashboard. If it's negative, your stock picks are underperforming guaranteed T-bill returns — consider whether your positions still make sense. A Sharpe of 0.5 in Egypt is actually quite respectable given the high risk-free rate.",
-        visual: (
-          <ZoneScale
-            min={-1}
-            max={2}
-            ticks={[-1, 0, 0.5, 1, 2]}
-            zones={[
-              { from: -1, to: 0, color: V.down, label: "losing to cash" },
-              { from: 0, to: 0.5, color: V.gold, label: "marginal" },
-              { from: 0.5, to: 1, color: V.teal, label: "respectable here" },
-              { from: 1, to: 2, color: V.up, label: "excellent" },
-            ]}
-            markers={[{ value: 0.55, label: "0.55", color: V.teal }]}
-            caption={`Egypt's ${T_BILL_RATE_PCT}% risk-free rate drags every Sharpe down. 0.5 here is not the 0.5 you read about elsewhere.`}
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          min: -1,
+          max: 2,
+          ticks: [-1, 0, 0.5, 1, 2],
+          zones: [
+            { from: -1, to: 0, color: V.down, label: "losing to cash" },
+            { from: 0, to: 0.5, color: V.gold, label: "marginal" },
+            { from: 0.5, to: 1, color: V.teal, label: "respectable here" },
+            { from: 1, to: 2, color: V.up, label: "excellent" },
+          ],
+          markers: [{ value: 0.55, label: "0.55", color: V.teal }],
+          caption: `Egypt's ${T_BILL_RATE_PCT}% risk-free rate drags every Sharpe down. 0.5 here is not the 0.5 you read about elsewhere.`,
+        },
       },
       {
         title: "Sortino Ratio",
@@ -1675,16 +1934,28 @@ export const CURRICULUM: Module[] = [
           "The Sortino ratio is fairer than Sharpe for stocks with large upside swings. If a stock has occasional big jumps upward, Sharpe penalizes that volatility, but Sortino doesn't.",
         howToUse:
           "Compare your Sortino to your Sharpe. If Sortino is significantly higher, it means your portfolio's volatility is mostly on the upside (good). If they're similar, risk is evenly distributed.",
-        visual: (
-          <LedgerRows
-            caption="Sharpe punishes a good surprise. Sortino only counts the bad ones."
-            rows={[
-              { left: "Sharpe 0.4, Sortino 0.9", right: "swings are upward", tone: "up" },
-              { left: "Sharpe 0.4, Sortino 0.45", right: "risk is evenly spread", tone: "muted" },
-              { left: "Sharpe 0.4, Sortino 0.2", right: "the swings are losses", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "Sharpe punishes a good surprise. Sortino only counts the bad ones.",
+          rows: [
+            {
+              left: "Sharpe 0.4, Sortino 0.9",
+              right: "swings are upward",
+              tone: "up",
+            },
+            {
+              left: "Sharpe 0.4, Sortino 0.45",
+              right: "risk is evenly spread",
+              tone: "muted",
+            },
+            {
+              left: "Sharpe 0.4, Sortino 0.2",
+              right: "the swings are losses",
+              tone: "down",
+            },
+          ],
+        },
       },
       {
         title: "Value at Risk (VaR) & CVaR",
@@ -1697,17 +1968,29 @@ export const CURRICULUM: Module[] = [
           "Check your daily VaR on the Risk Dashboard. If the number makes you uncomfortable, reduce position sizes or diversify more. Example: if your VaR is 5,000 EGP and you can't afford to lose that on any given day, you're overexposed.",
         example:
           "On a 100,000 EGP portfolio, a 5,000 EGP VaR means 19 days out of 20 you lose less than that. The twentieth day is what CVaR is for — and it averages 7,800 EGP.",
-        visual: (
-          <LedgerRows
-            caption="VaR is the edge of the normal day. CVaR is what happens past the edge."
-            rows={[
-              { left: "Portfolio", right: "100,000 EGP" },
-              { left: "VaR 95% — 19 days in 20", right: "lose under 5,000 EGP", tone: "muted" },
-              { left: "The 20th day", right: "worse than 5,000 EGP", tone: "down" },
-              { left: "CVaR — average of those days", right: "7,800 EGP", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "VaR is the edge of the normal day. CVaR is what happens past the edge.",
+          rows: [
+            { left: "Portfolio", right: "100,000 EGP" },
+            {
+              left: "VaR 95% — 19 days in 20",
+              right: "lose under 5,000 EGP",
+              tone: "muted",
+            },
+            {
+              left: "The 20th day",
+              right: "worse than 5,000 EGP",
+              tone: "down",
+            },
+            {
+              left: "CVaR — average of those days",
+              right: "7,800 EGP",
+              tone: "down",
+            },
+          ],
+        },
       },
       {
         id: "correlation",
@@ -1719,18 +2002,18 @@ export const CURRICULUM: Module[] = [
           "True diversification requires holding stocks that DON'T move together. If all your stocks are highly correlated (>0.7), your portfolio has concentrated risk — when one drops, they all drop. Negative correlation is ideal for risk reduction.",
         howToUse:
           "Check the Correlation Matrix on your portfolio page. If you see pairs with correlation >0.7, consider replacing one with a stock from a different sector. For example: don't hold 3 bank stocks — they'll all drop together when banking regulations change.",
-        visual: (
-          <CorrelationGrid
-            labels={["BANK", "REAL", "IND", "TEL"]}
-            matrix={[
-              [1.0, 0.64, 0.31, 0.12],
-              [0.64, 1.0, 0.28, 0.09],
-              [0.31, 0.28, 1.0, -0.21],
-              [0.12, 0.09, -0.21, 1.0],
-            ]}
-            caption="Red pairs fall together. The green pair is the only one genuinely offsetting risk."
-          />
-        ),
+        visual: {
+          kind: "CorrelationGrid",
+          labels: ["BANK", "REAL", "IND", "TEL"],
+          matrix: [
+            [1.0, 0.64, 0.31, 0.12],
+            [0.64, 1.0, 0.28, 0.09],
+            [0.31, 0.28, 1.0, -0.21],
+            [0.12, 0.09, -0.21, 1.0],
+          ],
+          caption:
+            "Red pairs fall together. The green pair is the only one genuinely offsetting risk.",
+        },
       },
       {
         title: "Monte Carlo Simulation",
@@ -1741,13 +2024,13 @@ export const CURRICULUM: Module[] = [
           "It answers the question: 'What could happen to my portfolio over the next 60 days?' Instead of one prediction, you get a probability distribution — best case, worst case, and everything in between.",
         howToUse:
           "Check the Monte Carlo chart on your portfolio page. Focus on: (1) probability of loss — if >50%, your portfolio is more likely to lose than gain, (2) worst case 5% — this is the tail risk scenario, (3) median — the most likely outcome. If the worst case is unacceptable, reduce risk.",
-        visual: (
-          <ConeChart
-            vol={0.012}
-            drift={0.0011}
-            caption="A thousand simulated paths, summarised. Read the bottom edge for position sizing, never the middle for a target."
-          />
-        ),
+        visual: {
+          kind: "ConeChart",
+          vol: 0.012,
+          drift: 0.0011,
+          caption:
+            "A thousand simulated paths, summarised. Read the bottom edge for position sizing, never the middle for a target.",
+        },
       },
       {
         id: "max_drawdown",
@@ -1761,18 +2044,18 @@ export const CURRICULUM: Module[] = [
           "The Risk Dashboard shows both your historical max drawdown and your current drawdown (if any). If your max drawdown exceeds your emotional tolerance, you're taking too much risk. Consider reducing position sizes, diversifying, or using tighter stop-losses.",
         example:
           "150,000 EGP peak → 115,000 EGP trough → recovered. Max drawdown −23.3%. The return might read +18% for the year; you still watched 35,000 EGP disappear on the way.",
-        visual: (
-          <MiniChart
-            series={DRAWDOWN}
-            markers={[
-              { index: 27, color: V.up, label: "150,000" },
-              { index: 50, color: V.down, label: "115,000", place: "below" },
-            ]}
-            shades={[{ from: 27, to: 50, color: V.down, label: "−23.3%" }]}
-            caption="A positive year and a brutal drawdown are not contradictory. Both are true at once."
-            height={145}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: DRAWDOWN,
+          markers: [
+            { index: 27, color: V.up, label: "150,000" },
+            { index: 50, color: V.down, label: "115,000", place: "below" },
+          ],
+          shades: [{ from: 27, to: 50, color: V.down, label: "−23.3%" }],
+          caption:
+            "A positive year and a brutal drawdown are not contradictory. Both are true at once.",
+          height: 145,
+        },
       },
     ],
   },
@@ -1787,22 +2070,34 @@ export const CURRICULUM: Module[] = [
       {
         title: "Egypt's T-Bill Rate & Stocks",
         level: "start",
-        definition:
-          `The CBE policy rate is ~${T_BILL_RATE_PCT}%, and Egyptian Treasury bills track it closely — a near-guaranteed return with no stock-market risk. That is the 'risk-free rate' every comparison in this app is made against.`,
-        whyItMatters:
-          `When T-bill rates are high, stocks must offer even higher returns to justify their risk. A stock returning 15% per year sounds good, but if T-bills offer ${T_BILL_RATE_PCT}% risk-free, you're actually losing value by holding stocks. This is why the Sharpe ratio matters.`,
-        howToUse:
-          `Before buying any stock, ask: 'Can this stock realistically beat ${T_BILL_RATE_PCT}% per year?' If not, T-bills might be a better use of your capital. The CBE interest rate is shown on your portfolio's Macro Context card.`,
-        visual: (
-          <BarCompare
-            caption="This single number is why analysis written for other markets does not transfer here."
-            bars={[
-              { label: "Egyptian cash rate", value: T_BILL_RATE_PCT, color: V.violet, note: "Zero risk. This is the bar." },
-              { label: "A typical US T-bill", value: 4, color: "#4a5568", note: "Where most investing advice was written." },
-              { label: "A 15% stock return", value: 15, color: V.down, note: "Excellent in the US. A loss against cash here." },
-            ]}
-          />
-        ),
+        definition: `The CBE policy rate is ~${T_BILL_RATE_PCT}%, and Egyptian Treasury bills track it closely — a near-guaranteed return with no stock-market risk. That is the 'risk-free rate' every comparison in this app is made against.`,
+        whyItMatters: `When T-bill rates are high, stocks must offer even higher returns to justify their risk. A stock returning 15% per year sounds good, but if T-bills offer ${T_BILL_RATE_PCT}% risk-free, you're actually losing value by holding stocks. This is why the Sharpe ratio matters.`,
+        howToUse: `Before buying any stock, ask: 'Can this stock realistically beat ${T_BILL_RATE_PCT}% per year?' If not, T-bills might be a better use of your capital. The CBE interest rate is shown on your portfolio's Macro Context card.`,
+        visual: {
+          kind: "BarCompare",
+          caption:
+            "This single number is why analysis written for other markets does not transfer here.",
+          bars: [
+            {
+              label: "Egyptian cash rate",
+              value: T_BILL_RATE_PCT,
+              color: V.violet,
+              note: "Zero risk. This is the bar.",
+            },
+            {
+              label: "A typical US T-bill",
+              value: 4,
+              color: "#4a5568",
+              note: "Where most investing advice was written.",
+            },
+            {
+              label: "A 15% stock return",
+              value: 15,
+              color: V.down,
+              note: "Excellent in the US. A loss against cash here.",
+            },
+          ],
+        },
       },
       {
         title: "USD/EGP Impact on Stocks",
@@ -1815,17 +2110,29 @@ export const CURRICULUM: Module[] = [
           "Check the USD/EGP direction on the Macro Context card. If the pound is weakening, favor exporters and companies with dollar-denominated revenue. If it's strengthening, importers and companies with local revenue benefit.",
         example:
           "Your stock gains 10% in EGP. The pound weakens 15% over the same period. In purchasing-power terms you are down about 4% — the gain was in a shrinking unit.",
-        visual: (
-          <LedgerRows
-            caption="A gain measured in a weakening currency is not the gain it looks like."
-            rows={[
-              { left: "Pound weakens — exporters", right: "revenue worth more", tone: "up" },
-              { left: "Pound weakens — importers", right: "costs rise", tone: "down" },
-              { left: "Your stock in EGP", right: "+10%", tone: "up" },
-              { left: "After a 15% devaluation", right: "≈ −4% real", tone: "down" },
-            ]}
-          />
-        ),
+        visual: {
+          kind: "LedgerRows",
+          caption:
+            "A gain measured in a weakening currency is not the gain it looks like.",
+          rows: [
+            {
+              left: "Pound weakens — exporters",
+              right: "revenue worth more",
+              tone: "up",
+            },
+            {
+              left: "Pound weakens — importers",
+              right: "costs rise",
+              tone: "down",
+            },
+            { left: "Your stock in EGP", right: "+10%", tone: "up" },
+            {
+              left: "After a 15% devaluation",
+              right: "≈ −4% real",
+              tone: "down",
+            },
+          ],
+        },
       },
       {
         id: "egx30_benchmark",
@@ -1837,18 +2144,25 @@ export const CURRICULUM: Module[] = [
           "If your portfolio consistently underperforms the EGX30, you might be better off investing in an index fund that tracks it. Beta tells you how each of your stocks moves relative to EGX30.",
         howToUse:
           "Compare your portfolio's performance to EGX30 monthly. The Macro Context card shows EGX30's current level and trend. When EGX30 is in a strong bullish trend, most stocks benefit (rising tide lifts all boats). In a bearish trend, even good stocks may fall.",
-        visual: (
-          <MiniChart
-            series={RISING}
-            lines={[{ values: walk(70, 61, { start: 62, drift: 0.36, vol: 0.8 }), color: V.gold, width: 1.5, dash: "4 3" }]}
-            legend={[
-              { color: V.inkBright, label: "your portfolio" },
-              { color: V.gold, label: "EGX30", dash: true },
-            ]}
-            caption="If the dashed line wins over months, the honest move is to buy the index and stop picking."
-            height={140}
-          />
-        ),
+        visual: {
+          kind: "MiniChart",
+          series: RISING,
+          lines: [
+            {
+              values: walk(70, 61, { start: 62, drift: 0.36, vol: 0.8 }),
+              color: V.gold,
+              width: 1.5,
+              dash: "4 3",
+            },
+          ],
+          legend: [
+            { color: V.inkBright, label: "your portfolio" },
+            { color: V.gold, label: "EGX30", dash: true },
+          ],
+          caption:
+            "If the dashed line wins over months, the honest move is to buy the index and stop picking.",
+          height: 140,
+        },
       },
       {
         id: "pe_ratio",
@@ -1862,21 +2176,23 @@ export const CURRICULUM: Module[] = [
           "Compare against the EGX median of ~12, not against 'low means cheap'. Under 8 is cheap RELATIVE TO that median; 8–15 is around average; 15–25 is on the expensive side; above 25 needs confirmed growth to justify. None of those are absolute verdicts — with the policy rate near 19%, a low P/E does not by itself mean the stock beats cash. Below 3 is a WARNING, not a bargain — it almost always means one-off earnings or a share price that has already collapsed. When a company is loss-making the app says so directly instead of quoting a P/E; lean on trend and relative strength there.",
         example:
           "One EGX stock trades at P/E 0.7 with a 42.55% dividend yield. That is not the bargain of the decade — it is a suspended, distressed company whose price already collapsed.",
-        visual: (
-          <ZoneScale
-            max={45}
-            ticks={[0, 3, 8, 15, 25, 45]}
-            zones={[
-              { from: 0, to: 3, color: V.down, label: "suspect" },
-              { from: 3, to: 8, color: V.up, label: "cheap" },
-              { from: 8, to: 15, color: "#7f8ea3", label: "average here" },
-              { from: 15, to: 25, color: V.gold, label: "pricey" },
-              { from: 25, to: 45, color: V.down, label: "expensive" },
-            ]}
-            markers={[{ value: 12.4, label: "EGX median 12.4", color: "#c9d1d9" }]}
-            caption="Bands centred on the actual EGX distribution — measured across all 293 listed stocks, not imported from another market."
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          max: 45,
+          ticks: [0, 3, 8, 15, 25, 45],
+          zones: [
+            { from: 0, to: 3, color: V.down, label: "suspect" },
+            { from: 3, to: 8, color: V.up, label: "cheap" },
+            { from: 8, to: 15, color: "#7f8ea3", label: "average here" },
+            { from: 15, to: 25, color: V.gold, label: "pricey" },
+            { from: 25, to: 45, color: V.down, label: "expensive" },
+          ],
+          markers: [
+            { value: 12.4, label: "EGX median 12.4", color: "#c9d1d9" },
+          ],
+          caption:
+            "Bands centred on the actual EGX distribution — measured across all 293 listed stocks, not imported from another market.",
+        },
       },
       {
         id: "dividend_yield",
@@ -1884,33 +2200,34 @@ export const CURRICULUM: Module[] = [
         level: "core",
         definition:
           "The annual dividend as a percentage of the current share price. A 5% yield on a 100 EGP stock means about 5 EGP a year in cash. The EGX median among payers is roughly 3%.",
-        whyItMatters:
-          `Here is the uncomfortable Egyptian truth: with T-bills near ${T_BILL_RATE_PCT}%, NO EGX dividend yield is competitive as income. A 7% yield still loses badly to risk-free cash. So do not buy a stock for its dividend. What a steady dividend does tell you is that the company generates real cash and its management is disciplined about returning it — that is much harder to fake than a reported profit, which is why it feeds the Quality score.`,
+        whyItMatters: `Here is the uncomfortable Egyptian truth: with T-bills near ${T_BILL_RATE_PCT}%, NO EGX dividend yield is competitive as income. A 7% yield still loses badly to risk-free cash. So do not buy a stock for its dividend. What a steady dividend does tell you is that the company generates real cash and its management is disciplined about returning it — that is much harder to fake than a reported profit, which is why it feeds the Quality score.`,
         howToUse:
           "Read yield as evidence of quality, never as income. Around 3% is typical; 4–8% is a genuinely strong payer. Above 15% is a red flag rather than a prize — it is usually a one-off special dividend, or the yield only looks high because the share price collapsed. Always check whether the payout recurs before counting on it. A company paying nothing is not being penalised; plenty of good growth companies reinvest instead.",
-        visual: (
-          <ZoneScale
-            max={20}
-            unit="%"
-            ticks={[0, 2, 4, 8, 15, 20]}
-            zones={[
-              { from: 0, to: 2, color: "#7f8ea3", label: "quiet" },
-              { from: 2, to: 4, color: V.teal, label: "normal" },
-              { from: 4, to: 8, color: V.up, label: "strong payer" },
-              { from: 8, to: 15, color: V.gold, label: "check it recurs" },
-              { from: 15, to: 20, color: V.down, label: "red flag" },
-            ]}
-            markers={[{ value: 3.12, label: "EGX median 3.1%", color: "#c9d1d9" }]}
-            caption="Deliberately non-monotonic: more is not better. Above 15% is usually a collapsed price, not income."
-          />
-        ),
+        visual: {
+          kind: "ZoneScale",
+          max: 20,
+          unit: "%",
+          ticks: [0, 2, 4, 8, 15, 20],
+          zones: [
+            { from: 0, to: 2, color: "#7f8ea3", label: "quiet" },
+            { from: 2, to: 4, color: V.teal, label: "normal" },
+            { from: 4, to: 8, color: V.up, label: "strong payer" },
+            { from: 8, to: 15, color: V.gold, label: "check it recurs" },
+            { from: 15, to: 20, color: V.down, label: "red flag" },
+          ],
+          markers: [
+            { value: 3.12, label: "EGX median 3.1%", color: "#c9d1d9" },
+          ],
+          caption:
+            "Deliberately non-monotonic: more is not better. Above 15% is usually a collapsed price, not income.",
+        },
       },
     ],
   },
 ];
 
 export const ALL_CONCEPTS = CURRICULUM.flatMap((m) =>
-  m.concepts.map((c) => ({ concept: c, module: m }))
+  m.concepts.map((c) => ({ concept: c, module: m })),
 );
 
 export const TOTAL_CONCEPTS = ALL_CONCEPTS.length;

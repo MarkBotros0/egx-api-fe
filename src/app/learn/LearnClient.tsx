@@ -11,16 +11,18 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CURRICULUM, ALL_CONCEPTS, TOTAL_CONCEPTS } from "../lib/curriculum";
 import {
-  CURRICULUM,
-  ALL_CONCEPTS,
-  TOTAL_CONCEPTS,
   conceptKey,
+  normalizeSearch,
+  searchConcepts,
+  LEARN_PROGRESS_KEY,
   type Module,
-} from "./curriculum";
+} from "../lib/learn";
 import ConceptCard from "../components/learn/ConceptCard";
+import LearnVisual from "../components/learn/LearnVisual";
 
-const STORAGE_KEY = "egx.learn.progress";
+const STORAGE_KEY = LEARN_PROGRESS_KEY;
 
 // ---------------------------------------------------------------- progress
 
@@ -89,24 +91,6 @@ function useReveal(deps: unknown[]) {
 }
 
 // ---------------------------------------------------------------- search
-
-/**
- * Fold punctuation so the reader does not have to guess our hyphens.
- *
- * The terms this page teaches are written with punctuation the reader has no
- * reason to reproduce — "stop-loss", "T-bill", "P/E", "risk-adjusted". A plain
- * substring match meant **"stop loss" returned nothing while "stop-loss"
- * returned nine**, and the old placeholder quietly worked around it by
- * spelling the hyphen out. Applied to BOTH the query and the text, so the two
- * always meet in the same shape.
- */
-function normalizeSearch(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 // ---------------------------------------------------------------- page
 
 export default function LearnClient() {
@@ -118,14 +102,7 @@ export default function LearnClient() {
   const pillsRef = useRef<HTMLElement | null>(null);
 
   const q = normalizeSearch(query);
-  const results = useMemo(() => {
-    if (!q) return null;
-    return ALL_CONCEPTS.filter(({ concept: c }) =>
-      normalizeSearch(
-        [c.title, c.definition, c.whyItMatters, c.howToUse, c.example ?? ""].join(" ")
-      ).includes(q)
-    );
-  }, [q]);
+  const results = useMemo(() => searchConcepts(ALL_CONCEPTS, query), [query]);
 
   useReveal([q]);
 
@@ -641,7 +618,11 @@ function ModuleSection({
         </div>
       </summary>
 
-      {m.overview && <div className="mb-4">{m.overview}</div>}
+      {m.overview && (
+        <div className="mb-4">
+          <LearnVisual spec={m.overview} />
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {m.concepts.map((c) => {

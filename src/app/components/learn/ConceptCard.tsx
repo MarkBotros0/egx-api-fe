@@ -1,12 +1,7 @@
 "use client";
 
-import type { Concept, Level } from "../../learn/curriculum";
-
-const LEVEL_LABEL: Record<Level, string> = {
-  start: "start here",
-  core: "core",
-  deep: "deeper",
-};
+import { LEVEL_LABEL, type Concept } from "../../lib/learn";
+import LearnVisual from "./LearnVisual";
 
 export default function ConceptCard({
   concept,
@@ -84,7 +79,11 @@ export default function ConceptCard({
           {concept.definition}
         </p>
 
-        {concept.visual && <div className="mb-3">{concept.visual}</div>}
+        {concept.visual && (
+          <div className="mb-3">
+            <LearnVisual spec={concept.visual} />
+          </div>
+        )}
 
         <div className="space-y-2.5">
           <Block label="Why it matters" text={concept.whyItMatters} />
