@@ -2,11 +2,14 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AuthCard, Field, FormError, FormNotice, SubmitButton } from "../components/AuthCard";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import { signupRequest } from "../lib/api";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, looksLikeEmail } from "../lib/auth";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,7 +55,9 @@ export default function SignupPage() {
 
   return (
     <AuthCard title="Create account" subtitle="Track your portfolio and watchlist." footer={footer}>
-      {/* GoogleSignInButton is added here in Task 10 */}
+      <div className="mb-4">
+        <GoogleSignInButton onSignedIn={() => router.replace("/")} />
+      </div>
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

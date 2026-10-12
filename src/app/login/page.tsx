@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../components/AuthProvider";
 import { AuthCard, Field, FormError, FormNotice, SubmitButton } from "../components/AuthCard";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import { LoginError, resendVerification } from "../lib/api";
 import { EMAIL_NOT_VERIFIED } from "../lib/auth";
 
@@ -53,7 +54,7 @@ function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {/* GoogleSignInButton is added here in Task 10 */}
+      <GoogleSignInButton onSignedIn={() => router.replace(next)} />
       <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Field label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       <div className="-mt-2 text-right">
