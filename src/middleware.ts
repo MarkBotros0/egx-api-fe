@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { MAINTENANCE_MODE, MAINTENANCE_PATH } from "./maintenance";
 
 /**
  * The app is closed. Every route redirects to /login until the visitor signs
@@ -38,6 +39,23 @@ export function middleware(req: NextRequest) {
     list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   const hasAuth = req.cookies.get("egx.auth.present")?.value === "1";
+
+  // Maintenance closes every page, signed in or not (see ./maintenance.ts).
+  // A redirect rather than a rewrite, so the URL is /maintenance and the nav
+  // bars can hide on it.
+  if (MAINTENANCE_MODE && !isPublicFile) {
+    if (pathname === MAINTENANCE_PATH) return NextResponse.next();
+    const url = req.nextUrl.clone();
+    url.pathname = MAINTENANCE_PATH;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  if (pathname === MAINTENANCE_PATH) {
+    const home = req.nextUrl.clone();
+    home.pathname = "/";
+    home.search = "";
+    return NextResponse.redirect(home);
+  }
 
   if (isPublicFile || matches(EMAIL_LINK_PAGES)) return NextResponse.next();
 

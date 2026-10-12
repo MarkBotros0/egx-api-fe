@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MAINTENANCE_PATH } from "../../maintenance";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
@@ -45,7 +46,7 @@ export default function Navbar() {
   // Signed out, there is no app to navigate — the only reachable page is the
   // login form, and it should stand alone rather than sitting under a nav bar
   // and a ticker search that would 401 on use.
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || pathname === MAINTENANCE_PATH) return null;
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 bg-charcoal-dark/90 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>

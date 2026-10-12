@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MAINTENANCE_PATH } from "../../maintenance";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
@@ -125,7 +126,7 @@ export default function BottomTabBar() {
 
   // Signed out there is nowhere to tab to, and the bar would otherwise sit
   // under the login form promising pages that all bounce back to it.
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || pathname === MAINTENANCE_PATH) return null;
 
   return (
     // A floating capsule rather than an edge-to-edge bar. The outer element

@@ -173,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // form rather than leaving them on a shell that 401s on every fetch.
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        const PUBLIC = ["/login", "/signup", "/forgot-password", "/verify-email", "/set-password"];
+        const PUBLIC = ["/login", "/signup", "/forgot-password", "/verify-email", "/set-password", "/maintenance"];
         if (!PUBLIC.includes(path)) {
           const next = encodeURIComponent(path);
           window.location.href = `/login?next=${next}`;
