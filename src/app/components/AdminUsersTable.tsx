@@ -39,18 +39,30 @@ const METHOD_LABEL: Record<ManagedUser["methods"][number], string> = {
   apple: "Apple",
 };
 
+/**
+ * Unverified with no way in yet is "Pending" — a sign-up whose link was never
+ * clicked or an invite not yet accepted (open sign-up makes most of these
+ * self sign-ups, so "Invited" would mislabel them). Unverified with a method
+ * is "Unverified". A verified row with no method (the seeded admin before
+ * first sign-in) needs no badge.
+ */
+function statusBadge(u: ManagedUser): string | null {
+  if (u.email_verified) return null;
+  return u.methods.length === 0 ? "Pending" : "Unverified";
+}
+
 function MethodBadges({ u }: { u: ManagedUser }) {
+  const status = statusBadge(u);
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      {u.methods.length === 0 ? <span className="text-xs text-white/40">Invited</span> : null}
       {u.methods.map((m) => (
         <span key={m} className="rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] text-white/60">
           {METHOD_LABEL[m]}
         </span>
       ))}
-      {u.email_verified ? null : (
-        <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] text-white/50">Unverified</span>
-      )}
+      {status ? (
+        <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] text-white/50">{status}</span>
+      ) : null}
     </span>
   );
 }
