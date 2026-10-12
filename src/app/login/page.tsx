@@ -9,6 +9,18 @@ import GoogleSignInButton from "../components/GoogleSignInButton";
 import { LoginError, resendVerification } from "../lib/api";
 import { EMAIL_NOT_VERIFIED } from "../lib/auth";
 
+/**
+ * Where to go after signing in. Only a same-site path: it must start with "/"
+ * and not "//" or "/\\" (both are read as another host), and carry no
+ * backslash or control character (browsers strip tabs/newlines, so "/\t/x"
+ * would become "//x"). Anything else lands on "/".
+ */
+function safeNext(raw: string | null | undefined): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  if (/[\\\u0000-\u001f\u007f]/.test(raw)) return "/";
+  return raw;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,7 +32,7 @@ function LoginForm() {
   const [unverified, setUnverified] = useState(false);
   const [resent, setResent] = useState(false);
 
-  const next = searchParams?.get("next") || "/";
+  const next = safeNext(searchParams?.get("next"));
 
   useEffect(() => {
     if (isAuthenticated) router.replace(next);
