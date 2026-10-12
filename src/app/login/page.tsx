@@ -78,7 +78,7 @@ function LoginForm() {
         <FormNotice>
           Confirm your email first — we sent a link to {email.trim()}.{" "}
           {resent ? (
-            <span className="font-semibold">Sent again.</span>
+            <span className="font-semibold">If it doesn&apos;t arrive in a minute, check spam or try again.</span>
           ) : (
             <button type="button" onClick={onResend} className="font-semibold text-accent underline">
               Resend the link
