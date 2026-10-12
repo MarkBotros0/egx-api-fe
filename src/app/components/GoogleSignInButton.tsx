@@ -17,6 +17,14 @@ declare global {
   }
 }
 
+type CredentialHandler = (r: { credential?: string }) => void;
+
+// GIS wants initialize() once per page load, and its callback is fixed at that
+// moment. So the callback calls whichever mounted button registered last, which
+// also survives /login -> /signup navigation (a new component instance).
+let initialized = false;
+let currentHandler: CredentialHandler | null = null;
+
 /**
  * Google Identity Services button. Google hands us a signed ID token; the
  * backend verifies it and returns our own session — no NextAuth, no Firebase.
@@ -41,17 +49,32 @@ export default function GoogleSignInButton({ onSignedIn }: { onSignedIn: () => v
     [completeSignIn, onSignedIn]
   );
 
+  // Always point the shared callback at the latest handler without re-initialising GIS.
+  useEffect(() => {
+    currentHandler = onCredential;
+    return () => {
+      if (currentHandler === onCredential) currentHandler = null;
+    };
+  }, [onCredential]);
+
   useEffect(() => {
     if (!ready || !slot.current || !window.google) return;
-    window.google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onCredential, ux_mode: "popup" });
+    if (!initialized) {
+      window.google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: (r) => currentHandler?.(r),
+        ux_mode: "popup",
+      });
+      initialized = true;
+    }
     window.google.accounts.id.renderButton(slot.current, {
       theme: "filled_black",
       size: "large",
       shape: "pill",
       text: "continue_with",
-      width: slot.current.offsetWidth || 320,
+      width: Math.min(400, slot.current.offsetWidth || 320),
     });
-  }, [ready, onCredential]);
+  }, [ready]);
 
   if (!CLIENT_ID) return null;
 
