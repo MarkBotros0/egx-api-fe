@@ -760,7 +760,7 @@ async function authPost(path: string, body: unknown): Promise<unknown> {
       (typeof data?.detail === "string" && data.detail) ||
       (typeof data?.error === "string" && data.error) ||
       "";
-    const code = detail in AUTH_CODE_MESSAGES ? detail : undefined;
+    const code = Object.prototype.hasOwnProperty.call(AUTH_CODE_MESSAGES, detail) ? detail : undefined;
     throw new LoginError(
       code ? AUTH_CODE_MESSAGES[code] : detail || "Something went wrong. Try again.",
       code

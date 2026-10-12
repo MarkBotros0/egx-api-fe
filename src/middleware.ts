@@ -6,16 +6,20 @@ import type { NextRequest } from "next/server";
  * in — this is a deny-by-default list, so a page added later is protected
  * without anyone remembering to add it here.
  *
- * Only these are reachable signed out: the login page itself, and the static
- * files the browser needs to render it (Next's build output, the PWA manifest
- * and service worker, and the icons).
+ * Only these are reachable signed out: the five account pages (/login,
+ * /signup, /forgot-password, /verify-email, /set-password), and the static
+ * files the browser needs to render them (Next's build output, the PWA
+ * manifest and service worker, and the icons).
  *
  * This is UX, not security. The `egx.auth.present` cookie is set by client JS
  * and carries no signature, so it proves only that someone believes they are
  * signed in. The real guard is the backend, where every /api/* route except
  * login and the cron returns 401 without a valid token.
  */
-const PUBLIC_PATHS = ["/login"];
+// Signed-out pages. A signed-in visitor is sent home from these…
+const SIGNED_OUT_ONLY = ["/login", "/signup", "/forgot-password"];
+// …but NOT from these: a link from an email must work whoever is signed in.
+const EMAIL_LINK_PAGES = ["/verify-email", "/set-password"];
 
 const PUBLIC_FILE_PREFIXES = [
   "/_next",
@@ -30,16 +34,15 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isPublicFile = PUBLIC_FILE_PREFIXES.some((p) => pathname.startsWith(p));
-  const isPublicPath = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
-  );
+  const matches = (list: string[]) =>
+    list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   const hasAuth = req.cookies.get("egx.auth.present")?.value === "1";
 
-  if (isPublicFile) return NextResponse.next();
+  if (isPublicFile || matches(EMAIL_LINK_PAGES)) return NextResponse.next();
 
-  if (isPublicPath) {
-    // Already signed in? The login page has nothing to offer — send them in.
+  if (matches(SIGNED_OUT_ONLY)) {
+    // Already signed in? These pages have nothing to offer — send them in.
     if (hasAuth) {
       const home = req.nextUrl.clone();
       home.pathname = "/";
