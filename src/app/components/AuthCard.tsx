@@ -1,6 +1,7 @@
 "use client";
 
 import type { InputHTMLAttributes, ReactNode } from "react";
+import Link from "next/link";
 
 /** Shared chrome for the signed-out pages: login, signup, forgot, verify, set-password. */
 
@@ -54,6 +55,28 @@ export function FormNotice({ children }: { children: ReactNode }) {
   return (
     <div role="status" className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-white/80">
       {children}
+    </div>
+  );
+}
+
+/**
+ * Shown after an emailed link signs someone in. The links always open the web,
+ * so a person who signed up in the mobile app would otherwise land on the web
+ * dashboard with no word about the app.
+ */
+export function SignedInNote() {
+  return (
+    <div className="space-y-4">
+      <FormNotice>
+        You&apos;re signed in. Using the Borsa Compass app? Sign in there with the same email.
+      </FormNotice>
+      <Link
+        href="/"
+        replace
+        className="flex min-h-[44px] w-full items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-charcoal-dark"
+      >
+        Continue
+      </Link>
     </div>
   );
 }

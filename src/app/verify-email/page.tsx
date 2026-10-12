@@ -2,15 +2,15 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "../components/AuthProvider";
-import { AuthCard, FormError } from "../components/AuthCard";
+import { AuthCard, FormError, SignedInNote } from "../components/AuthCard";
 import { verifyEmailRequest } from "../lib/api";
 
 function Verify() {
   const token = useSearchParams()?.get("token") ?? "";
-  const router = useRouter();
   const { completeSignIn } = useAuth();
+  const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(token ? null : "This link is incomplete. Open it again from the email.");
   // React 18 dev double-runs effects; a verify link is single-use, so the
   // second call would turn success into "already used".
@@ -22,11 +22,12 @@ function Verify() {
     verifyEmailRequest(token)
       .then((session) => {
         completeSignIn(session);
-        router.replace("/");
+        setDone(true);
       })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Could not confirm your email"));
-  }, [token, completeSignIn, router]);
+  }, [token, completeSignIn]);
 
+  if (done) return <SignedInNote />;
   return err ? (
     <div className="space-y-4">
       <FormError message={err} />
