@@ -24,6 +24,37 @@ function RoleBadge({ role }: { role: ManagedUser["role"] }) {
   );
 }
 
+function NameCell({ u }: { u: ManagedUser }) {
+  return (
+    <div className="min-w-0">
+      <div className="truncate text-sm text-white">{u.name || u.email}</div>
+      {u.name ? <div className="truncate text-xs text-white/40">{u.email}</div> : null}
+    </div>
+  );
+}
+
+const METHOD_LABEL: Record<ManagedUser["methods"][number], string> = {
+  password: "Password",
+  google: "Google",
+  apple: "Apple",
+};
+
+function MethodBadges({ u }: { u: ManagedUser }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {u.methods.length === 0 ? <span className="text-xs text-white/40">Invited</span> : null}
+      {u.methods.map((m) => (
+        <span key={m} className="rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] text-white/60">
+          {METHOD_LABEL[m]}
+        </span>
+      ))}
+      {u.email_verified ? null : (
+        <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] text-white/50">Unverified</span>
+      )}
+    </span>
+  );
+}
+
 function StatusDot({ active }: { active: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
@@ -38,7 +69,7 @@ function StatusDot({ active }: { active: boolean }) {
 }
 
 interface Actions {
-  onResetPassword: (u: ManagedUser) => void;
+  onSendReset: (u: ManagedUser) => void;
   onToggleActive: (u: ManagedUser) => void;
   onDelete: (u: ManagedUser) => void;
   busyId: string | null;
@@ -57,7 +88,7 @@ function blockedReason(u: ManagedUser, currentUserId: string | undefined): strin
 
 function ActionButtons({
   u,
-  onResetPassword,
+  onSendReset,
   onToggleActive,
   onDelete,
   busyId,
@@ -70,11 +101,11 @@ function ActionButtons({
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       <button
-        onClick={() => onResetPassword(u)}
+        onClick={() => onSendReset(u)}
         disabled={busy}
         className="min-h-[36px] rounded-md border border-white/10 px-2.5 text-xs text-white/70 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40"
       >
-        Reset password
+        Send reset email
       </button>
 
       {blocked ? (
@@ -130,10 +161,11 @@ export default function AdminUsersTable({
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-mono text-sm text-white">
-                    {u.username}
-                  </span>
+                  <NameCell u={u} />
                   <RoleBadge role={u.role} />
+                </div>
+                <div className="mt-1">
+                  <MethodBadges u={u} />
                 </div>
                 <div className="mt-1 flex items-center gap-3">
                   <StatusDot active={u.is_active} />
@@ -166,6 +198,7 @@ export default function AdminUsersTable({
             <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-white/40">
               <th className="px-4 py-3 font-medium">User</th>
               <th className="px-4 py-3 font-medium">Role</th>
+              <th className="px-4 py-3 font-medium">Sign-in</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Holdings</th>
               <th className="px-4 py-3 font-medium">Added</th>
@@ -178,9 +211,12 @@ export default function AdminUsersTable({
                 key={u.id}
                 className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]"
               >
-                <td className="px-4 py-3 font-mono text-white">{u.username}</td>
+                <td className="px-4 py-3"><NameCell u={u} /></td>
                 <td className="px-4 py-3">
                   <RoleBadge role={u.role} />
+                </td>
+                <td className="px-4 py-3">
+                  <MethodBadges u={u} />
                 </td>
                 <td className="px-4 py-3">
                   <StatusDot active={u.is_active} />

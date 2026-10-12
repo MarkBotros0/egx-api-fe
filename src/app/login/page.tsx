@@ -1,17 +1,23 @@
 "use client";
 
 import { Suspense, useState, FormEvent, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../components/AuthProvider";
+import { AuthCard, Field, FormError, FormNotice, SubmitButton } from "../components/AuthCard";
+import { LoginError, resendVerification } from "../lib/api";
+import { EMAIL_NOT_VERIFIED } from "../lib/auth";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated } = useAuth();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [unverified, setUnverified] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const next = searchParams?.get("next") || "/";
 
@@ -22,80 +28,74 @@ function LoginForm() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setUnverified(false);
+    setResent(false);
     setSubmitting(true);
     try {
-      await login(username.trim().toLowerCase(), password);
+      await login(email.trim(), password);
       router.replace(next);
     } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : "Invalid username or password";
-      setErr(message);
+      if (e instanceof LoginError && e.code === EMAIL_NOT_VERIFIED) setUnverified(true);
+      else setErr(e instanceof Error ? e.message : "Could not sign in");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const onResend = async () => {
+    try {
+      await resendVerification(email.trim());
+      setResent(true);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Could not send the email");
+    }
+  };
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="mb-1 block text-xs font-medium text-white/60">
-          Username
-        </label>
-        <input
-          type="text"
-          autoComplete="username"
-          required
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-[16px] text-white outline-none transition-colors focus:border-accent/50 focus:ring-1 focus:ring-accent/20 md:text-sm"
-        />
+      {/* GoogleSignInButton is added here in Task 10 */}
+      <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      <Field label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+      <div className="-mt-2 text-right">
+        <Link href="/forgot-password" className="text-xs text-accent hover:underline">
+          Forgot password?
+        </Link>
       </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-white/60">
-          Password
-        </label>
-        <input
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-[16px] text-white outline-none transition-colors focus:border-accent/50 focus:ring-1 focus:ring-accent/20 md:text-sm"
-        />
-      </div>
-
-      {err && (
-        <div className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-xs text-loss">
-          {err}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="min-h-[44px] w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-charcoal-dark transition-opacity disabled:opacity-50"
-      >
-        {submitting ? "Signing in…" : "Sign in"}
-      </button>
+      {unverified ? (
+        <FormNotice>
+          Confirm your email first — we sent a link to {email.trim()}.{" "}
+          {resent ? (
+            <span className="font-semibold">Sent again.</span>
+          ) : (
+            <button type="button" onClick={onResend} className="font-semibold text-accent underline">
+              Resend the link
+            </button>
+          )}
+        </FormNotice>
+      ) : null}
+      <FormError message={err} />
+      <SubmitButton busy={submitting} label="Sign in" busyLabel="Signing in…" />
     </form>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-charcoal p-6 shadow-xl">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-white">Sign in</h1>
-          <p className="mt-1 text-sm text-white/50">
-            Access your portfolio and watchlist.
-          </p>
-        </div>
-        <Suspense fallback={null}>
-          <LoginForm />
-        </Suspense>
-      </div>
-    </div>
+    <AuthCard
+      title="Sign in"
+      subtitle="Access your portfolio and watchlist."
+      footer={
+        <>
+          New here?{" "}
+          <Link href="/signup" className="text-accent hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
+    </AuthCard>
   );
 }

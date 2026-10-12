@@ -9,7 +9,8 @@ import React, {
   useState,
 } from "react";
 import { configureApi } from "../lib/apiConfig";
-import { asRole, type AuthUser, type UserRole } from "../lib/auth";
+import { loginRequest, type Session } from "../lib/api";
+import { parseAuthUser, type AuthUser, type UserRole } from "../lib/auth";
 
 export type { AuthUser, UserRole };
 
@@ -27,7 +28,8 @@ interface AuthCtx {
   isAdmin: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  completeSignIn: (session: Session) => void;
   logout: () => void;
 }
 
@@ -43,18 +45,16 @@ function setPresenceCookie(present: boolean) {
 }
 
 function readStoredUser(): AuthUser | null {
+  // Cached from a previous session and only ever used optimistically —
+  // /auth/me re-reads the role from the DB on every load, and the backend
+  // enforces it regardless of what is in localStorage. A pre-email cached
+  // user (no `email`) parses to null, which simply signs the visitor out.
   try {
     const raw = localStorage.getItem(USER_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.id === "string" && typeof parsed.username === "string") {
-      // Cached from a previous session and only ever used optimistically —
-      // /auth/me re-reads the role from the DB on every load, and the backend
-      // enforces it regardless of what is in localStorage.
-      return { id: parsed.id, username: parsed.username, role: asRole(parsed.role) };
-    }
-  } catch {}
-  return null;
+    return raw ? parseAuthUser(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function getStoredToken(): string | null {
@@ -140,12 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const data = await res.json();
-        if (res.ok && data?.id && data?.username) {
-          const fresh: AuthUser = {
-            id: data.id,
-            username: data.username,
-            role: asRole(data.role),
-          };
+        const fresh = res.ok ? parseAuthUser(data) : null;
+        if (fresh) {
           setUser(fresh);
           setToken(stored);
           setPresenceCookie(true);
@@ -177,7 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // form rather than leaving them on a shell that 401s on every fetch.
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (path !== "/login") {
+        const PUBLIC = ["/login", "/signup", "/forgot-password", "/verify-email", "/set-password"];
+        if (!PUBLIC.includes(path)) {
           const next = encodeURIComponent(path);
           window.location.href = `/login?next=${next}`;
         }
@@ -187,33 +184,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    setError(null);
-    const res = await fetch(`${BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = data?.detail || data?.error || "Invalid username or password";
-      setError(msg);
-      throw new Error(msg);
-    }
-    const newToken: string = data.access_token;
-    const newUser: AuthUser = {
-      id: data.user?.id,
-      username: data.user?.username,
-      role: asRole(data.user?.role),
-    };
+  const completeSignIn = useCallback((session: Session) => {
     try {
-      localStorage.setItem(TOKEN_KEY, newToken);
-      localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+      localStorage.setItem(TOKEN_KEY, session.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(session.user));
     } catch {}
     setPresenceCookie(true);
-    setToken(newToken);
-    setUser(newUser);
+    setToken(session.token);
+    setUser(session.user);
+    setError(null);
   }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setError(null);
+      try {
+        completeSignIn(await loginRequest(email, password));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not sign in");
+        throw e;
+      }
+    },
+    [completeSignIn]
+  );
 
   const logout = useCallback(() => {
     clearStoredAuth();
@@ -231,9 +224,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       error,
       login,
+      completeSignIn,
       logout,
     }),
-    [user, token, isLoading, error, login, logout]
+    [user, token, isLoading, error, login, completeSignIn, logout]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -250,6 +244,7 @@ export function useAuth(): AuthCtx {
       isLoading: false,
       error: null,
       login: async () => {},
+      completeSignIn: () => {},
       logout: () => {},
     };
   }

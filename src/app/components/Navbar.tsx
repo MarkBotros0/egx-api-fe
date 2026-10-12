@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
+import { displayName } from "../lib/auth";
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
@@ -119,9 +120,13 @@ export default function Navbar() {
 
           {/* No "Sign in" branch: this whole bar only renders when signed in. */}
           <div className="hidden items-center gap-3 border-l border-white/10 pl-3 md:flex">
-            <span className="max-w-[160px] truncate text-xs text-white/50" title={user?.username}>
-              {user?.username}
-            </span>
+            <Link
+              href="/account"
+              className="max-w-[160px] truncate text-xs text-white/50 transition-colors hover:text-white"
+              title={user ? `${displayName(user)} — account` : "Account"}
+            >
+              {user ? displayName(user) : "Account"}
+            </Link>
             <button
               onClick={handleLogout}
               className="rounded-md px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white"
@@ -129,10 +134,20 @@ export default function Navbar() {
               Logout
             </button>
           </div>
+          <Link
+            href="/account"
+            aria-label="Account"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-white/60 transition-colors hover:bg-white/5 hover:text-white md:hidden"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+            </svg>
+          </Link>
           <button
             onClick={handleLogout}
             aria-label="Log out"
-            title={user?.username ? `Log out (${user.username})` : "Log out"}
+            title={user ? `Log out (${displayName(user)})` : "Log out"}
             className="flex h-9 w-9 items-center justify-center rounded-md text-white/60 transition-colors hover:bg-white/5 hover:text-white md:hidden"
           >
             <svg

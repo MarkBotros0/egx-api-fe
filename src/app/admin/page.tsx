@@ -4,21 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../components/AuthProvider";
 import AdminUsersTable from "../components/AdminUsersTable";
-import CreateUserModal from "../components/CreateUserModal";
-import PasswordRevealDialog from "../components/PasswordRevealDialog";
+import InviteUserModal from "../components/InviteUserModal";
 import {
-  createUser,
   deleteUser,
   fetchUsers,
-  resetUserPassword,
+  inviteUser,
+  sendUserReset,
   setUserActive,
   type ManagedUser,
 } from "../lib/api";
-
-interface Revealed {
-  username: string;
-  password: string;
-}
 
 export default function AdminPage() {
   const { isAdmin, isLoading: authLoading, user } = useAuth();
@@ -26,8 +20,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [revealed, setRevealed] = useState<Revealed | null>(null);
+  const [showInvite, setShowInvite] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -47,30 +41,23 @@ export default function AdminPage() {
     else if (!authLoading) setLoading(false);
   }, [authLoading, isAdmin, load]);
 
-  const handleCreate = async (username: string, password?: string) => {
-    const res = await createUser(username, password);
-    setShowCreate(false);
-    if (res.generated_password) {
-      setRevealed({ username: res.user.username, password: res.generated_password });
-    }
+  const handleInvite = async (email: string, name: string) => {
+    const res = await inviteUser(email, name);
+    setShowInvite(false);
+    setNotice(`Invitation sent to ${res.user.email}.`);
     await load();
   };
 
-  const handleReset = async (u: ManagedUser) => {
-    if (
-      !confirm(
-        `Generate a new password for ${u.username}? Their current password will stop working immediately.`
-      )
-    )
-      return;
+  const handleSendReset = async (u: ManagedUser) => {
+    if (!confirm(`Email ${u.email} a link to choose a new password? Their current password keeps working until they use it.`)) return;
     setBusyId(u.id);
+    setError(null);
+    setNotice(null);
     try {
-      const res = await resetUserPassword(u.id);
-      if (res.generated_password) {
-        setRevealed({ username: u.username, password: res.generated_password });
-      }
+      const res = await sendUserReset(u.id);
+      setNotice(res.sent === "invite" ? `Invitation re-sent to ${u.email}.` : `Reset link sent to ${u.email}.`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not reset the password");
+      setError(e instanceof Error ? e.message : "Could not send the email");
     } finally {
       setBusyId(null);
     }
@@ -94,7 +81,7 @@ export default function AdminPage() {
     // there is no soft delete and no undo.
     if (
       !confirm(
-        `Delete ${u.username}? This permanently removes their portfolio, sale history and watchlist. This cannot be undone.`
+        `Delete ${u.email}? This permanently removes their portfolio, sale history and watchlist. This cannot be undone.`
       )
     )
       return;
@@ -148,12 +135,18 @@ export default function AdminPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => setShowInvite(true)}
           className="hidden min-h-[44px] shrink-0 rounded-lg bg-accent px-4 text-sm font-semibold text-charcoal-dark transition-opacity active:opacity-70 md:block"
         >
-          + Add user
+          + Invite user
         </button>
       </div>
+
+      {notice ? (
+        <div role="status" className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2.5 text-sm text-white/80">
+          {notice}
+        </div>
+      ) : null}
 
       {error && (
         <div className="mb-4 rounded-lg border border-loss/30 bg-loss/10 px-3 py-2.5 text-sm text-loss">
@@ -163,7 +156,7 @@ export default function AdminPage() {
 
       <AdminUsersTable
         users={users}
-        onResetPassword={handleReset}
+        onSendReset={handleSendReset}
         onToggleActive={handleToggle}
         onDelete={handleDelete}
         busyId={busyId}
@@ -175,28 +168,15 @@ export default function AdminPage() {
           safe-area term, so the nav painted over the bottom of the button on
           any phone with a home indicator. */}
       <button
-        onClick={() => setShowCreate(true)}
-        aria-label="Add user"
+        onClick={() => setShowInvite(true)}
+        aria-label="Invite user"
         className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl font-light text-charcoal-dark shadow-lg transition-transform active:scale-95 md:hidden"
         style={{ bottom: "calc(var(--bottom-nav-clearance) + 12px)" }}
       >
         +
       </button>
 
-      {showCreate && (
-        <CreateUserModal
-          onCreate={handleCreate}
-          onClose={() => setShowCreate(false)}
-        />
-      )}
-
-      {revealed && (
-        <PasswordRevealDialog
-          username={revealed.username}
-          password={revealed.password}
-          onClose={() => setRevealed(null)}
-        />
-      )}
+      {showInvite && <InviteUserModal onInvite={handleInvite} onClose={() => setShowInvite(false)} />}
     </div>
   );
 }
