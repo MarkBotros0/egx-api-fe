@@ -62,12 +62,9 @@ export default function RootLayout({
               <WatchlistProvider>
                 <Navbar />
                 <main className="flex-1">{children}</main>
-                <footer
-                  className="pt-4 text-center text-xs text-white/40"
-                  style={{ paddingBottom: "calc(var(--bottom-nav-clearance) + 1rem)" }}
-                >
-                  By Mark Botros
-                </footer>
+                {/* No credit line; this only keeps the last content clear of
+                    the floating bottom nav. */}
+                <div aria-hidden className="pt-4" style={{ paddingBottom: "calc(var(--bottom-nav-clearance) + 1rem)" }} />
                 <BottomTabBar />
               </WatchlistProvider>
             </TickersProvider>

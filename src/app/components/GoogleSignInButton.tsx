@@ -67,12 +67,14 @@ export default function GoogleSignInButton({ onSignedIn }: { onSignedIn: () => v
       });
       initialized = true;
     }
+    // Icon only: Google writes a text button in the BROWSER's language
+    // ("Weiter mit Google" on a German browser), and the mobile app shows the
+    // same round G. The slot's aria-label says what it does.
     window.google.accounts.id.renderButton(slot.current, {
+      type: "icon",
       theme: "filled_black",
       size: "large",
-      shape: "pill",
-      text: "continue_with",
-      width: Math.min(400, slot.current.offsetWidth || 320),
+      shape: "circle",
     });
   }, [ready]);
 
@@ -81,7 +83,8 @@ export default function GoogleSignInButton({ onSignedIn }: { onSignedIn: () => v
   return (
     <div className="space-y-2">
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onLoad={() => setReady(true)} onReady={() => setReady(true)} />
-      <div ref={slot} className="flex min-h-[44px] w-full justify-center" />
+      <p className="text-center text-xs text-white/40">Continue with</p>
+      <div ref={slot} aria-label="Continue with Google" className="flex min-h-[44px] w-full justify-center" />
       {err ? <p role="alert" className="text-center text-xs text-loss">{err}</p> : null}
       <div className="flex items-center gap-3 py-1 text-xs text-white/30">
         <span className="h-px flex-1 bg-white/10" />

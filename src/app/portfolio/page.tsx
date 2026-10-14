@@ -730,8 +730,11 @@ export default function PortfolioPage() {
               />
             ) : null}
 
-            {/* Banked — closed positions AND dividends, one section. */}
-            {sales &&
+            {/* Banked — closed positions AND dividends, one section. Held
+                back until the analysis lands so the page appears in one piece;
+                shown anyway if the analysis failed (error). */}
+            {(analysis || error) &&
+              sales &&
               (sales.sales.length > 0 ||
                 (sales.dividends ?? []).length > 0) && (
                 <RealizedSection
