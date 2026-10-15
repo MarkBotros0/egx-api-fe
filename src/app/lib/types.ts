@@ -753,9 +753,8 @@ export interface NewsCoverage {
 }
 
 export interface NewsResponse {
-  // NOTE: `market` below is the EGX30 story list. The backend currently also
-  // writes feed["market"] = market.code into the same object (a key clash),
-  // so the market code cannot be typed here until that is renamed.
+  // The market code is under market_code because "market" is the story list.
+  market_code?: MarketCode;
   currency?: string;
   your_stocks: NewsItem[];
   market: NewsItem[];
@@ -767,11 +766,11 @@ export interface NewsResponse {
 // ---- Dividends (market history + calendar) ----
 // Distinct from `Dividend` above, which is the USER's own recorded payouts.
 // These describe the MARKET's declared coupons, sourced from Yahoo (history)
-// and pe_data (calendar). Amounts are gross EGP/share, as reported.
+// and pe_data (calendar). Amounts are gross, in the market's currency, per share, as reported.
 
 export interface DividendHistoryItem {
   ex_date: string; // ISO YYYY-MM-DD
-  amount: number; // gross EGP/share
+  amount: number; // gross, in the market's currency, per share
   year: number;
 }
 
@@ -798,7 +797,7 @@ export interface DividendCalendarStock {
   name: string | null;
   dividend_yield: number | null;
   ex_date: string; // ISO YYYY-MM-DD of the last coupon
-  amount: number | null; // gross EGP/share
+  amount: number | null; // gross, in the market's currency, per share
 }
 
 export interface DividendCalendarResponse {
