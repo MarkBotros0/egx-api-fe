@@ -1,0 +1,24 @@
+/**
+ * Money in a market's own currency. One spelling, so no screen hardcodes "EGP".
+ * The code is APPENDED ("1,234.50 EGP"), matching how the app has always shown
+ * money, rather than Intl's symbol placement — "E£" is not what EGX users read.
+ *
+ * Shared with egx-api-mobile — keep platform-neutral.
+ */
+export function formatMoney(
+  value: number,
+  currency: string,
+  opts: { digits?: number; withCode?: boolean } = {}
+): string {
+  const { digits = 2, withCode = true } = opts;
+  const n = value.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return withCode ? `${n} ${currency}` : n;
+}
+
+/** A share price: two decimals, with the currency code. */
+export function formatPrice(value: number, currency: string): string {
+  return formatMoney(value, currency, { digits: 2 });
+}

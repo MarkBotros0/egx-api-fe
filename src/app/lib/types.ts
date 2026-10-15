@@ -1,3 +1,5 @@
+import type { MarketCode } from "./markets";
+
 // ============================================================
 // Ticker data
 // ============================================================
@@ -341,6 +343,8 @@ export interface ScoreWeights {
 }
 
 export interface AnalysisResponse {
+  market?: MarketCode;
+  currency?: string;
   symbol: string;
   interval: string;
   bars: number;
@@ -406,6 +410,7 @@ export interface PortfolioHolding {
 }
 
 export interface Portfolio {
+  market?: MarketCode;
   portfolio: PortfolioHolding[];
   currency: string;
 }
@@ -533,6 +538,8 @@ export interface CurrencyContext {
 }
 
 export interface MacroData {
+  market?: MarketCode;
+  currency?: string;
   egx30: MacroIndicator;
   usd_egp: MacroIndicator;
   interest_rate: MacroIndicator;
@@ -571,6 +578,8 @@ export interface ExcludedHolding {
 }
 
 export interface PortfolioAnalysisResponse {
+  market?: MarketCode;
+  currency?: string;
   holdings: HoldingAnalysis[];
   /**
    * Holdings whose market data could not be fetched. Their cost basis is
@@ -707,6 +716,7 @@ export interface SalesSummary {
 }
 
 export interface SalesResponse {
+  market?: MarketCode;
   /** The flat per-lot rows. `summary` is built from THESE, because each trade
    *  is graded against the rate that prevailed over its own window. */
   sales: Sale[];
@@ -743,6 +753,10 @@ export interface NewsCoverage {
 }
 
 export interface NewsResponse {
+  // NOTE: `market` below is the EGX30 story list. The backend currently also
+  // writes feed["market"] = market.code into the same object (a key clash),
+  // so the market code cannot be typed here until that is renamed.
+  currency?: string;
   your_stocks: NewsItem[];
   market: NewsItem[];
   coverage: NewsCoverage;
@@ -771,6 +785,8 @@ export interface DividendCadence {
 }
 
 export interface DividendHistoryResponse {
+  market?: MarketCode;
+  currency?: string;
   symbol: string;
   dividends: DividendHistoryItem[];
   cadence: DividendCadence;
@@ -786,6 +802,8 @@ export interface DividendCalendarStock {
 }
 
 export interface DividendCalendarResponse {
+  market?: MarketCode;
+  currency?: string;
   stocks: DividendCalendarStock[];
   count: number;
   as_of: string;
