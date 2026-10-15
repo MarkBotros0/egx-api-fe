@@ -3,6 +3,7 @@
 import LearnTooltip from "./LearnTooltip";
 import { DY_SUSPICIOUS_MIN, T_BILL_RATE_PCT, peColor } from "@/app/lib/constants";
 import type { AnalysisStats, CrossoverInfo, PEData } from "@/app/lib/types";
+import { formatPrice } from "@/app/lib/money";
 
 interface StatsPanelProps {
   stats: AnalysisStats;
@@ -14,6 +15,7 @@ interface StatsPanelProps {
   atrPct?: number | null;
   crossovers?: CrossoverInfo | null;
   pe?: PEData | null;
+  currency: string;
 }
 
 function StatRow({
@@ -55,6 +57,7 @@ export default function StatsPanel({
   atrPct,
   crossovers,
   pe,
+  currency,
 }: StatsPanelProps) {
   const isPositive = stats.change_pct >= 0;
 
@@ -79,7 +82,7 @@ export default function StatsPanel({
       <div className="divide-y divide-white/5">
         <StatRow
           label="Current Price"
-          value={`${stats.current_price.toFixed(2)} EGP`}
+          value={formatPrice(stats.current_price, currency)}
         />
         <StatRow
           label="Change"

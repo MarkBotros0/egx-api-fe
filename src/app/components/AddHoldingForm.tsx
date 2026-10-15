@@ -10,6 +10,7 @@ import type { Ticker } from "@/app/lib/types";
 
 interface AddHoldingFormProps {
   tickers: Ticker[];
+  currency: string;
   onSubmit: (data: {
     symbol: string;
     name: string;
@@ -37,6 +38,7 @@ type ValidationState = "idle" | "validating" | "valid" | "invalid" | "error";
 
 export default function AddHoldingForm({
   tickers,
+  currency,
   onSubmit,
   onCancel,
   initialValues,
@@ -276,7 +278,7 @@ export default function AddHoldingForm({
         {/* Buy Price */}
         <div>
           <label className="mb-1 block text-xs text-white/40">
-            Buy Price (EGP) *
+            {`Buy Price (${currency}) *`}
           </label>
           <input
             type="number"

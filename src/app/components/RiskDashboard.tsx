@@ -11,9 +11,11 @@ import {
   T_BILL_RATE_PCT,
 } from "@/app/lib/constants";
 import type { PortfolioMetrics } from "@/app/lib/types";
+import { formatMoney } from "@/app/lib/money";
 
 interface RiskDashboardProps {
   metrics: PortfolioMetrics;
+  currency: string;
 }
 
 function RiskMetric({
@@ -42,7 +44,7 @@ function RiskMetric({
   );
 }
 
-export default function RiskDashboard({ metrics }: RiskDashboardProps) {
+export default function RiskDashboard({ metrics, currency }: RiskDashboardProps) {
   const sharpeColor =
     metrics.sharpe_ratio == null ? "text-white/30" :
     metrics.sharpe_ratio > SHARPE_GOOD ? "text-gain" :
@@ -103,7 +105,7 @@ export default function RiskDashboard({ metrics }: RiskDashboardProps) {
             return, so without the abs() it read "12,480 EGP" over "-2.8%". */}
         <RiskMetric
           label="Daily VaR (95%)"
-          value={metrics.var_95_egp != null ? `${metrics.var_95_egp.toLocaleString()} EGP` : "--"}
+          value={metrics.var_95_egp != null ? formatMoney(metrics.var_95_egp, currency, { digits: 0 }) : "--"}
           suffix={metrics.var_95_pct != null ? `${Math.abs(metrics.var_95_pct * 100).toFixed(1)}% of portfolio` : undefined}
           tooltip={{
             term: "Value at Risk (VaR)",

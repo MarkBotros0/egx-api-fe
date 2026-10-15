@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { fetchDividendCalendar } from "../lib/api";
+import { formatMoney } from "../lib/money";
 import type { DividendCalendarResponse, DividendCalendarStock } from "../lib/types";
 
 /**
@@ -41,6 +42,8 @@ export default function DividendCalendarPage() {
       alive = false;
     };
   }, []);
+
+  const currency = data?.currency ?? "EGP";
 
   // Index ex-dates -> stocks, and collect the years present for the selector.
   const { byDate, years, latest } = useMemo(() => {
@@ -242,8 +245,8 @@ export default function DividendCalendarPage() {
               </div>
               <div className="flex-none text-right">
                 <p className="font-mono text-sm font-semibold text-white/90">
-                  {s.amount != null ? s.amount.toFixed(2) : "—"}
-                  <span className="ml-1 text-[10px] font-normal text-white/40">EGP</span>
+                  {s.amount != null ? formatMoney(s.amount, currency, { withCode: false }) : "—"}
+                  <span className="ml-1 text-[10px] font-normal text-white/40">{currency}</span>
                 </p>
                 {s.dividend_yield != null && s.dividend_yield > 0 && (
                   <p className="font-mono text-[11px] text-white/45">{s.dividend_yield.toFixed(1)}%</p>

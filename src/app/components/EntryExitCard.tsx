@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import LearnTooltip from "./LearnTooltip";
+import { formatMoney, formatPrice } from "@/app/lib/money";
 import type { EntryExit, ZoneConfidence } from "@/app/lib/types";
 
 interface EntryExitCardProps {
   entryExit: EntryExit | null | undefined;
+  currency: string;
 }
 
 /**
@@ -30,7 +32,7 @@ const CONFIDENCE_STYLES: Record<
   },
 };
 
-export default function EntryExitCard({ entryExit }: EntryExitCardProps) {
+export default function EntryExitCard({ entryExit, currency }: EntryExitCardProps) {
   if (!entryExit) return null;
 
   const { entry_zone, exit_zone } = entryExit;
@@ -71,6 +73,7 @@ export default function EntryExitCard({ entryExit }: EntryExitCardProps) {
               priceRange={entry_zone.price_range}
               suggestedStopLoss={entry_zone.suggested_stop_loss}
               reasons={entry_zone.reasons}
+              currency={currency}
             />
           )}
           {exit_zone.active && (
@@ -80,6 +83,7 @@ export default function EntryExitCard({ entryExit }: EntryExitCardProps) {
               priceRange={exit_zone.price_range}
               suggestedStopLoss={null}
               reasons={exit_zone.reasons}
+              currency={currency}
             />
           )}
         </div>
@@ -94,12 +98,14 @@ function ZoneBlock({
   priceRange,
   suggestedStopLoss,
   reasons,
+  currency,
 }: {
   kind: "entry" | "exit";
   confidence: ZoneConfidence | null;
   priceRange: { low: number; high: number } | null;
   suggestedStopLoss: number | null;
   reasons: string[];
+  currency: string;
 }) {
   const isEntry = kind === "entry";
   const title = isEntry ? "Entry Zone" : "Exit Zone";
@@ -136,7 +142,8 @@ function ZoneBlock({
             </div>
             {priceRange && (
               <div className={`font-mono text-sm font-semibold ${baseColor}`}>
-                {priceRange.low.toFixed(2)} – {priceRange.high.toFixed(2)} EGP
+                {formatMoney(priceRange.low, currency, { withCode: false })} –{" "}
+                {formatPrice(priceRange.high, currency)}
               </div>
             )}
           </div>
@@ -154,7 +161,7 @@ function ZoneBlock({
         <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2">
           <span className="text-[11px] text-white/50">Suggested stop-loss</span>
           <span className="font-mono text-xs font-medium text-white/80">
-            {suggestedStopLoss.toFixed(2)} EGP
+            {formatPrice(suggestedStopLoss, currency)}
           </span>
         </div>
       )}

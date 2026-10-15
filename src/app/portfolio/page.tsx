@@ -60,6 +60,9 @@ export default function PortfolioPage() {
   } | null>(null);
   const [dividendError, setDividendError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The market's currency, from whichever response has landed first.
+  const currency =
+    portfolio?.currency ?? sales?.currency ?? analysis?.currency ?? "EGP";
   const { version: weightsVersion } = useScoreWeights();
 
   // Derived above the scroll-lock effect on purpose: the lock and the sell
@@ -470,6 +473,7 @@ export default function PortfolioPage() {
               {/* Scrollable body — independent scroll so native date picker renders correctly */}
               <div className="flex-1 overflow-y-auto p-4" style={{ WebkitOverflowScrolling: "touch" }}>
                 <AddHoldingForm
+                currency={currency}
                   tickers={tickers}
                   onSubmit={editingId ? handleUpdate : handleAdd}
                   onCancel={() => {
@@ -496,6 +500,7 @@ export default function PortfolioPage() {
             {/* Desktop inline form */}
             <div className="mb-6 hidden md:block">
               <AddHoldingForm
+                currency={currency}
                 tickers={tickers}
                 onSubmit={editingId ? handleUpdate : handleAdd}
                 onCancel={() => {
@@ -543,6 +548,7 @@ export default function PortfolioPage() {
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <SellHoldingForm
+                currency={currency}
                   position={sellingPosition}
                   onSubmit={handleSellSubmit}
                   onCancel={closeSellForm}
@@ -554,6 +560,7 @@ export default function PortfolioPage() {
 
             <div className="mb-6 hidden md:block">
               <SellHoldingForm
+                currency={currency}
                 position={sellingPosition}
                 onSubmit={handleSellSubmit}
                 onCancel={closeSellForm}
@@ -594,6 +601,7 @@ export default function PortfolioPage() {
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <AddDividendForm
+                currency={currency}
                   symbols={dividendSymbols}
                   presetSymbol={dividendFor.symbol}
                   onSubmit={handleDividendSubmit}
@@ -606,6 +614,7 @@ export default function PortfolioPage() {
             {/* Desktop: inline card */}
             <div className="mb-6 hidden md:block">
               <AddDividendForm
+                currency={currency}
                 symbols={dividendSymbols}
                 presetSymbol={dividendFor.symbol}
                 onSubmit={handleDividendSubmit}
@@ -675,6 +684,7 @@ export default function PortfolioPage() {
                 dividends have one home, not two spellings of one. */}
             {sales && (
               <RealizedSection
+                currency={currency}
                 summary={sales.summary}
                 orders={sales.orders ?? []}
                 dividends={sales.dividends ?? []}
@@ -712,7 +722,7 @@ export default function PortfolioPage() {
             {!analysis && portfolio?.portfolio.length ? (
               <ChartSkeleton height="h-48" />
             ) : analysis ? (
-              <PortfolioSummary metrics={analysis.portfolio_metrics} />
+              <PortfolioSummary metrics={analysis.portfolio_metrics} currency={currency} />
             ) : null}
 
             {/* What you hold, directly under the summary that totals it.
@@ -722,6 +732,7 @@ export default function PortfolioPage() {
               <TableSkeleton rows={Math.min(portfolio.portfolio.length, 6)} />
             ) : analysis ? (
               <HoldingsTable
+                currency={currency}
                 holdings={analysis.holdings}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -738,6 +749,7 @@ export default function PortfolioPage() {
               (sales.sales.length > 0 ||
                 (sales.dividends ?? []).length > 0) && (
                 <RealizedSection
+                currency={currency}
                   summary={sales.summary}
                   orders={sales.orders ?? []}
                   dividends={sales.dividends ?? []}
@@ -754,7 +766,7 @@ export default function PortfolioPage() {
 
             {/* Risk Dashboard */}
             {analysis?.portfolio_metrics.sharpe_ratio != null && (
-              <RiskDashboard metrics={analysis.portfolio_metrics} />
+              <RiskDashboard metrics={analysis.portfolio_metrics} currency={currency} />
             )}
 
             {/* Correlation Heatmap */}
@@ -764,7 +776,7 @@ export default function PortfolioPage() {
 
             {/* Monte Carlo Simulation */}
             {analysis?.monte_carlo && (
-              <MonteCarloChart data={analysis.monte_carlo} />
+              <MonteCarloChart data={analysis.monte_carlo} currency={currency} />
             )}
 
             {/* Macro context — background information, least urgent */}

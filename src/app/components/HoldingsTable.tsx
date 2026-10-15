@@ -6,6 +6,7 @@ import type { HoldingAnalysis, EntryExit } from "@/app/lib/types";
 import LearnTooltip from "./LearnTooltip";
 import CompositeGauge from "./CompositeGauge";
 import { peColor as peBandColor } from "@/app/lib/constants";
+import { formatMoney, formatPrice } from "@/app/lib/money";
 import { groupHoldings, type Position } from "@/app/lib/positions";
 
 /** Same bands as StatsPanel and the backend; falls back to a visible neutral. */
@@ -28,7 +29,7 @@ function fmtExDate(iso: string): string {
  * facts are together and clearly different. Neutral colour: an amount carries
  * no direction, and this is not money the user necessarily received.
  */
-function MarketDividendCell({ h }: { h: HoldingAnalysis }) {
+function MarketDividendCell({ h, currency }: { h: HoldingAnalysis; currency: string }) {
   if (h.last_dividend_amount == null || !h.last_dividend_ex_date) return null;
   return (
     <div>
@@ -36,7 +37,7 @@ function MarketDividendCell({ h }: { h: HoldingAnalysis }) {
         Last market dividend
       </p>
       <p className="mt-0.5 font-mono text-sm text-white/80">
-        {h.last_dividend_amount.toFixed(2)} EGP
+        {formatPrice(h.last_dividend_amount, currency)}
         <span className="ml-1 text-[10px] font-normal text-white/40">
           {fmtExDate(h.last_dividend_ex_date)}
         </span>
@@ -170,10 +171,12 @@ function ZoneDetail({ entryExit }: { entryExit: EntryExit | null | undefined }) 
  */
 function LotList({
   position,
+  currency,
   onEdit,
   onConfirmDelete,
 }: {
   position: Position;
+  currency: string;
   onEdit: (id: string) => void;
   onConfirmDelete: (target: { id: string; symbol: string }) => void;
 }) {
@@ -184,9 +187,8 @@ function LotList({
       <p className="text-[10px] uppercase tracking-wide text-white/30">
         {position.lots.length} purchases · average{" "}
         <span className="font-mono text-white/50">
-          {position.avg_buy_price.toFixed(2)}
-        </span>{" "}
-        EGP
+          {formatPrice(position.avg_buy_price, currency)}
+        </span>
       </p>
       <div className="mt-2 space-y-2">
         {position.lots.map((lot) => {
@@ -250,6 +252,7 @@ function LotList({
 
 interface HoldingsTableProps {
   holdings: HoldingAnalysis[];
+  currency: string;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   /** By SYMBOL, not by lot id: a sell comes out of the whole position and may
@@ -260,6 +263,7 @@ interface HoldingsTableProps {
 
 export default function HoldingsTable({
   holdings,
+  currency,
   onEdit,
   onDelete,
   onSell,
@@ -344,7 +348,7 @@ export default function HoldingsTable({
                       {h.lots.length > 1 && <span className="text-white/30"> avg</span>}
                     </span>
                     <span className="text-white/30">=</span>
-                    <span className="font-mono text-white">{h.current_value.toFixed(0)} EGP</span>
+                    <span className="font-mono text-white">{formatMoney(h.current_value, currency, { digits: 0 })}</span>
                   </div>
                   {h.buy_date && (
                     <div className="mt-0.5 text-[10px] text-white/30">
@@ -465,19 +469,17 @@ export default function HoldingsTable({
                           Dividends {h.dividends_symbol_shared ? `(all ${h.symbol} lots)` : "collected"}
                         </p>
                         <p className="mt-0.5 font-mono text-sm text-gain">
-                          +{(h.dividends_collected ?? 0).toLocaleString(undefined, {
-                            maximumFractionDigits: 0,
-                          })}{" "}
-                          EGP
+                          +{formatMoney(h.dividends_collected ?? 0, currency, { digits: 0 })}
                         </p>
                       </div>
                     )}
-                    <MarketDividendCell h={h} />
+                    <MarketDividendCell h={h} currency={currency} />
                   </div>
 
                   {/* The purchases behind the average — multi-lot only */}
                   <LotList
                     position={h}
+                    currency={currency}
                     onEdit={onEdit}
                     onConfirmDelete={setConfirmDelete}
                   />
@@ -545,7 +547,7 @@ export default function HoldingsTable({
                 <th className="px-4 py-3 font-medium">Qty</th>
                 <th className="px-4 py-3 font-medium">Buy Price</th>
                 <th className="px-4 py-3 font-medium">Current</th>
-                <th className="px-4 py-3 font-medium">P&L (EGP)</th>
+                <th className="px-4 py-3 font-medium">P&L ({currency})</th>
                 <th className="px-4 py-3 font-medium">P&L (%)</th>
                 <th className="px-4 py-3 font-medium">Days</th>
                 <th className="px-4 py-3 font-medium">
@@ -742,11 +744,11 @@ export default function HoldingsTable({
                           <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-4">
                             <div>
                               <p className="text-white/40">Invested</p>
-                              <p className="font-mono text-white">{h.invested.toFixed(2)} EGP</p>
+                              <p className="font-mono text-white">{formatPrice(h.invested, currency)}</p>
                             </div>
                             <div>
                               <p className="text-white/40">Current Value</p>
-                              <p className="font-mono text-white">{h.current_value.toFixed(2)} EGP</p>
+                              <p className="font-mono text-white">{formatPrice(h.current_value, currency)}</p>
                             </div>
                             {/* The backend returns null under ~30 days held,
                                 where annualizing is meaningless (a +5% week
@@ -857,19 +859,17 @@ export default function HoldingsTable({
                                   Dividends {h.dividends_symbol_shared ? `(all ${h.symbol} lots)` : "collected"}
                                 </p>
                                 <p className="mt-0.5 font-mono text-sm text-gain">
-                                  +{(h.dividends_collected ?? 0).toLocaleString(undefined, {
-                                    maximumFractionDigits: 0,
-                                  })}{" "}
-                                  EGP
+                                  +{formatMoney(h.dividends_collected ?? 0, currency, { digits: 0 })}
                                 </p>
                               </div>
                             )}
-                            <MarketDividendCell h={h} />
+                            <MarketDividendCell h={h} currency={currency} />
                           </div>
 
                           {/* The purchases behind the average — multi-lot only */}
                           <LotList
                             position={h}
+                            currency={currency}
                             onEdit={onEdit}
                             onConfirmDelete={setConfirmDelete}
                           />

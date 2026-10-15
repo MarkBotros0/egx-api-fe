@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { MonteCarloResult } from "@/app/lib/types";
+import { formatMoney } from "@/app/lib/money";
 
 /**
  * Percentile outcomes arrive as growth MULTIPLIERS (1.0 = flat), so the
@@ -29,9 +30,10 @@ function outcomeTone(multiplier: number): string {
 
 interface MonteCarloChartProps {
   data: MonteCarloResult;
+  currency: string;
 }
 
-export default function MonteCarloChart({ data }: MonteCarloChartProps) {
+export default function MonteCarloChart({ data, currency }: MonteCarloChartProps) {
   const { percentiles, initial_value, days, probability_of_loss } = data;
 
   // Build chart data
@@ -44,7 +46,7 @@ export default function MonteCarloChart({ data }: MonteCarloChartProps) {
     p95: Math.round(initial_value * percentiles.p95[i]),
   }));
 
-  const formatEGP = (v: number) =>
+  const formatCompact = (v: number) =>
     v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` :
     v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` :
     String(v);
@@ -71,7 +73,7 @@ export default function MonteCarloChart({ data }: MonteCarloChartProps) {
             tickLine={false}
             axisLine={false}
             width={55}
-            tickFormatter={formatEGP}
+            tickFormatter={formatCompact}
           />
           <Tooltip
             contentStyle={{
@@ -85,7 +87,7 @@ export default function MonteCarloChart({ data }: MonteCarloChartProps) {
                 p5: "Worst 5%", p25: "25th pctl", p50: "Median",
                 p75: "75th pctl", p95: "Best 5%",
               };
-              return [`${v.toLocaleString()} EGP`, labels[name] || name];
+              return [formatMoney(v, currency, { digits: 0 }), labels[name] || name];
             }}
             labelFormatter={(day) => `Day ${day}`}
           />

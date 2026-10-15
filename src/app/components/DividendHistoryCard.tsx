@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import LearnTooltip from "./LearnTooltip";
 import { fetchDividendHistory } from "../lib/api";
+import { formatMoney } from "../lib/money";
 import type { DividendHistoryResponse } from "../lib/types";
 
 /**
@@ -100,6 +101,7 @@ export default function DividendHistoryCard({ symbol }: { symbol: string }) {
   }
 
   const { dividends, cadence } = data;
+  const currency = data.currency ?? "EGP";
   if (dividends.length === 0) {
     return <EmptyState note="No dividend history on record for this stock." />;
   }
@@ -120,8 +122,8 @@ export default function DividendHistoryCard({ symbol }: { symbol: string }) {
           >
             <span className="font-mono text-xs text-white/40">{d.year}</span>
             <span className="flex-1 text-right font-mono text-sm font-semibold text-white/90">
-              {d.amount.toFixed(2)}
-              <span className="ml-1 text-[10px] font-normal text-white/40">EGP</span>
+              {formatMoney(d.amount, currency, { withCode: false })}
+              <span className="ml-1 text-[10px] font-normal text-white/40">{currency}</span>
             </span>
             <span className="w-16 text-right font-mono text-[11px] text-white/50">
               {dayMonth(d.ex_date)}

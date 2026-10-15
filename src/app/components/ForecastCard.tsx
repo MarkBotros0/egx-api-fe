@@ -33,6 +33,7 @@ import type { StockForecast, StockOutcomeBand } from "@/app/lib/types";
 interface ForecastCardProps {
   forecast: StockForecast | null | undefined;
   symbol: string;
+  currency: string;
 }
 
 /** Round to the precision the measurement supports — never more. */
@@ -44,7 +45,7 @@ function coarse(value: number): string {
   return value.toFixed(2);
 }
 
-export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
+export default function ForecastCard({ forecast, symbol, currency }: ForecastCardProps) {
   if (!forecast || (!forecast.expected_move && !forecast.outcome_band)) {
     return null;
   }
@@ -95,7 +96,7 @@ export default function ForecastCard({ forecast, symbol }: ForecastCardProps) {
         </div>
       )}
 
-      {outcome_band && <OutcomeCone data={outcome_band} symbol={symbol} />}
+      {outcome_band && <OutcomeCone data={outcome_band} symbol={symbol} currency={currency} />}
 
       <p className="mt-3 text-[10px] leading-relaxed text-white/30">
         Fitted to how Egyptian stocks have actually moved
@@ -141,9 +142,11 @@ function MoveTile({
 function OutcomeCone({
   data,
   symbol,
+  currency,
 }: {
   data: StockOutcomeBand;
   symbol: string;
+  currency: string;
 }) {
   const { bands, current_price, days, endpoint } = data;
   if (!bands.length) return null;
@@ -181,7 +184,7 @@ function OutcomeCone({
         <span className="font-mono text-white/70">{coarse(endpoint.lo)}</span>{" "}
         and{" "}
         <span className="font-mono text-white/70">{coarse(endpoint.hi)}</span>{" "}
-        EGP about {endpoint.coverage_pct}% of the time — so roughly{" "}
+        {currency} about {endpoint.coverage_pct}% of the time — so roughly{" "}
         {100 - endpoint.coverage_pct}% of the time it ended outside, about as
         often below as above.
       </p>
@@ -212,9 +215,9 @@ function OutcomeCone({
             }}
             formatter={(value: number, name: string) => {
               if (name === "outerLo")
-                return [`${coarse(value)} EGP`, `${outer.coverage_pct}% band, low`];
+                return [`${coarse(value)} ${currency}`, `${outer.coverage_pct}% band, low`];
               if (name === "innerLo")
-                return [`${coarse(value)} EGP`, `${inner.coverage_pct}% band, low`];
+                return [`${coarse(value)} ${currency}`, `${inner.coverage_pct}% band, low`];
               return null;
             }}
             labelFormatter={(day) => (day === 0 ? "Today" : `Day +${day}`)}

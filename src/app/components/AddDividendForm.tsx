@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatPrice } from "@/app/lib/money";
 
 export interface DividendSymbolOption {
   symbol: string;
@@ -15,6 +16,7 @@ interface AddDividendFormProps {
    *  dividend can be logged against a position already closed. */
   symbols: DividendSymbolOption[];
   presetSymbol?: string;
+  currency: string;
   onSubmit: (data: {
     symbol: string;
     name: string;
@@ -35,6 +37,7 @@ interface AddDividendFormProps {
 export default function AddDividendForm({
   symbols,
   presetSymbol,
+  currency,
   onSubmit,
   onCancel,
   error = null,
@@ -129,7 +132,7 @@ export default function AddDividendForm({
 
         <div>
           <label className="mb-1 block text-xs text-white/40">
-            Amount received (EGP) *
+            {`Amount received (${currency}) *`}
           </label>
           <input
             type="number"
@@ -215,7 +218,7 @@ export default function AddDividendForm({
         <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.03] p-3">
           <p className="text-xs text-white/40">That works out to</p>
           <p className="font-mono text-lg font-semibold text-gain">
-            {perShare.toFixed(2)} EGP per share
+            {formatPrice(perShare, currency)} per share
           </p>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import LearnTooltip from "./LearnTooltip";
+import { formatMoney, formatPrice } from "../lib/money";
 import type { Dividend, SaleOrder, SalesSummary } from "../lib/types";
 
 /**
@@ -29,18 +30,19 @@ interface RealizedSectionProps {
   orders: SaleOrder[];
   dividends: Dividend[];
   riskFreeRatePct: number;
+  currency: string;
   onDeleteSale: (id: string) => void;
   onDeleteDividend: (id: string) => void;
 }
 
 type Tab = "sales" | "dividends" | "by_symbol";
 
-function egp(value: number, digits = 0): string {
+function amountText(value: number, digits = 0): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
 function signed(value: number, digits = 0): string {
-  return `${value >= 0 ? "+" : ""}${egp(value, digits)}`;
+  return `${value >= 0 ? "+" : ""}${amountText(value, digits)}`;
 }
 
 function pnlClass(value: number): string {
@@ -106,9 +108,11 @@ export default function RealizedSection({
   orders,
   dividends,
   riskFreeRatePct,
+  currency,
   onDeleteSale,
   onDeleteDividend,
 }: RealizedSectionProps) {
+  const money = (v: number) => formatMoney(v, currency, { digits: 0 });
   // Open the tab that has something in it. Sales lead when both do — they are
   // the ledger with a verdict attached.
   const [tab, setTab] = useState<Tab>(
@@ -174,13 +178,14 @@ export default function RealizedSection({
                 totalWinnings >= 0 ? "text-gain" : "text-loss"
               }`}
             >
-              {signed(totalWinnings)} EGP
+              {totalWinnings >= 0 ? "+" : ""}
+              {money(totalWinnings)}
             </p>
             {totalDividends > 0 && (
               <p className="mt-1 font-mono text-xs text-white/50">
                 {signed(summary.total_realized_pnl)} from sales
                 <span className="mx-1.5 text-white/20">·</span>
-                <span className="text-gain">{egp(totalDividends)}</span> in
+                <span className="text-gain">{amountText(totalDividends)}</span> in
                 dividends
                 <span className="ml-1 text-white/30">({dividendCount})</span>
               </p>
@@ -209,7 +214,7 @@ export default function RealizedSection({
           {summary.total_realized_pnl_pct !== null && (
             <p className="mb-5 text-sm text-white/40">
               {signed(summary.total_realized_pnl_pct, 2)}% on{" "}
-              {egp(summary.total_cost)} EGP invested in closed trades
+              {money(summary.total_cost)} invested in closed trades
             </p>
           )}
 
@@ -230,7 +235,7 @@ export default function RealizedSection({
                 Proceeds
               </p>
               <p className="mt-1 font-mono text-sm text-white">
-                {egp(summary.total_proceeds)}
+                {amountText(summary.total_proceeds)}
               </p>
             </div>
             {summary.best_trade && (
@@ -328,7 +333,7 @@ export default function RealizedSection({
                         </p>
                         <p className="mt-0.5 text-[10px] text-white/30">
                           {o.quantity} shares sold @{" "}
-                          {o.sell_price.toFixed(2)} EGP · {o.sell_date}
+                          {formatPrice(o.sell_price, currency)} · {o.sell_date}
                         </p>
                         <p className="mt-0.5 text-[10px] text-white/30">
                           {o.days_held !== null
@@ -402,7 +407,7 @@ export default function RealizedSection({
               {dividends.length > 0 && (
                 <p className="text-[10px] text-white/30">
                   {dividends.length} payment
-                  {dividends.length === 1 ? "" : "s"} · {egp(dividendTotal)} EGP
+                  {dividends.length === 1 ? "" : "s"} · {money(dividendTotal)}
                   received
                 </p>
               )}
@@ -421,7 +426,7 @@ export default function RealizedSection({
                       <p className="mt-0.5 text-[10px] text-white/30">
                         Paid {d.pay_date}
                         {d.amount_per_share !== null && (
-                          <> · {d.amount_per_share.toFixed(2)} EGP/share</>
+                          <> · {formatPrice(d.amount_per_share, currency)}/share</>
                         )}
                       </p>
                       {d.notes && (
@@ -431,7 +436,7 @@ export default function RealizedSection({
                       )}
                     </div>
                     <p className="shrink-0 font-mono text-sm font-semibold text-gain">
-                      +{egp(d.amount)}
+                      +{amountText(d.amount)}
                     </p>
                   </div>
                   <button
@@ -486,7 +491,7 @@ export default function RealizedSection({
                     </p>
                     {s.dividends > 0 && (
                       <p className="text-[10px] text-white/40">
-                        incl. {egp(s.dividends)} dividends
+                        incl. {amountText(s.dividends)} dividends
                       </p>
                     )}
                     {s.dividends === 0 && s.realized_pnl_pct !== null && (

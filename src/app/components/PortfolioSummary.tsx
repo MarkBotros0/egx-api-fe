@@ -11,6 +11,7 @@ import LearnTooltip from "./LearnTooltip";
 import CompositeGauge from "./CompositeGauge";
 import { scoreColor } from "./CompositeGauge";
 import type { PortfolioMetrics } from "@/app/lib/types";
+import { formatMoney } from "@/app/lib/money";
 
 const PIE_COLORS = [
   "#4488ff", "#00ff88", "#ff3355", "#ffaa00", "#cc00ff",
@@ -19,9 +20,10 @@ const PIE_COLORS = [
 
 interface PortfolioSummaryProps {
   metrics: PortfolioMetrics;
+  currency: string;
 }
 
-export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
+export default function PortfolioSummary({ metrics, currency }: PortfolioSummaryProps) {
   const isPositive = metrics.total_pnl >= 0;
 
   const sectorData = Object.entries(metrics.sector_allocation).map(
@@ -52,8 +54,8 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
             {metrics.excluded_invested > 0 && (
               <>
                 {" "}
-                ({metrics.excluded_invested.toLocaleString("en", { maximumFractionDigits: 0 })}{" "}
-                EGP of cost basis)
+                ({formatMoney(metrics.excluded_invested, currency, { digits: 0 })} of cost
+                basis)
               </>
             )}
             . The figures below describe the rest of your portfolio.
@@ -67,7 +69,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
           <p className="font-mono text-xl font-bold text-white">
             {metrics.total_value.toLocaleString("en", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-white/30">EGP</p>
+          <p className="text-xs text-white/30">{currency}</p>
         </div>
 
         <div>

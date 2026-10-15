@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { planSale, type SalePart } from "@/app/lib/positions";
+import { formatPrice } from "@/app/lib/money";
 
 export interface SellPosition {
   symbol: string;
@@ -12,6 +13,7 @@ export interface SellPosition {
 
 interface SellHoldingFormProps {
   position: SellPosition;
+  currency: string;
   onSubmit: (data: {
     quantity: number;
     sell_price: number;
@@ -28,6 +30,7 @@ interface SellHoldingFormProps {
 
 export default function SellHoldingForm({
   position,
+  currency,
   onSubmit,
   onCancel,
   error = null,
@@ -104,8 +107,8 @@ export default function SellHoldingForm({
       <p className="mb-4 text-xs text-white/40">
         {held} shares held
         {multiLot
-          ? ` across ${position.lots.length} purchases · average ${avgBuyPrice.toFixed(2)} EGP`
-          : ` · bought at ${avgBuyPrice.toFixed(2)} EGP`}
+          ? ` across ${position.lots.length} purchases · average ${formatPrice(avgBuyPrice, currency)}`
+          : ` · bought at ${formatPrice(avgBuyPrice, currency)}`}
       </p>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -135,7 +138,7 @@ export default function SellHoldingForm({
 
         <div>
           <label className="mb-1 block text-xs text-white/40">
-            Sell Price (EGP) *
+            {`Sell Price (${currency}) *`}
           </label>
           <input
             type="number"
@@ -241,7 +244,7 @@ export default function SellHoldingForm({
             }`}
           >
             {pnl >= 0 ? "+" : ""}
-            {pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })} EGP
+            {pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency}
             {pnlPct !== null && (
               <span className="ml-2 text-sm">
                 ({pnlPct >= 0 ? "+" : ""}

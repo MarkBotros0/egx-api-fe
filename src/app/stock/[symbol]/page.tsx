@@ -73,6 +73,7 @@ export default function StockDetailPage() {
   })();
 
   const [data, setData] = useState<AnalysisResponse | null>(null);
+  const currency = data?.currency ?? "EGP";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [interval, setInterval] = useState(initialInterval);
@@ -310,6 +311,7 @@ export default function StockDetailPage() {
                   atrPct={latestAtrPct}
                   crossovers={data.crossovers}
                   pe={data.pe}
+                  currency={currency}
                 />
               </div>
 
@@ -412,8 +414,8 @@ export default function StockDetailPage() {
               {/* Key levels + entry/exit zones — stacked on mobile, side-by-side on desktop */}
               {(data.key_levels || data.entry_exit) && (
                 <div className="grid gap-4 md:grid-cols-2">
-                  <KeyLevelsCard keyLevels={data.key_levels} />
-                  <EntryExitCard entryExit={data.entry_exit} />
+                  <KeyLevelsCard keyLevels={data.key_levels} currency={currency} />
+                  <EntryExitCard entryExit={data.entry_exit} currency={currency} />
                 </div>
               )}
 
@@ -482,7 +484,7 @@ export default function StockDetailPage() {
               </div>
 
               <RiskGradeCard symbol={symbol} />
-              <ForecastCard forecast={data.forecast} symbol={symbol} />
+              <ForecastCard forecast={data.forecast} symbol={symbol} currency={currency} />
               <DividendHistoryCard symbol={symbol} />
             </div>
 
@@ -497,6 +499,7 @@ export default function StockDetailPage() {
                 atrPct={latestAtrPct}
                 crossovers={data.crossovers}
                 pe={data.pe}
+                currency={currency}
               />
             </div>
           </div>

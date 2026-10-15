@@ -2,12 +2,14 @@
 
 import LearnTooltip from "./LearnTooltip";
 import type { KeyLevels } from "@/app/lib/types";
+import { formatPrice } from "@/app/lib/money";
 
 interface KeyLevelsCardProps {
   keyLevels: KeyLevels | null | undefined;
+  currency: string;
 }
 
-export default function KeyLevelsCard({ keyLevels }: KeyLevelsCardProps) {
+export default function KeyLevelsCard({ keyLevels, currency }: KeyLevelsCardProps) {
   if (!keyLevels) return null;
 
   const { current_price, nearest_support, nearest_resistance } = keyLevels;
@@ -25,7 +27,7 @@ export default function KeyLevelsCard({ keyLevels }: KeyLevelsCardProps) {
           </LearnTooltip>
         </h3>
         <span className="font-mono text-[10px] text-white/30">
-          {current_price.toFixed(2)} EGP
+          {formatPrice(current_price, currency)}
         </span>
       </div>
 
@@ -53,6 +55,7 @@ export default function KeyLevelsCard({ keyLevels }: KeyLevelsCardProps) {
             kind="resistance"
             level={nearest_resistance}
             currentPrice={current_price}
+            currency={currency}
           />
         )}
 
@@ -67,6 +70,7 @@ export default function KeyLevelsCard({ keyLevels }: KeyLevelsCardProps) {
           kind="support"
           level={nearest_support}
           currentPrice={current_price}
+          currency={currency}
         />
       </div>
     </div>
@@ -89,10 +93,12 @@ function LevelRow({
   kind,
   level,
   currentPrice,
+  currency,
 }: {
   kind: "support" | "resistance";
   level: KeyLevels["nearest_support"];
   currentPrice: number;
+  currency: string;
 }) {
   const isSupport = kind === "support";
   const label = isSupport ? "Nearest Support" : "Nearest Resistance";
@@ -135,7 +141,7 @@ function LevelRow({
           {label}
         </div>
         <div className={`font-mono text-sm font-semibold ${accent}`}>
-          {level.price.toFixed(2)} EGP
+          {formatPrice(level.price, currency)}
         </div>
         <div className="mt-0.5 text-[10px] text-white/40">
           {/* Strength 1 is a single pivot — one bounce. Calling that
