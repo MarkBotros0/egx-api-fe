@@ -33,7 +33,8 @@ let inflight: Promise<AnalysisResponse> | null = null;
 
 function loadAnalysis(): Promise<AnalysisResponse> {
   if (!inflight) {
-    inflight = fetchAnalysis(LIVE_SYMBOL, "Daily", LIVE_BARS).catch((err) => {
+    // Pinned to EG: the Learn examples are EGX (COMI), whatever market is selected.
+    inflight = fetchAnalysis(LIVE_SYMBOL, "Daily", LIVE_BARS, { market: "EG" }).catch((err) => {
       inflight = null; // let a later concept retry
       throw err;
     });
